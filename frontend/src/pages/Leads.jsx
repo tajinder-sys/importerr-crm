@@ -1,0 +1,419 @@
+import { useCallback, useMemo, useState } from 'react';
+import { Eye, Pencil, UserPlus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader } from '../components/common/Card';
+import Table from '../components/common/Table';
+import Button from '../components/common/Button';
+import Modal from '../components/common/Modal';
+import Chip from '../components/common/Chip';
+import LeadForm from '../components/leads/LeadForm';
+import api from '../utils/api';
+import {
+  formatDateIndian,
+  formatIndianPhoneInput,
+  formatPhone,
+  getPhonePayload,
+  validatePhone
+} from '../utils/helpers';
+import { useAuth } from '../contexts/AuthContext';
+import { getChipVariant } from '../utils/chipConstants';
+import { API_ROUTES } from '../utils/apiRoutes';
+import { UiPageTitle, UiSectionTitle } from '../components/common/ui/Typography';
+import LeadFilters from '../components/leads/LeadFilters';
+
+const formatLeadPhoneDisplay = (phone) => {
+  if (!phone) return '-';
+
+  const digits = String(phone).replace(/\D/g, '');
+  let local = digits;
+
+  if (digits.startsWith('91') && digits.length >= 12) {
+    local = digits.slice(2, 12);
+  } else if (digits.length > 10) {
+    local = digits.slice(-10);
+  }
+
+  if (local.length === 10) {
+    return `+91 ${local.slice(0, 5)} ${local.slice(5)}`;
+  }
+
+  return formatPhone(phone);
+};
+
+const Leads = () => {
+  const { user } = useAuth();
+  const [draftFilters, setDraftFilters] = useState({
+    search: '',
+    status: 'all',
+    source: 'all'
+  });
+  const [appliedFilters, setAppliedFilters] = useState({
+    search: '',
+    status: 'all',
+    source: 'all'
+  });
+  const [tableRefreshKey, setTableRefreshKey] = useState(0);
+  const [isLeadsLoading, setIsLeadsLoading] = useState(false);
+  const [showCreateLeadModal, setShowCreateLeadModal] = useState(false);
+  const [editingLead, setEditingLead] = useState(null);
+  const [creatingLead, setCreatingLead] = useState(false);
+  const [createError, setCreateError] = useState('');
+  const [assignableMembers, setAssignableMembers] = useState([]);
+  const [leadForm, setLeadForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    source: 'importerr_inquiry',
+    assignedTo: '',
+    leadType: 'guest',
+    status: 'new'
+  });
+  const navigate = useNavigate();
+  const canManageLeadAssignment = user?.role === 'admin' || user?.role === 'team_manager';
+
+  const setFilter = (name, value) => {
+    setDraftFilters((prev) => {
+      const next = { ...prev, [name]: value };
+      setAppliedFilters({
+        search: next.search.trim(),
+        status: next.status,
+        source: next.source
+      });
+      return next;
+    });
+  };
+
+  const setSearchDraft = (value) => {
+    setDraftFilters((prev) => ({ ...prev, search: value }));
+  };
+
+  const applySearchFilter = () => {
+    setAppliedFilters((prev) => ({
+      ...prev,
+      search: draftFilters.search.trim()
+    }));
+  };
+
+  const resetFilters = () => {
+    const resetState = { search: '', status: 'all', source: 'all' };
+    setDraftFilters(resetState);
+    setAppliedFilters(resetState);
+  };
+
+  const resetLeadForm = () => {
+    setLeadForm({
+      name: '',
+      email: '',
+      phone: '',
+      source: 'importerr_inquiry',
+      assignedTo: '',
+      leadType: 'guest',
+      status: 'new'
+    });
+    setCreateError('');
+  };
+
+  const loadAssignableMembers = useCallback(async () => {
+    if (!canManageLeadAssignment) return;
+    const response = await api.get(API_ROUTES.users.list, {
+      params: { role: 'team_member', page: 1, limit: 200 }
+    });
+    setAssignableMembers(response?.data?.users || []);
+  }, [canManageLeadAssignment]);
+
+  const openCreateLeadModal = async () => {
+    resetLeadForm();
+    setEditingLead(null);
+    setShowCreateLeadModal(true);
+    if (canManageLeadAssignment && assignableMembers.length === 0) {
+      try {
+        await loadAssignableMembers();
+      } catch (error) {
+        setCreateError(error?.message || 'Failed to load users');
+      }
+    }
+  };
+
+  const openEditLeadModal = async (lead) => {
+    setCreateError('');
+    setEditingLead(lead);
+    const assignedUserId = lead?.assignedTo?._id ? String(lead.assignedTo._id) : '';
+    setLeadForm({
+      name: lead?.name || '',
+      email: lead?.email || '',
+      phone: formatIndianPhoneInput(lead?.phone || ''),
+      source: lead?.source || 'importerr_inquiry',
+      assignedTo: assignedUserId,
+      leadType: lead?.leadType || 'guest',
+      status: lead?.status || 'new'
+    });
+    if (assignedUserId) {
+      setAssignableMembers((prev) => {
+        const exists = prev.some((member) => String(member?._id) === assignedUserId);
+        if (exists) return prev;
+        return [
+          ...prev,
+          {
+            _id: assignedUserId,
+            name: lead?.assignedTo?.name || 'Assigned User',
+            email: lead?.assignedTo?.email || ''
+          }
+        ];
+      });
+    }
+    setShowCreateLeadModal(true);
+    if (canManageLeadAssignment && assignableMembers.length === 0) {
+      try {
+        await loadAssignableMembers();
+      } catch (error) {
+        setCreateError(error?.message || 'Failed to load users');
+      }
+    }
+  };
+
+  const handleLeadFormChange = (event) => {
+    const { name, value } = event.target;
+    setLeadForm((prev) => ({
+      ...prev,
+      [name]: name === 'phone' ? formatIndianPhoneInput(value) : value
+    }));
+  };
+
+  const handleCreateLead = async (event) => {
+    event.preventDefault();
+    setCreateError('');
+    const normalizedPhone = getPhonePayload(leadForm.phone);
+    if (!normalizedPhone || !validatePhone(normalizedPhone)) {
+      setCreateError('Enter a valid mobile number');
+      return;
+    }
+
+    setCreatingLead(true);
+    try {
+      await api.post(API_ROUTES.leads.create, {
+        name: leadForm.name.trim(),
+        email: leadForm.email.trim(),
+        phone: normalizedPhone,
+        source: leadForm.source,
+        leadType: leadForm.leadType,
+        ...(canManageLeadAssignment && leadForm.assignedTo ? { assignedTo: leadForm.assignedTo } : {})
+      });
+      setShowCreateLeadModal(false);
+      resetLeadForm();
+      setTableRefreshKey((prev) => prev + 1);
+    } catch (error) {
+      setCreateError(error?.message || 'Failed to create lead');
+    } finally {
+      setCreatingLead(false);
+    }
+  };
+
+  const handleUpdateLead = async (event) => {
+    event.preventDefault();
+    if (!editingLead?._id) return;
+    setCreateError('');
+    const normalizedPhone = getPhonePayload(leadForm.phone);
+    if (!normalizedPhone || !validatePhone(normalizedPhone)) {
+      setCreateError('Enter a valid mobile number');
+      return;
+    }
+
+    setCreatingLead(true);
+    try {
+      await api.put(API_ROUTES.leads.update(editingLead._id), {
+        name: leadForm.name.trim(),
+        email: leadForm.email.trim(),
+        phone: normalizedPhone,
+        source: leadForm.source,
+        leadType: leadForm.leadType,
+        status: leadForm.status,
+        ...(canManageLeadAssignment ? { assignedTo: leadForm.assignedTo || null } : {})
+      });
+      setShowCreateLeadModal(false);
+      setEditingLead(null);
+      resetLeadForm();
+      setTableRefreshKey((prev) => prev + 1);
+    } catch (error) {
+      setCreateError(error?.message || 'Failed to update lead');
+    } finally {
+      setCreatingLead(false);
+    }
+  };
+
+  const fetchLeads = useCallback(async ({ page, limit, sortKey, sortDirection, search, status, source }) => {
+    setIsLeadsLoading(true);
+    try {
+      const resolvedSortBy = sortKey || 'createdAt';
+      const resolvedSortOrder = sortKey ? (sortDirection || 'desc') : 'desc';
+      const response = await api.get(API_ROUTES.leads.list, {
+        params: {
+          page,
+          limit,
+          sortBy: resolvedSortBy,
+          sortOrder: resolvedSortOrder,
+          ...(search ? { search } : {}),
+          ...(status && status !== 'all' ? { status } : {}),
+          ...(source && source !== 'all' ? { source } : {})
+        }
+      });
+
+      return {
+        data: response?.data?.leads || [],
+        total: response?.data?.pagination?.total || 0
+      };
+    } finally {
+      setIsLeadsLoading(false);
+    }
+  }, []);
+
+  const tableQueryParams = useMemo(
+    () => ({
+      search: appliedFilters.search,
+      status: appliedFilters.status,
+      source: appliedFilters.source,
+      refreshKey: tableRefreshKey
+    }),
+    [appliedFilters, tableRefreshKey]
+  );
+
+  const columns = [
+    { key: 'name', sortKey: 'name', sortable: true, header: 'Lead Name' ,
+      render: (lead) => <span className="font-medium text-gray-900">{lead.name}</span>
+    },
+    {
+      key: 'phone',
+      sortKey: 'phone',
+      sortable: true,
+      header: 'Phone',
+      render: (lead) => formatLeadPhoneDisplay(lead.phone)
+    },
+    { key: 'email', sortKey: 'email', sortable: true, header: 'Email' },
+    {
+      key: 'assignedTo',
+      sortKey: 'assignedTo',
+      sortable: true,
+      header: 'Assigned To',
+      render: (lead) => lead?.assignedTo?.name || '-'
+    },
+    {
+      key: 'source',
+      sortKey: 'source',
+      sortable: true,
+      header: 'Source',
+      render: (lead) => <Chip label={lead.source} variant={getChipVariant('SOURCE', lead.source)} />
+    },
+    {
+      key: 'status',
+      sortKey: 'status',
+      sortable: true,
+      header: 'Status',
+      render: (lead) => <Chip label={lead.status} variant={getChipVariant('STATUS', lead.status)} />
+    },
+    {
+      key: 'createdAt',
+      sortKey: 'createdAt',
+      sortable: true,
+      header: 'Created At',
+      render: (lead) => formatDateIndian(lead.createdAt)
+    },
+    {
+      key: 'action',
+      header: 'Action',
+      render: (lead) => (
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            iconOnly
+            startIcon={<Eye className="h-4 w-4" />}
+            onClick={() => window.open(`/leads/${lead._id}`, '_blank', 'noopener,noreferrer')}
+            title="View lead details"
+            aria-label="View lead details"
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            iconOnly
+            startIcon={<Pencil className="h-4 w-4" />}
+            onClick={() => openEditLeadModal(lead)}
+            title="Edit lead"
+            aria-label="Edit lead"
+          />
+        </div>
+      )
+    }
+  ];
+
+  return (
+    <div className="px-4 py-6 sm:px-6 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <UiPageTitle>Lead Management</UiPageTitle>
+            <p className="mt-1 text-sm text-gray-500">Track and manage all incoming leads.</p>
+          </div>
+          <Button onClick={openCreateLeadModal} startIcon={<UserPlus className="h-4 w-4" />}>
+            Create Lead
+          </Button>
+        </div>
+        <LeadFilters
+          filters={draftFilters}
+          onFilterChange={setFilter}
+          onSearchChange={setSearchDraft}
+          onSearchEnter={applySearchFilter}
+          onReset={resetFilters}
+          disabled={isLeadsLoading}
+        />
+
+        <Card className="rounded-2xl border-gray-200 shadow-sm">
+          <CardHeader className="border-gray-100">
+            <UiSectionTitle>Leads</UiSectionTitle>
+          </CardHeader>
+          <CardContent>
+            <Table
+              columns={columns}
+              apiFunction={fetchLeads}
+              queryParams={tableQueryParams}
+              rowKey="_id"
+              emptyMessage="No leads found."
+              defaultPageSize={10}
+              pageSizeOptions={[10, 20, 50]}
+              framed={false}
+            />
+          </CardContent>
+        </Card>
+
+        <Modal
+          isOpen={showCreateLeadModal}
+          onClose={() => {
+            setShowCreateLeadModal(false);
+            setEditingLead(null);
+            resetLeadForm();
+          }}
+          title={editingLead ? 'Edit Lead' : 'Create Lead'}
+          size="lg"
+        >
+          <LeadForm
+            values={leadForm}
+            onChange={handleLeadFormChange}
+            assignableMembers={assignableMembers}
+            canManageLeadAssignment={canManageLeadAssignment}
+            error={createError}
+            onSubmit={editingLead ? handleUpdateLead : handleCreateLead}
+            onCancel={() => {
+              setShowCreateLeadModal(false);
+              setEditingLead(null);
+              resetLeadForm();
+            }}
+            loading={creatingLead}
+            submitLabel={editingLead ? 'Update Lead' : 'Create Lead'}
+          />
+        </Modal>
+      </div>
+    </div>
+  );
+};
+
+export default Leads;

@@ -1,0 +1,232 @@
+const User = require('../../models/User');
+const Lead = require('../../models/lead');
+const Communication = require('../../models/Communication');
+const ActivityService = require('../../services/ActivityService');
+const {
+  LEAD_SOURCES,
+  LEAD_STATUSES,
+  USER_ROLES,
+  ACTIVITY_TYPES,
+  COMMUNICATION_SOURCES
+} = require('../../utils/constants');
+const { sendSuccess, sendBadRequest, sendNotFound, sendServerError } = require('../../utils/responseHandler');
+const EmailService = require('../../services/EmailService');
+
+const resolveAutoAssignedTeamMember = async () => {
+  const activeMembers = await User.find({
+    role: USER_ROLES.TEAM_MEMBER,
+    isActive: true
+  })
+    .select('_id')
+    .lean();
+
+  if (!activeMembers.length) {
+    return null;
+  }
+
+  const memberIds = activeMembers.map((member) => member._id);
+  const assignmentCounts = await Lead.aggregate([
+    { $match: { assignedTo: { $in: memberIds } } },
+    { $group: { _id: '$assignedTo', count: { $sum: 1 } } }
+  ]);
+
+  const countMap = new Map(assignmentCounts.map((item) => [String(item._id), item.count]));
+
+  let selected = activeMembers[0]._id;
+  let minCount = Number.MAX_SAFE_INTEGER;
+  for (const member of activeMembers) {
+    const count = countMap.get(String(member._id)) || 0;
+    if (count < minCount) {
+      minCount = count;
+      selected = member._id;
+    }
+  }
+
+  return selected;
+};
+
+const resolveActivityActor = async (preferredUserId) => {
+  if (preferredUserId) return preferredUserId;
+  const fallbackUser = await User.findOne({
+    role: { $in: [USER_ROLES.ADMIN, USER_ROLES.TEAM_MANAGER, USER_ROLES.TEAM_MEMBER] },
+    isActive: true
+  })
+    .select('_id')
+    .lean();
+
+  return fallbackUser?._id || null;
+};
+
+const createInboundClientCommunication = async ({ leadId, source, message }) => {
+  if (!message || !String(message).trim()) return;
+  const communicationSource =
+    Object.values(COMMUNICATION_SOURCES).includes(source) ? source : COMMUNICATION_SOURCES.IMPORTERR_INQUIRY;
+  await Communication.create({
+    lead: leadId,
+    senderType: 'client',
+    senderUser: null,
+    source: communicationSource,
+    direction: 'inbound',
+    message: String(message).trim()
+  });
+};
+
+const createLeadFromImporterr = async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      phone,
+      source = LEAD_SOURCES.IMPORTERR_INQUIRY,
+      status = LEAD_STATUSES.NEW,
+      leadType = 'registered',
+      assignedTo = null,
+      duplicateOf = null,
+      userId = null,
+      productId = null,
+      productSku = null,
+      variants = null,
+      totalQuantity = 0,
+      message = ''
+    } = req.body || {};
+
+    if (!name || !String(name).trim()) {
+      return sendBadRequest(res, 'name is required');
+    }
+    if (!email || !String(email).trim()) {
+      return sendBadRequest(res, 'email is required');
+    }
+    if (!phone || !String(phone).trim()) {
+      return sendBadRequest(res, 'phone is required');
+    }
+
+    const normalizedUserId = userId ? String(userId).trim() : null;
+    const normalizedProductSku = productSku ? String(productSku).trim() : null;
+    const normalizedVariants =
+      variants && typeof variants === 'object'
+        ? JSON.parse(JSON.stringify(variants))
+        : null;
+    const resolvedMessage =
+      String(message || '').trim() ||
+      `Importerr inquiry for SKU ${String(productSku || '').trim()}`.trim();
+    const resolvedSource = source || LEAD_SOURCES.IMPORTERR_INQUIRY;
+
+    // Prevent duplicate leads per customer+SKU for importerr submissions.
+    if (normalizedUserId && normalizedProductSku) {
+      const existingLead = await Lead.findOne({
+        userId: normalizedUserId,
+        productSku: normalizedProductSku
+      });
+
+      if (existingLead) {
+        const previousStatus = existingLead.status;
+        existingLead.status = LEAD_STATUSES.NEW;
+        existingLead.message = resolvedMessage;
+        existingLead.source = resolvedSource;
+        existingLead.totalQuantity = Number(totalQuantity) || 0;
+        if (normalizedVariants) {
+          existingLead.variants = normalizedVariants;
+        }
+        existingLead.lastInteraction = new Date();
+        await existingLead.save();
+
+        await createInboundClientCommunication({
+          leadId: existingLead._id,
+          source: existingLead.source,
+          message: resolvedMessage
+        });
+
+        const activityActor = await resolveActivityActor(existingLead.assignedTo || null);
+        if (activityActor) {
+          await ActivityService.createActivity({
+            leadId: existingLead._id,
+            type: ACTIVITY_TYPES.LEAD_UPDATED,
+            description: 'Existing lead refreshed from Importerr inquiry (same user and product)',
+            performedBy: activityActor,
+            metadata: {
+              matchedBy: 'userId+productSku',
+              userId: normalizedUserId,
+              productSku: normalizedProductSku,
+              oldStatus: previousStatus,
+              newStatus: LEAD_STATUSES.NEW,
+              variants: normalizedVariants,
+              totalQuantity: Number(totalQuantity) > 0 ? Number(totalQuantity) : existingLead.totalQuantity || 0
+            }
+          });
+        }
+
+        return sendSuccess(
+          res,
+          'Lead already exists for this user and product. Status reset to new and communication added.',
+          existingLead
+        );
+      }
+    }
+
+    const resolvedAssignedTo = assignedTo || (await resolveAutoAssignedTeamMember());
+
+    const lead = await Lead.create({
+      name: String(name).trim(),
+      email: String(email).trim().toLowerCase(),
+      phone: String(phone).trim(),
+      source: resolvedSource,
+      status: status || LEAD_STATUSES.NEW,
+      message: resolvedMessage,
+      leadType: leadType || 'registered',
+      assignedTo: resolvedAssignedTo || null,
+      duplicateOf: duplicateOf || null,
+      userId: normalizedUserId,
+      productId: productId ? String(productId).trim() : null,
+      productSku: normalizedProductSku,
+      variants: normalizedVariants,
+      totalQuantity: Number(totalQuantity) > 0 ? Number(totalQuantity) : 0
+    });
+
+    await createInboundClientCommunication({
+      leadId: lead._id,
+      source: lead.source,
+      message: lead.message
+    });
+
+    const activityActor = await resolveActivityActor(resolvedAssignedTo);
+    if (activityActor) {
+      await ActivityService.createActivity({
+        leadId: lead._id,
+        type: ACTIVITY_TYPES.LEAD_CREATED,
+        description: `Lead created from Importerr inquiry${lead.productSku ? ` (${lead.productSku})` : ''}`,
+        performedBy: activityActor,
+        metadata: {
+          source: lead.source,
+          userId: lead.userId || null,
+          productId: lead.productId || null,
+          productSku: lead.productSku || null,
+          variants: lead.variants || null,
+          totalQuantity: lead.totalQuantity || 0
+        }
+      });
+    }
+    if(lead.email && lead.assignedTo) {
+      try {
+          const assignedUser = await User.findById(lead.assignedTo);
+          await EmailService.sendTemplateEmail({
+              to: assignedUser.email,
+              slug: 'new-lead-submission',
+              data: {
+                name: assignedUser.name,
+                link: `${process.env.FRONTEND_URL}/leads/${lead._id}`,
+              },
+          });
+      } catch (err) {
+        console.error('Email send failed:', err.message);
+      }
+    }
+
+    return sendSuccess(res, 'Lead created from importerr inquiry', lead);
+  } catch (error) {
+    return sendServerError(res, error.message || 'Failed to create lead from importerr');
+  }
+};
+
+module.exports = {
+  createLeadFromImporterr
+};
