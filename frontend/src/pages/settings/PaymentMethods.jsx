@@ -189,8 +189,8 @@ const PaymentMethods = () => {
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold text-gray-900">Payment Methods</h1>
-            <p className="text-xs text-gray-500">Manage payment method configurations and status.</p>
+            <h1 className="text-2xl font-bold text-gray-900">Payment Methods</h1>
+            <p className="mt-1 text-sm text-gray-500">Manage payment method configurations and status.</p>
           </div>
           <button
             onClick={() => {

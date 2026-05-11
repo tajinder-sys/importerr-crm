@@ -31,7 +31,7 @@ const Sidebar = () => {
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Lead Management', href: '/leads', icon: Users },
     ...(isUserAdmin ? [
-      { name: 'Teams', href: '/teams', icon: Users2 }
+      { name: 'Team Management', href: '/teams', icon: Users2 }
     ] : []),
   ];
 
@@ -164,7 +164,7 @@ const Sidebar = () => {
                           )}
                         >
                           <GitBranch className="h-3 w-3" />
-                          Pipelines/Stages
+                          Pipelines & Stages
                         </a>
                       </div>
                     ) : null}

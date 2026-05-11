@@ -6,7 +6,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Teams from './pages/Teams';
-import Leads from './pages/Leads';
+// import Leads from './pages/Leads';
 import LeadDetails from './pages/LeadDetails';
 import PaymentMethods from './pages/settings/PaymentMethods';
 import Templates from './pages/Templates';
@@ -14,7 +14,8 @@ import Navbar from './components/layout/Navbar';
 import Sidebar from './components/layout/Sidebar';
 import ApiConfig from './pages/settings/ApiConfig.jsx';
 import TeamsSetting from './pages/settings/TeamsSetting.jsx';
-import PipelineStages from './pages/settings/PipelineStages.jsx';
+import PipelineStages from './pages/settings/PipelineStages/PipelineStages.jsx';
+import Leads from './pages/Leads/Lead.jsx';
 
 const AdminRoute = ({ children }) => {
   const { user } = useAuth();
@@ -33,11 +34,16 @@ function App() {
               path="/*"
               element={
                 <ProtectedRoute>
-                  <div className="flex min-h-screen">
+                  <div className="flex h-screen overflow-hidden bg-slate-50">
+                    {/* Sidebar */}
                     <Sidebar />
-                    <div className="flex flex-1 flex-col md:ml-64">
+
+                    {/* Right Section */}
+                    <div className="flex flex-1 flex-col md:ml-64 overflow-hidden">
                       <Navbar />
-                      <main className="flex-1">
+
+                      {/* Page Content */}
+                      <main className="flex-1 overflow-y-auto overflow-x-hidden">
                         <Routes>
                           <Route path="/dashboard" element={<Dashboard />} />
                           <Route path="/leads" element={<Leads />} />

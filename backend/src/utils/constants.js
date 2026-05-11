@@ -56,6 +56,7 @@ const ACTIVITY_TYPES = {
   LEAD_CONVERTED: 'lead_converted',
   QUOTE_SENT: 'lead_quote_sent',
   QUOTE_RESENT: 'lead_quote_resent',
+  STAGE_CHANGED: 'stage_changed'
 };
 
 const COMMUNICATION_SOURCES = {

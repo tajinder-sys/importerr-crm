@@ -3,8 +3,9 @@ const User = require('../models/User');
 const { sendSuccess, sendBadRequest, sendUnauthorized } = require('../utils/responseHandler');
 
 const generateToken = (user) => {
+  console.log('ussssss',user)
   return jwt.sign(
-    { id: user._id, email: user.email, role: user.role },
+    { id: user._id, email: user.email, role: user.role, teamId:user.team_id },
     process.env.JWT_SECRET,
     { expiresIn: '24h' }
   );

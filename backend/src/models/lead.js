@@ -49,6 +49,14 @@ const leadSchema = new mongoose.Schema({
     enum: Object.values(LEAD_STATUSES),
     default: LEAD_STATUSES.NEW
   },
+  pipelineId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Pipeline'
+  },
+  stageId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Stage'
+  },
   leadType: {
     type: String,
     enum: ['guest', 'registered'],

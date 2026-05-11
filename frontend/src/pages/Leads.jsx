@@ -20,6 +20,7 @@ import { getChipVariant } from '../utils/chipConstants';
 import { API_ROUTES } from '../utils/apiRoutes';
 import { UiPageTitle, UiSectionTitle } from '../components/common/ui/Typography';
 import LeadFilters from '../components/leads/LeadFilters';
+import { useEffect } from 'react';
 
 const formatLeadPhoneDisplay = (phone) => {
   if (!phone) return '-';
@@ -68,6 +69,8 @@ const Leads = () => {
     leadType: 'guest',
     status: 'new'
   });
+  const [pipelines, setPipelines] = useState([]);
+  const [selectedPipeline, setSelectedPipeline] = useState(null);
   const navigate = useNavigate();
   const canManageLeadAssignment = user?.role === 'admin' || user?.role === 'team_manager';
 
@@ -120,6 +123,17 @@ const Leads = () => {
     });
     setAssignableMembers(response?.data?.users || []);
   }, [canManageLeadAssignment]);
+
+  const fetchPipelines = useCallback(async () => {
+    try {
+      const response = await api.get(API_ROUTES.pipelines.list);
+      if (response.success) {
+        setPipelines(response.data?.pipelines || []);
+      }
+    } catch (error) {
+      console.error('Error fetching pipelines:', error);
+    }
+  }, []);
 
   const openCreateLeadModal = async () => {
     resetLeadForm();
@@ -240,7 +254,7 @@ const Leads = () => {
     }
   };
 
-  const fetchLeads = useCallback(async ({ page, limit, sortKey, sortDirection, search, status, source }) => {
+  const fetchLeads = useCallback(async ({ page, limit, sortKey, sortDirection, search, status, source, pipelineId }) => {
     setIsLeadsLoading(true);
     try {
       const resolvedSortBy = sortKey || 'createdAt';
@@ -253,7 +267,8 @@ const Leads = () => {
           sortOrder: resolvedSortOrder,
           ...(search ? { search } : {}),
           ...(status && status !== 'all' ? { status } : {}),
-          ...(source && source !== 'all' ? { source } : {})
+          ...(source && source !== 'all' ? { source } : {}),
+          ...(pipelineId ? { pipelineId } : {})
         }
       });
 
@@ -264,16 +279,57 @@ const Leads = () => {
     } finally {
       setIsLeadsLoading(false);
     }
+  }, [canManageLeadAssignment]);
+
+  useEffect(() => {
+    fetchPipelines();
   }, []);
+
+  // Set first pipeline as default when component loads
+  useEffect(() => {
+    if (pipelines.length > 0 && !selectedPipeline) {
+      setSelectedPipeline(pipelines[0]._id);
+    }
+  }, [pipelines]);
+
+  // Handle pipeline change to fetch stages for that pipeline
+  useEffect(() => {
+    if (selectedPipeline) {
+      const selectedPipelineData = pipelines.find(p => p._id === selectedPipeline);
+      if (selectedPipelineData && !selectedPipelineData.stages) {
+        // Fetch stages for the selected pipeline
+        fetchStagesForPipeline(selectedPipeline);
+      }
+    }
+  }, [selectedPipeline]);
+
+  const fetchStagesForPipeline = async (pipelineId) => {
+    try {
+      const response = await api.get(API_ROUTES.stages.list, {
+        params: { pipelineId }
+      });
+      if (response.success) {
+        // Update the pipeline with stages
+        setPipelines(prev => prev.map(p => 
+          p._id === pipelineId 
+            ? { ...p, stages: response.data?.stages || [] }
+            : p
+        ));
+      }
+    } catch (error) {
+      console.error('Error fetching stages for pipeline:', error);
+    }
+  };
 
   const tableQueryParams = useMemo(
     () => ({
       search: appliedFilters.search,
       status: appliedFilters.status,
       source: appliedFilters.source,
-      refreshKey: tableRefreshKey
+      refreshKey: tableRefreshKey,
+      pipelineId: selectedPipeline
     }),
-    [appliedFilters, tableRefreshKey]
+    [appliedFilters, tableRefreshKey, selectedPipeline]
   );
 
   const columns = [
@@ -294,6 +350,28 @@ const Leads = () => {
       sortable: true,
       header: 'Assigned To',
       render: (lead) => lead?.assignedTo?.name || '-'
+    },
+    {
+      key: 'pipelineId',
+      sortKey: 'pipelineId',
+      sortable: true,
+      header: 'Pipeline',
+      render: (lead) => lead?.pipelineId?.name || '-'
+    },
+    {
+      key: 'stageId',
+      sortKey: 'stageId',
+      sortable: true,
+      header: 'Stage',
+      render: (lead) => (
+        <div className="flex items-center gap-2">
+          <div 
+            className="w-3 h-3 rounded-full"
+            style={{ backgroundColor: lead?.stageId?.color || '#6b7280' }}
+          />
+          <span className="text-sm font-medium">{lead?.stageId?.name || '-'}</span>
+        </div>
+      )
     },
     {
       key: 'source',
@@ -358,14 +436,37 @@ const Leads = () => {
             Create Lead
           </Button>
         </div>
-        <LeadFilters
+        
+        {/* Pipeline Tabs */}
+        {pipelines.length > 0 && (
+          <div className="mb-6">
+            <div className="border-b border-gray-200">
+              <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                {pipelines.map((pipeline) => (
+                  <button
+                    key={pipeline._id}
+                    className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                      selectedPipeline === pipeline._id
+                        ? 'border-indigo-500 text-indigo-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                    onClick={() => setSelectedPipeline(pipeline._id)}
+                  >
+                    {pipeline.name}
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </div>
+        )}
+        {/* <LeadFilters
           filters={draftFilters}
           onFilterChange={setFilter}
           onSearchChange={setSearchDraft}
           onSearchEnter={applySearchFilter}
           onReset={resetFilters}
           disabled={isLeadsLoading}
-        />
+        /> */}
 
         <Card className="rounded-2xl border-gray-200 shadow-sm">
           <CardHeader className="border-gray-100">

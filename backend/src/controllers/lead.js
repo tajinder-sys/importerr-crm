@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Lead = require('../models/lead');
 const Activity = require('../models/Activity');
 const Communication = require('../models/Communication');
@@ -7,6 +8,8 @@ const CommunicationService = require('../services/CommunicationService');
 const { sendSuccess, sendBadRequest, sendNotFound, sendForbidden } = require('../utils/responseHandler');
 const { validateLeadData } = require('../utils/validators');
 const { LEAD_STATUSES, ACTIVITY_TYPES, USER_ROLES, COMMUNICATION_SOURCES } = require('../utils/constants');
+const Pipeline = require('../models/Pipeline');
+const Stage = require('../models/Stage');
 
 const isAdminUser = (user) => user?.role === 'admin';
 const isTeamUser = (user) =>
@@ -54,6 +57,8 @@ const getLeads = async (req, res) => {
       status,
       source,
       assignedTo,
+      stageId,
+      pipelineId,
       search,
       sortBy = 'createdAt',
       sortOrder = 'desc'
@@ -64,7 +69,9 @@ const getLeads = async (req, res) => {
     if (status) query.status = status;
     if (source) query.source = source;
     if (assignedTo) query.assignedTo = assignedTo;
-
+    if (stageId) query.stageId = mongoose.Types.ObjectId.isValid(stageId) ? new mongoose.Types.ObjectId(stageId) : stageId;
+    if (pipelineId) query.pipelineId = mongoose.Types.ObjectId.isValid(pipelineId) ? new mongoose.Types.ObjectId(pipelineId) : pipelineId;
+    console.log(query, stageId);
     // Non-admin team users can only view leads assigned to themselves.
     if (isTeamUser(req.user)) {
       query.assignedTo = req.user.id;
@@ -78,11 +85,21 @@ const getLeads = async (req, res) => {
       ];
     }
 
+    // Only get leads that have pipelineId and stageId set (unless specifically filtered)
+    if (!pipelineId) {
+      query.pipelineId = { $exists: true, $ne: null };
+    }
+    if (!stageId) {
+      query.stageId = { $exists: true, $ne: null };
+    }
+
     const sort = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
     const leads = await Lead.find(query)
       .populate('assignedTo', 'name email')
+      .populate('pipelineId', 'name')
+      .populate('stageId', 'name order color')
       .sort(sort)
       .limit(limit * 1)
       .skip((page - 1) * limit);
@@ -144,8 +161,10 @@ const getLeadById = async (req, res) => {
   }
 };
 
-const createLead = async (req, res) => {
+const createOrUpdateLead = async (req, res) => {
   try {
+    const isExplicitUpdate = Boolean(req.params?.id);
+
     const errors = validateLeadData(req.body);
     if (errors.length > 0) {
       return sendBadRequest(res, 'Validation failed', errors);
@@ -157,13 +176,16 @@ const createLead = async (req, res) => {
       email,
       source,
       message,
+      status,
       assignedTo,
-      leadType = 'guest',
-      userId = null,
-      productIntentId = null
+      leadType       = 'guest',
+      userId         = null,
+      pipelineId,
+      stageId,
     } = req.body;
 
     let resolvedAssignedTo = assignedTo;
+
     if (isTeamUser(req.user)) {
       resolvedAssignedTo = req.user.id;
     } else if (assignedTo && canAssignOthers(req.user)) {
@@ -173,50 +195,169 @@ const createLead = async (req, res) => {
       }
     }
 
-    const existingLead = await Lead.findOne({
-      $or: [{ phone }, { email }],
-      duplicateOf: { $exists: false }
-    });
+    let resolvedPipelineId = pipelineId || null;
+    let resolvedStageId    = stageId    || null;
 
-    if (existingLead) {
-      return sendBadRequest(res, 'Lead with this phone or email already exists');
+    if (resolvedPipelineId) {
+      const pipeline = await Pipeline.findById(resolvedPipelineId);
+      if (!pipeline) {
+        return sendBadRequest(res, 'Invalid pipeline selected');
+      }
+
+      if (resolvedStageId) {
+        const stage = await Stage.findOne({
+          _id:        resolvedStageId,
+          pipelineId: resolvedPipelineId,
+        });
+        if (!stage) {
+          return sendBadRequest(res, 'Selected stage does not belong to the chosen pipeline');
+        }
+      } else {
+        // Auto-assign the first stage when pipeline is set but stage is not
+        const firstStage = await Stage.findOne({ pipelineId: resolvedPipelineId }).sort({ order: 1 });
+        if (firstStage) resolvedStageId = firstStage._id;
+      }
     }
 
-    const lead = new Lead({
-      name,
-      phone,
-      email,
-      source,
-      message,
-      leadType,
-      userId: userId || null,
-      productIntentId: productIntentId || null,
-      assignedTo: resolvedAssignedTo,
-      lastInteraction: new Date()
-    });
+    let lead         = null;
+    let isNewLead    = false;
 
+    if (isExplicitUpdate) {
+      lead = await Lead.findById(req.params.id);
+      if (!lead) return sendNotFound(res, 'Lead not found');
+
+    } else {
+      if (phone || email) {
+        lead = await Lead.findOne({
+          $or: [
+            ...(phone ? [{ phone }] : []),
+            ...(email ? [{ email }] : []),
+          ],
+          duplicateOf: { $exists: false },
+        });
+      }
+
+      if (!lead) {
+        lead      = new Lead({ lastInteraction: new Date() });
+        isNewLead = true;
+      }
+    }
+
+    const snapshot = {
+      name:           lead.name,
+      phone:          lead.phone,
+      email:          lead.email,
+      source:         lead.source,
+      message:        lead.message,
+      status:         lead.status,
+      assignedTo:     lead.assignedTo?.toString()      || null,
+      dealValue:      lead.dealValue,
+      leadType:       lead.leadType,
+      userId:         lead.userId,
+      cartId:         lead.cartId,
+      pipelineId:     lead.pipelineId?.toString()      || null,
+      stageId:        lead.stageId?.toString()         || null,
+    };
+
+    if (name            !== undefined) lead.name             = name;
+    if (phone           !== undefined) lead.phone            = phone;
+    if (email           !== undefined) lead.email            = email;
+    if (source          !== undefined) lead.source           = source;
+    if (message         !== undefined) lead.message          = message;
+    if (status          !== undefined) lead.status           = status;
+    if (leadType        !== undefined) lead.leadType         = leadType;
+    if (userId          !== undefined) lead.userId           = userId          || null;
+
+    if (resolvedAssignedTo !== undefined) {
+      lead.assignedTo = resolvedAssignedTo || null;
+    }
+
+    if (resolvedPipelineId) lead.pipelineId = resolvedPipelineId;
+    if (resolvedStageId)    lead.stageId    = resolvedStageId;
+
+    lead.lastInteraction = new Date();
     await lead.save();
-    await createInboundClientCommunication({
-      leadId: lead._id,
-      source,
-      message
-    });
 
-    await ActivityService.createActivity({
-      leadId: lead._id,
-      type: ACTIVITY_TYPES.LEAD_CREATED,
-      description: `Lead created for ${name}`,
-      performedBy: req.user.id,
-      metadata: { source }
-    });
+    if (source && message) {
+      await createInboundClientCommunication({ leadId: lead._id, source, message });
+    }
 
+    if (isNewLead) {
+      await ActivityService.createActivity({
+        leadId:      lead._id,
+        type:        ACTIVITY_TYPES.LEAD_CREATED,
+        description: `Lead created for ${lead.name}`,
+        performedBy: req.user.id,
+        metadata:    { source, pipelineId: resolvedPipelineId, stageId: resolvedStageId },
+      });
+
+    } else {
+      const newAssignedTo = lead.assignedTo?.toString() || null;
+
+      if (snapshot.status !== lead.status) {
+        await ActivityService.createActivity({
+          leadId:      lead._id,
+          type:        ACTIVITY_TYPES.STATUS_UPDATED,
+          description: `Status changed from "${snapshot.status}" to "${lead.status}"`,
+          performedBy: req.user.id,
+          metadata:    { oldStatus: snapshot.status, newStatus: lead.status },
+        });
+      }
+
+      if (snapshot.assignedTo !== newAssignedTo) {
+        await ActivityService.createActivity({
+          leadId:      lead._id,
+          type:        ACTIVITY_TYPES.LEAD_ASSIGNED,
+          description: `Lead ${newAssignedTo ? 'assigned to new agent' : 'unassigned'}`,
+          performedBy: req.user.id,
+          metadata:    { oldAssignedTo: snapshot.assignedTo, newAssignedTo },
+        });
+      }
+
+      const TRACKED_FIELDS = [
+        'name', 'phone', 'email', 'source', 'message',
+        'leadType',
+        'userId',
+        'pipelineId', 'stageId',
+      ];
+
+      const changedFields = {};
+      TRACKED_FIELDS.forEach((field) => {
+        const oldVal = snapshot[field]       ?? null;
+        const newVal = lead[field]?.toString() ?? null;
+        if (String(oldVal) !== String(newVal)) {
+          changedFields[field] = { oldValue: oldVal, newValue: newVal };
+        }
+      });
+
+      if (Object.keys(changedFields).length > 0) {
+        await ActivityService.createActivity({
+          leadId:      lead._id,
+          type:        ACTIVITY_TYPES.LEAD_UPDATED,
+          description: isExplicitUpdate
+            ? 'Lead details updated'
+            : `Existing lead updated for ${lead.name}`,
+          performedBy: req.user.id,
+          metadata:    { changedFields },
+        });
+      }
+    }
+
+    // ── 9. Return populated lead ─────────────────────────────────────────────
     const populatedLead = await Lead.findById(lead._id)
-      .populate('assignedTo', 'name email');
+      .populate('assignedTo', 'name email')
+      .populate('pipelineId', 'name')
+      .populate('stageId',    'name color order');
 
-    sendSuccess(res, 'Lead created successfully', populatedLead);
+    const message_  = isNewLead             ? 'Lead created successfully'
+                    : isExplicitUpdate       ? 'Lead updated successfully'
+                    :                          'Existing lead updated successfully';
+
+    return sendSuccess(res, message_, populatedLead);
+
   } catch (error) {
-    console.error('Create lead error:', error);
-    sendBadRequest(res, 'Failed to create lead');
+    console.error('createOrUpdateLead error:', error);
+    return sendBadRequest(res, 'Failed to save lead');
   }
 };
 
@@ -284,139 +425,6 @@ const addLeadCommunication = async (req, res) => {
   }
 };
 
-const updateLead = async (req, res) => {
-  try {
-    const lead = await Lead.findById(req.params.id);
-    if (!lead) {
-      return sendNotFound(res, 'Lead not found');
-    }
-
-    const {
-      name,
-      email,
-      phone,
-      source,
-      message,
-      status,
-      assignedTo,
-      dealValue,
-      lostReason,
-      leadType,
-      userId,
-      productIntentId,
-      cartId
-    } = req.body;
-
-    const oldLeadSnapshot = {
-      name: lead.name,
-      email: lead.email,
-      phone: lead.phone,
-      source: lead.source,
-      message: lead.message,
-      status: lead.status,
-      assignedTo: lead.assignedTo ? lead.assignedTo.toString() : null,
-      dealValue: lead.dealValue,
-      lostReason: lead.lostReason,
-      leadType: lead.leadType,
-      userId: lead.userId,
-      productIntentId: lead.productIntentId,
-      cartId: lead.cartId
-    };
-
-    if (name) lead.name = name;
-    if (email) lead.email = email;
-    if (phone) lead.phone = phone;
-    if (source) lead.source = source;
-    if (message !== undefined) lead.message = message;
-    if (status) lead.status = status;
-    if (assignedTo !== undefined) {
-      if (isTeamUser(req.user)) {
-        lead.assignedTo = req.user.id;
-      } else if (canAssignOthers(req.user)) {
-        if (assignedTo) {
-          const assigneeValidation = await validateAssignableUser(assignedTo);
-          if (!assigneeValidation.valid) {
-            return sendBadRequest(res, assigneeValidation.message);
-          }
-        }
-        lead.assignedTo = assignedTo;
-      }
-    }
-    if (dealValue !== undefined) lead.dealValue = dealValue;
-    if (lostReason !== undefined) lead.lostReason = lostReason;
-    if (leadType !== undefined) lead.leadType = leadType;
-    if (userId !== undefined) lead.userId = userId || null;
-    if (productIntentId !== undefined) lead.productIntentId = productIntentId || null;
-    if (cartId !== undefined) lead.cartId = cartId || null;
-
-    lead.lastInteraction = new Date();
-    await lead.save();
-
-    const newAssignedTo = lead.assignedTo ? lead.assignedTo.toString() : null;
-
-    if (oldLeadSnapshot.status !== lead.status) {
-      await ActivityService.createActivity({
-        leadId: lead._id,
-        type: ACTIVITY_TYPES.STATUS_UPDATED,
-        description: `Status changed from ${oldLeadSnapshot.status} to ${lead.status}`,
-        performedBy: req.user.id,
-        metadata: { oldStatus: oldLeadSnapshot.status, newStatus: lead.status }
-      });
-    }
-
-    if (oldLeadSnapshot.assignedTo !== newAssignedTo) {
-      await ActivityService.createActivity({
-        leadId: lead._id,
-        type: ACTIVITY_TYPES.LEAD_ASSIGNED,
-        description: `Lead assigned to ${newAssignedTo ? 'new agent' : 'unassigned'}`,
-        performedBy: req.user.id,
-        metadata: { oldAssignedTo: oldLeadSnapshot.assignedTo, newAssignedTo }
-      });
-    }
-
-    const changedFields = {};
-    const fieldsToTrack = [
-      'name',
-      'email',
-      'phone',
-      'source',
-      'message',
-      'dealValue',
-      'lostReason',
-      'leadType',
-      'userId',
-      'productIntentId',
-      'cartId'
-    ];
-
-    fieldsToTrack.forEach((field) => {
-      const oldValue = oldLeadSnapshot[field] ?? null;
-      const newValue = lead[field] ?? null;
-      if (String(oldValue) !== String(newValue)) {
-        changedFields[field] = { oldValue, newValue };
-      }
-    });
-
-    if (Object.keys(changedFields).length > 0) {
-      await ActivityService.createActivity({
-        leadId: lead._id,
-        type: ACTIVITY_TYPES.LEAD_UPDATED,
-        description: 'Lead details updated',
-        performedBy: req.user.id,
-        metadata: { changedFields }
-      });
-    }
-
-    const populatedLead = await Lead.findById(lead._id)
-      .populate('assignedTo', 'name email');
-
-    sendSuccess(res, 'Lead updated successfully', populatedLead);
-  } catch (error) {
-    console.error('Update lead error:', error);
-    sendBadRequest(res, 'Failed to update lead');
-  }
-};
-
 const deleteLead = async (req, res) => {
   try {
     const lead = await Lead.findById(req.params.id);
@@ -445,11 +453,6 @@ const getLeadStatsOverview = async (req, res) => {
     const convertedLeads = await Lead.countDocuments({ ...baseMatch, status: LEAD_STATUSES.CONVERTED });
     const lostLeads = await Lead.countDocuments({ ...baseMatch, status: LEAD_STATUSES.LOST });
 
-    const totalRevenue = await Lead.aggregate([
-      { $match: { ...baseMatch, status: LEAD_STATUSES.CONVERTED } },
-      { $group: { _id: null, total: { $sum: '$dealValue' } } }
-    ]);
-
     const leadsBySource = await Lead.aggregate([
       { $match: baseMatch },
       { $group: { _id: '$source', count: { $sum: 1 } } },
@@ -466,7 +469,6 @@ const getLeadStatsOverview = async (req, res) => {
       negotiationLeads,
       convertedLeads,
       lostLeads,
-      totalRevenue: totalRevenue[0]?.total || 0,
       conversionRate,
       leadsBySource
     });
@@ -476,12 +478,86 @@ const getLeadStatsOverview = async (req, res) => {
   }
 };
 
+const updateLeadStage = async (req, res) => {
+  try {
+    const { id }      = req.params;
+    const { stageId } = req.body;
+
+    if (!stageId) {
+      return sendBadRequest(res, 'stageId is required');
+    }
+
+    const lead = await Lead.findById(id);
+    if (!lead) {
+      return sendNotFound(res, 'Lead not found');
+    }
+
+    if (lead.stageId?.toString() === stageId) {
+      const populated = await Lead.findById(id)
+        .populate('stageId',    'name color order')
+        .populate('pipelineId', 'name');
+      return sendSuccess(res, 'Lead is already in this stage', populated);
+    }
+
+    const newStage = await Stage.findById(stageId);
+
+    if (!newStage) {
+      return sendBadRequest(res, 'Stage not found');
+    }
+
+    if (!newStage.isActive) {
+      return sendBadRequest(res, 'Cannot move lead to an inactive stage');
+    }
+
+    if (
+      lead.pipelineId &&
+      newStage.pipelineId.toString() !== lead.pipelineId.toString()
+    ) {
+      return sendBadRequest(res, 'Stage does not belong to the lead\'s pipeline');
+    }
+
+    const oldStageId    = lead.stageId?.toString()    || null;
+    const oldPipelineId = lead.pipelineId?.toString() || null;
+
+    lead.stageId         = newStage._id;
+    lead.pipelineId      = newStage.pipelineId; // keep pipeline in sync
+    lead.lastInteraction = new Date();
+
+    await lead.save();
+
+    await ActivityService.createActivity({
+      leadId:      lead._id,
+      type:        ACTIVITY_TYPES.STAGE_CHANGED,
+      description: `Stage changed from "${oldStageId || 'none'}" to "${newStage.name}"`,
+      performedBy: req.user.id,
+      metadata: {
+        oldStageId,
+        newStageId:    newStage._id.toString(),
+        newStageName:  newStage.name,
+        oldPipelineId,
+        newPipelineId: newStage.pipelineId.toString(),
+      },
+    });
+
+    const updatedLead = await Lead.findById(lead._id)
+      .populate('assignedTo', 'name email')
+      .populate('pipelineId', 'name')
+      .populate('stageId',    'name color order');
+
+    return sendSuccess(res, 'Lead stage updated successfully', updatedLead);
+
+  } catch (error) {
+    console.error('updateLeadStage error:', error);
+    return sendBadRequest(res, 'Failed to update lead stage');
+  }
+};
+
 module.exports = {
   getLeads,
   getLeadById,
-  createLead,
-  updateLead,
+  createOrUpdateLead,
   addLeadCommunication,
   deleteLead,
-  getLeadStatsOverview
+  getLeadStatsOverview,
+  updateLeadStage
 };

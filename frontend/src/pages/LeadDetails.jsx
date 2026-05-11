@@ -16,7 +16,7 @@ import ActivityTab from '../components/lead-details/ActivityTab';
 import { API_ROUTES } from '../utils/apiRoutes';
 import { getChipVariant } from '../utils/chipConstants';
 import QuotesTab from '../components/lead-details//Quote/index';
-import LeadNotes from '../components/lead-details/LeadNotes';
+import LeadNotes from '../components/common/LeadNotes';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
