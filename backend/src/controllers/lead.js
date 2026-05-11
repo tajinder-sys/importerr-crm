@@ -60,6 +60,7 @@ const getLeads = async (req, res) => {
       stageId,
       pipelineId,
       search,
+      accountId,
       sortBy = 'createdAt',
       sortOrder = 'desc'
     } = req.query;
@@ -72,6 +73,8 @@ const getLeads = async (req, res) => {
     if (stageId) query.stageId = mongoose.Types.ObjectId.isValid(stageId) ? new mongoose.Types.ObjectId(stageId) : stageId;
     if (pipelineId) query.pipelineId = mongoose.Types.ObjectId.isValid(pipelineId) ? new mongoose.Types.ObjectId(pipelineId) : pipelineId;
     console.log(query, stageId);
+    if (accountId) query.accountId = accountId;
+
     // Non-admin team users can only view leads assigned to themselves.
     if (isTeamUser(req.user)) {
       query.assignedTo = req.user.id;

@@ -65,6 +65,12 @@ export const API_ROUTES = {
     delete: (id) => `/payment-methods/${encodeURIComponent(id)}`,
     toggle: (id) => `/payment-methods/${encodeURIComponent(id)}/toggle`
   },
+  connectedAccounts: {
+    list: '/channels/accounts',
+    create: '/channels/accounts',
+    toggle: (id) => `/channels/accounts/${encodeURIComponent(id)}/toggle`,
+    delete: (id) => `/channels/accounts/${encodeURIComponent(id)}`
+  },
   pipelines: {
     list: '/pipelines',
     create: '/pipelines',

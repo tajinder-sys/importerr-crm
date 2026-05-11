@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Eye, Pencil, UserPlus } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Eye, Pencil, UserPlus, X } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '../components/common/Card';
 import Table from '../components/common/Table';
 import Button from '../components/common/Button';
@@ -43,6 +43,10 @@ const formatLeadPhoneDisplay = (phone) => {
 
 const Leads = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const accountId = searchParams.get('accountId') || '';
+  const accountName = searchParams.get('accountName') || '';
+
   const [draftFilters, setDraftFilters] = useState({
     search: '',
     status: 'all',
@@ -54,7 +58,6 @@ const Leads = () => {
     source: 'all'
   });
   const [tableRefreshKey, setTableRefreshKey] = useState(0);
-  const [isLeadsLoading, setIsLeadsLoading] = useState(false);
   const [showCreateLeadModal, setShowCreateLeadModal] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
   const [creatingLead, setCreatingLead] = useState(false);
@@ -268,7 +271,8 @@ const Leads = () => {
           ...(search ? { search } : {}),
           ...(status && status !== 'all' ? { status } : {}),
           ...(source && source !== 'all' ? { source } : {}),
-          ...(pipelineId ? { pipelineId } : {})
+          ...(pipelineId ? { pipelineId } : {}),
+          ...(accountId ? { accountId } : {})
         }
       });
 
@@ -276,14 +280,10 @@ const Leads = () => {
         data: response?.data?.leads || [],
         total: response?.data?.pagination?.total || 0
       };
-    } finally {
-      setIsLeadsLoading(false);
+    } catch {
+      return { data: [], total: 0 };
     }
-  }, [canManageLeadAssignment]);
-
-  useEffect(() => {
-    fetchPipelines();
-  }, []);
+  }, [accountId]);
 
   // Set first pipeline as default when component loads
   useEffect(() => {
@@ -327,9 +327,10 @@ const Leads = () => {
       status: appliedFilters.status,
       source: appliedFilters.source,
       refreshKey: tableRefreshKey,
-      pipelineId: selectedPipeline
+      pipelineId: selectedPipeline,
+      accountId
     }),
-    [appliedFilters, tableRefreshKey, selectedPipeline]
+    [appliedFilters, tableRefreshKey, selectedPipeline, accountId]
   );
 
   const columns = [
@@ -430,7 +431,21 @@ const Leads = () => {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <UiPageTitle>Lead Management</UiPageTitle>
-            <p className="mt-1 text-sm text-gray-500">Track and manage all incoming leads.</p>
+            <p className="mt-1 text-sm text-gray-500">
+              {accountName ? (
+                <span className="inline-flex items-center gap-1">
+                  Showing leads from <span className="font-medium text-gray-700">{accountName}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSearchParams({})}
+                    className="ml-1 rounded-full p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                    title="Clear filter"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              ) : 'Track and manage all incoming leads.'}
+            </p>
           </div>
           <Button onClick={openCreateLeadModal} startIcon={<UserPlus className="h-4 w-4" />}>
             Create Lead

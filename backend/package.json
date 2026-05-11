@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "seed:admin": "node src/seeders/adminSeeder.js",
     "seed:sample": "node src/seeders/sampleDataSeeder.js",
+    "seed:sources": "node src/seeders/sourceTemplateSeeder.js",
     "seed:teams": "node src/seeders/teamSeeder.js",
     "seed": "npm run seed:sample && npm run seed:teams",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -22,6 +23,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-validator": "^7.3.2",
+    "googleapis": "^171.4.0",
     "ioredis": "^5.8.1",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.5.0",

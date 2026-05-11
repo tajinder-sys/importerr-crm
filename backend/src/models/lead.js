@@ -25,7 +25,7 @@ const leadSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
-    required: true,
+    required: false,
     index: true,
     trim: true
   },
@@ -93,9 +93,9 @@ const leadSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Lead'
   },
-  notes: [noteSchema]
-    
-  }, { timestamps: true });
+  notes: [noteSchema],
+  accountId: { type: String, default: null, index: true }
+}, { timestamps: true });
 
 leadSchema.index({ phone: 1, email: 1 });
 leadSchema.index({ assignedTo: 1, status: 1 });

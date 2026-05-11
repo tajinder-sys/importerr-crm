@@ -27,6 +27,8 @@ const Table = ({
 
   const isServerMode = typeof apiFunction === 'function';
 
+  const queryParamsKey = JSON.stringify(queryParams);
+
   useEffect(() => {
     if (!isServerMode) return;
 
@@ -56,7 +58,8 @@ const Table = ({
     };
 
     fetchData();
-  }, [isServerMode, apiFunction, page, pageSize, sortKey, sortDirection, queryParams]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isServerMode, apiFunction, page, pageSize, sortKey, sortDirection, queryParamsKey]);
 
   const sortedClientData = useMemo(() => {
     if (isServerMode) return serverData;

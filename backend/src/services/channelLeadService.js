@@ -1,6 +1,7 @@
 const Lead = require('../models/lead');
 const Communication = require('../models/Communication');
 const User = require('../models/User');
+const ConnectedAccount = require('../models/ConnectedAccount');
 const { LEAD_SOURCES, LEAD_STATUSES } = require('../utils/constants');
 
 const SOURCE_MAP = {
@@ -47,15 +48,17 @@ const mapPayloadToLeadData = (channel, payload = {}) => {
     leadType: normalizeLeadType(pickFirst(payload, ['leadType'])),
     userId: pickFirst(payload, ['userId', 'customerId']) || null,
     productIntentId: pickFirst(payload, ['productIntentId', 'intentId']) || null,
-    cartId: pickFirst(payload, ['cartId']) || null
+    cartId: pickFirst(payload, ['cartId']) || null,
+    accountId: payload._accountId || null
   };
 };
 
 const validateInboundLeadData = (leadData) => {
   const errors = [];
   if (!leadData.name) errors.push('name is required');
-  if (!leadData.phone) errors.push('phone is required');
-  if (!/^\d{10}$/.test(leadData.phone)) errors.push('phone must be a valid 10-digit number');
+  // Phone required only if email not present
+  if (!leadData.phone && !leadData.email) errors.push('phone or email is required');
+  if (leadData.phone && !/^\d{10}$/.test(leadData.phone)) errors.push('phone must be a valid 10-digit number');
   if (leadData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadData.email)) {
     errors.push('email format is invalid');
   }
@@ -106,8 +109,13 @@ const ingestLeadFromChannel = async (channel, payload) => {
   }
 
   const duplicateQuery = {
-    $or: [{ phone: leadData.phone }, ...(leadData.email ? [{ email: leadData.email }] : [])]
+    $or: [
+      ...(leadData.phone ? [{ phone: leadData.phone }] : []),
+      ...(leadData.email ? [{ email: leadData.email }] : [])
+    ]
   };
+
+  if (!duplicateQuery.$or.length) return { ok: false, errors: ['phone or email required'] };
 
   let existingLead = await Lead.findOne(duplicateQuery).select(
     '_id phone email status assignedTo message userId productIntentId cartId leadType lastInteraction'
