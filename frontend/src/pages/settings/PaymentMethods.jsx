@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader } from '../../components/common/Card';
-import Modal from '../../components/common/Modal';
-import Snackbar from '../../components/common/Snackbar';
-import ToggleSwitch from '../../components/common/ToggleSwitch';
-import ConfirmDialog from '../../components/common/ConfirmDialog';
+import { Card, CardContent, CardHeader } from '../../components/common/ui/Card';
+import Modal from '../../components/common/ui/Modal';
+import Snackbar from '../../components/common/ui/Snackbar';
+import ToggleSwitch from '../../components/common/ui/ToggleSwitch';
+import ConfirmDialog from '../../components/common/ui/ConfirmDialog';
+import Button from '../../components/common/ui/Button';
+import Input from '../../components/common/ui/Input';
+import Loading from '../../components/common/ui/Loading';
+import { PageHeader, EmptyState, UiCardTitle } from '../../components/common/ui';
 import { useAuth } from '../../hooks/useAuth';
 import api from '../../utils/api';
 import { API_ROUTES } from '../../utils/apiRoutes';
@@ -180,6 +184,12 @@ const PaymentMethods = () => {
   };
 
 
+  const openAddModal = () => {
+    resetForm();
+    setEditingMethod(null);
+    setShowModal(true);
+  };
+
   if (!isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -187,49 +197,26 @@ const PaymentMethods = () => {
   return (
     <div className="px-4 py-6 sm:px-6 md:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Payment Methods</h1>
-            <p className="mt-1 text-sm text-gray-500">Manage payment method configurations and status.</p>
-          </div>
-          <button
-            onClick={() => {
-              resetForm();
-              setEditingMethod(null);
-              setShowModal(true);
-            }}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary-700"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Add Payment Method
-          </button>
-        </div>
+        <PageHeader
+          title="Payment Methods"
+          description="Manage payment method configurations and status."
+          actions={(
+            <Button size="sm" startIcon={<Plus className="h-3.5 w-3.5" />} onClick={openAddModal}>
+              Add Payment Method
+            </Button>
+          )}
+        />
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-sm text-gray-500">Loading payment methods...</div>
-          </div>
+          <Loading className="py-12" text="Loading payment methods…" />
         ) : paymentMethods.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <div className="rounded-full bg-gray-50 p-3 mb-3">
-              <CreditCard className="h-6 w-6 text-gray-400" />
-            </div>
-            <h3 className="text-sm font-medium text-gray-900 mb-1">No payment methods</h3>
-            <p className="text-xs text-gray-500 text-center mb-4 max-w-sm">
-              Add your first payment method to get started.
-            </p>
-            <button
-              onClick={() => {
-                resetForm();
-                setEditingMethod(null);
-                setShowModal(true);
-              }}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-primary-700"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Add Payment Method
-            </button>
-          </div>
+          <EmptyState
+            title="No payment methods"
+            description="Add your first payment method to get started."
+            icon={<CreditCard className="h-6 w-6 text-gray-400" />}
+            actionLabel="Add Payment Method"
+            onAction={openAddModal}
+          />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {paymentMethods.map((method) => (
@@ -240,7 +227,7 @@ const PaymentMethods = () => {
                       <CreditCard className="h-5 w-5 text-primary-600" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-900">{method.name}</h3>
+                      <UiCardTitle>{method.name}</UiCardTitle>
                       <p className="text-xs text-gray-500 font-mono bg-gray-50 px-2 py-0.5 rounded-md inline-block mt-1">{method.key}</p>
                     </div>
                   </div>
@@ -266,18 +253,26 @@ const PaymentMethods = () => {
                     />
                   </div>
                   <div className="flex items-center gap-1">
-                    <button
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      iconOnly
+                      className="text-gray-400 hover:text-primary-600 hover:bg-primary-50"
+                      startIcon={<Edit2 className="h-4 w-4" />}
                       onClick={() => openEditModal(method)}
-                      className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-200 group-hover:scale-105"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </button>
-                    <button
+                      title="Edit"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      iconOnly
+                      className="text-gray-400 hover:text-red-600 hover:bg-red-50"
+                      startIcon={<Trash2 className="h-4 w-4" />}
                       onClick={() => handleDelete(method._id)}
-                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 group-hover:scale-105"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                      title="Delete"
+                    />
                   </div>
                 </div>
               </div>
@@ -297,41 +292,31 @@ const PaymentMethods = () => {
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Name *
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-              placeholder="e.g., Bank Transfer, UPI, Credit Card"
-              required
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Key will be automatically generated: {formData.name ? formData.name.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '_') : 'bank_transfer'}
-            </p>
-          </div>
+          <Input
+            label="Name"
+            required
+            value={formData.name}
+            onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+            placeholder="e.g., Bank Transfer, UPI, Credit Card"
+            helperText={`Key will be automatically generated: ${formData.name ? formData.name.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '_') : 'bank_transfer'}`}
+          />
 
           <div className="flex justify-end gap-2 pt-2">
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => {
                 setShowModal(false);
                 setEditingMethod(null);
                 resetForm();
               }}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
               Cancel
-            </button>
-            <button
-              type="submit"
-              className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary-700"
-            >
+            </Button>
+            <Button type="submit" size="sm">
               {editingMethod ? 'Update' : 'Create'} Payment Method
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>

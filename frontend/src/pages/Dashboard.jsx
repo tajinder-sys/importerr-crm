@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Card, CardHeader, CardContent } from '../components/common/Card';
-import Button from '../components/common/Button';
-import Chip from '../components/common/Chip';
-import SearchableSelect from '../components/common/SearchableSelect';
+import { Card, CardHeader, CardContent } from '../components/common/ui/Card';
+import Button from '../components/common/ui/Button';
+import Chip from '../components/common/ui/Chip';
+import SearchableSelect from '../components/common/ui/SearchableSelect';
 import {
   ResponsiveContainer,
   XAxis,

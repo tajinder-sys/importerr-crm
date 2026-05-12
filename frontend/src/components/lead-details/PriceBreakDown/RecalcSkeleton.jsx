@@ -1,4 +1,4 @@
-import Skeleton from "../../common/Skeleton";
+import Skeleton from "../../common/ui/Skeleton";
 
 const RecalcSkeleton = () => (
   <div className="flex flex-col gap-6 py-1">

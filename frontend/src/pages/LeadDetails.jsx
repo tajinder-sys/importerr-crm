@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Pencil } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import Button from '../components/common/Button';
-import Chip from '../components/common/Chip';
-import Snackbar from '../components/common/Snackbar';
-import Modal from '../components/common/Modal';
-import Skeleton from '../components/common/Skeleton';
+import Button from '../components/common/ui/Button';
+import Chip from '../components/common/ui/Chip';
+import Snackbar from '../components/common/ui/Snackbar';
+import Modal from '../components/common/ui/Modal';
+import Skeleton from '../components/common/ui/Skeleton';
 import LeadForm from '../components/leads/LeadForm';
 import api from '../utils/api';
 import { formatIndianPhoneInput, getPhonePayload, validatePhone } from '../utils/helpers';
@@ -17,6 +17,7 @@ import { API_ROUTES } from '../utils/apiRoutes';
 import { getChipVariant } from '../utils/chipConstants';
 import QuotesTab from '../components/lead-details//Quote/index';
 import LeadNotes from '../components/common/LeadNotes';
+import PageHeader from '../components/common/ui/PageHeader';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -341,28 +342,28 @@ const LeadDetails = () => {
       <div className="mx-auto max-w-7xl space-y-6">
 
         {/* Header */}
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Lead Details</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              View lead profile, product details, communication, and activity.
-            </p>
-            {lead && (
+        <PageHeader
+          title="Lead Details"
+          description="View lead profile, product details, communication, and activity."
+          meta={
+            lead ? (
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 {lead.source && <Chip label={lead.source} variant={getChipVariant('SOURCE', lead.source)} />}
                 {lead.status && <Chip label={lead.status} variant={getChipVariant('STATUS', lead.status)} />}
               </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" startIcon={<Pencil className="h-4 w-4" />} onClick={openEditLeadModal} disabled={!lead}>
-              Edit Lead
-            </Button>
-            <Button variant="outline" startIcon={<ArrowLeft className="h-4 w-4" />} onClick={() => navigate('/leads')}>
-              Back to Leads
-            </Button>
-          </div>
-        </div>
+            ) : null
+          }
+          actions={(
+            <>
+              <Button variant="outline" startIcon={<Pencil className="h-4 w-4" />} onClick={openEditLeadModal} disabled={!lead}>
+                Edit Lead
+              </Button>
+              <Button variant="outline" startIcon={<ArrowLeft className="h-4 w-4" />} onClick={() => navigate('/leads')}>
+                Back to Leads
+              </Button>
+            </>
+          )}
+        />
 
         {loading && <LeadDetailsSkeleton />}
 

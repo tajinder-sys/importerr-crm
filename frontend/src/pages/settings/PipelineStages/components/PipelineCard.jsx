@@ -1,4 +1,5 @@
 import { Edit2, Plus, GitBranch, ChevronRight, Layers, Users } from 'lucide-react';
+import { UiSectionTitle } from '../../../../components/common/ui';
 import StageCard from './StageCard';
 
 const PipelineCard = ({
@@ -23,7 +24,7 @@ const PipelineCard = ({
             <GitBranch size={18} />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-900 tracking-tight">{pipeline.name}</h2>
+            <UiSectionTitle className="text-base font-bold text-slate-900">{pipeline.name}</UiSectionTitle>
             {pipeline.description && (
               <p className="text-xs text-slate-400 mt-0.5 max-w-md truncate">{pipeline.description}</p>
             )}

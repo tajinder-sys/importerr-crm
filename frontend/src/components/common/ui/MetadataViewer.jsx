@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Eye } from 'lucide-react';
-import Modal from '../common/Modal';
-import { formatLabel } from '../../utils/helpers';
+import Modal from './Modal';
+import { formatLabel } from '../../../utils/helpers';
 
 const formatValue = (value) => {
   if (value === null || value === undefined || value === '') return '-';

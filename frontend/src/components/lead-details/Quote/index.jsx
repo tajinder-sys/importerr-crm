@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { Card, CardContent, CardHeader } from '../../common/Card';
+import { Card, CardContent, CardHeader } from '../../common/ui/Card';
 import { formatCurrency, formatDateIndian } from '../../../utils/helpers';
 import { UiSectionTitle } from '../../common/ui/Typography';
 import QuotePriceWithBreakdown from './QuotePriceWithBreakdown';
@@ -8,7 +8,7 @@ import EmptyState from '../../common/ui/EmptyState';
 import CopyText from '../../common/ui/CopyText';
 import api, { IMPORTERR_URL } from '../../../utils/api';
 import { API_ROUTES } from '../../../utils/apiRoutes';
-import VariantsList from '../../common/VariantsList';
+import VariantsList from '../../common/ui/VariantsList';
 
 const SectionLabel = ({ children }) => (
   <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400 mb-2">

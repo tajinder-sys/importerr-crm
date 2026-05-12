@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+import { fontSans } from './src/config/designSystem.js';
+
 export default {
   content: [
     "./index.html",
@@ -6,6 +8,9 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: fontSans,
+      },
       colors: {
         primary: {
           50: '#eff6ff',

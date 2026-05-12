@@ -6,14 +6,14 @@ import { formatIndianPhoneInput, getPhonePayload, validatePhone } from '../../ut
 import { getChipVariant } from '../../utils/chipConstants';
 
 // Common components
-import Modal from '../../components/common/Modal';
-import Snackbar from '../../components/common/Snackbar';
+import Modal from '../../components/common/ui/Modal';
+import Snackbar from '../../components/common/ui/Snackbar';
 import LeadForm from '../../components/leads/LeadForm';
-import Table from '../../components/common/Table';
-import { Card, CardContent, CardHeader } from '../../components/common/Card';
+import Table from '../../components/common/ui/Table';
+import { Card, CardContent, CardHeader } from '../../components/common/ui/Card';
 import { UiSectionTitle } from '../../components/common/ui/Typography';
-import Chip from '../../components/common/Chip';
-import Button from '../../components/common/Button';
+import Chip from '../../components/common/ui/Chip';
+import Button from '../../components/common/ui/Button';
 import { Eye, Pencil } from 'lucide-react';
 
 import LeadsHeader from './LeadsHeader';

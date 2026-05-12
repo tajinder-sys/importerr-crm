@@ -1,6 +1,6 @@
 import { ExternalLink, Phone, Mail, User, Calendar, Tag, Package, Hash, MessageSquare, Clock, Layers } from 'lucide-react';
 import { formatDateIndian } from '../../../utils/helpers'; // adjust path as needed
-import Modal from '../../../components/common/Modal';
+import Modal from '../../../components/common/ui/Modal';
 
 /* ── helpers ──────────────────────────────────────────────────── */
 const fmtPhone = (phone) => {

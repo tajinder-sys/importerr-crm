@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import Button from '../common/Button';
+import Button from '../common/ui/Button';
 import { 
   Home,
   Users,

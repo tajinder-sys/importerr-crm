@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, Search } from 'lucide-react';
-import { cn, formatLabel } from '../../utils/helpers';
+import { cn, formatLabel } from '../../../utils/helpers';
 
 const SearchableSelect = ({
   name,

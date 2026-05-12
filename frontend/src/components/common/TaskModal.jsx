@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../../utils/api';
 import { API_ROUTES } from '../../utils/apiRoutes';
-import Modal from './Modal';
+import Modal from './ui/Modal';
 
 /* ─── Constants ──────────────────────────────────────────────── */
 const TASK_TYPES = [

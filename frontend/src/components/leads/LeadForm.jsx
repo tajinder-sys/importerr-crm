@@ -4,10 +4,10 @@ import {
   UserCheck, MessageSquare, AlertCircle, CheckCircle2, Loader2, Info
 } from 'lucide-react';
 
-import Button from '../common/Button';
-import Input from '../common/Input';
-import Alert from '../common/Alert';
-import SearchableSelect from '../common/SearchableSelect';
+import Button from '../common/ui/Button';
+import Input from '../common/ui/Input';
+import Alert from '../common/ui/Alert';
+import SearchableSelect from '../common/ui/SearchableSelect';
 import { formatLabel } from '../../utils/helpers';
 
 /* ─── Static option lists ─────────────────────────────────────── */

@@ -2,6 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useLayout } from '../../contexts/LayoutContext.jsx';
 import { cn } from '../../utils/helpers';
+import { typography } from '../../config/designSystem';
 import {
   Home,
   Users,
@@ -141,7 +142,7 @@ const Sidebar = () => {
               </div>
             ) : (
               <div className="rounded-xl border border-gray-100 bg-gray-50 p-2">
-                <h3 className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">Main Menu</h3>
+                <h3 className={cn(typography.navGroupLabel, 'px-2 py-1')}>Main Menu</h3>
                 <div className="mt-1 space-y-1">
                   {navigation.map((item) => {
                     const Icon = item.icon;

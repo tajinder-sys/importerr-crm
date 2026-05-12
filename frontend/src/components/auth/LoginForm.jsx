@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, Users, ChartNoAxesCombined } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import Button from '../common/Button';
-import Input from '../common/Input';
-import Alert from '../common/Alert';
+import Button from '../common/ui/Button';
+import Input from '../common/ui/Input';
+import Alert from '../common/ui/Alert';
 import { validateEmail, validateRequired } from '../../utils/helpers';
 
 const LoginForm = () => {

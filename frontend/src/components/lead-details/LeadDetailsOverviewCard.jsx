@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Eye, Send, RotateCcw, Box, Scale } from 'lucide-react';
-import { Card, CardContent, CardHeader } from '../common/Card';
-import Button from '../common/Button';
+import { Card, CardContent, CardHeader } from '../common/ui/Card';
+import Button from '../common/ui/Button';
 import { UiSectionTitle } from '../common/ui/Typography';
 import DetailsTab from './DetailsTab';
 import api from '../../utils/api';
 import { API_ROUTES } from '../../utils/apiRoutes';
-import Snackbar from '../common/Snackbar';
+import Snackbar from '../common/ui/Snackbar';
 import PricingBreakdownModal from './PriceBreakDown';
 import ImagePreview from '../common/ui/ImagePreview';
-import VariantsList from '../common/VariantsList';
+import VariantsList from '../common/ui/VariantsList';
 import { formatCurrency } from '../../utils/helpers';
 
 

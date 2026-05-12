@@ -1,4 +1,4 @@
-import { cn, formatLabel } from '../../utils/helpers';
+import { cn, formatLabel } from '../../../utils/helpers';
 
 const VARIANT_STYLES = {
   neutral: 'bg-gray-100 text-gray-700',

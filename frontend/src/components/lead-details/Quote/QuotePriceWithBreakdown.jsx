@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Eye, TrendingDown, TrendingUp, Package, ArrowRight } from 'lucide-react';
 import { formatCurrency } from '../../../utils/helpers';
-import Modal from '../../common/Modal';
+import Modal from '../../common/ui/Modal';
 
 const QuotePriceWithBreakdown = ({
   price,

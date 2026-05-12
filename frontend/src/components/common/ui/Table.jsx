@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
-import { cn } from '../../utils/helpers';
+import { cn } from '../../../utils/helpers';
 import Skeleton from './Skeleton';
 import SearchableSelect from './SearchableSelect';
 

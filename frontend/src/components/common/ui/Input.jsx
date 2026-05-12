@@ -1,6 +1,6 @@
 import React from 'react';
-import { cn } from '../../utils/helpers';
-import { UiFieldLabel } from './ui/Typography';
+import { cn } from '../../../utils/helpers';
+import { UiFieldLabel } from './Typography';
 
 const Input = React.forwardRef(({ 
   className, 

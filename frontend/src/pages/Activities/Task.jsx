@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, CardContent, CardHeader } from '../../components/common/Card';
-import Table from '../../components/common/Table';
-import Button from '../../components/common/Button';
-import Chip from '../../components/common/Chip';
+import { Card, CardContent, CardHeader } from '../../components/common/ui/Card';
+import Table from '../../components/common/ui/Table';
+import Button from '../../components/common/ui/Button';
+import Chip from '../../components/common/ui/Chip';
 import TaskModal from '../../components/common/TaskModal';
+import Input from '../../components/common/ui/Input';
+import SelectField from '../../components/common/ui/SelectField';
 import api from '../../utils/api';
 import { API_ROUTES } from '../../utils/apiRoutes';
 import { fetchTasks, fetchCalendarTasks } from '../../store/tasksSlice';
-import { UiPageTitle, UiSectionTitle } from '../../components/common/ui/Typography';
+import { UiPageTitle, UiSectionTitle, UiPageDescription } from '../../components/common/ui/Typography';
 import {
   Plus,
   Phone, Mail, Video, Users, MessageSquare, MapPin, Zap, RotateCcw,
@@ -271,9 +273,9 @@ const TasksPage = () => {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <UiPageTitle>Tasks</UiPageTitle>
-            <p className="mt-1 text-sm text-gray-500">
+            <UiPageDescription>
               Manage and track all tasks across your leads and team
-            </p>
+            </UiPageDescription>
           </div>
           <Button
             onClick={openCreateModal}
@@ -301,73 +303,54 @@ const TasksPage = () => {
         <Card>
           <CardContent className="p-4">
             <UiSectionTitle>Filters</UiSectionTitle>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
-                <input
-                  type="text"
-                  placeholder="Search tasks..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select
-                  value={filters.status}
-                  onChange={(e) => handleFilterChange('status', e.target.value)}
-                  className="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                >
-                  <option value="">All Statuses</option>
-                  {Object.entries(STATUSES).map(([key, status]) => (
-                    <option key={key} value={key}>{status.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-                <select
-                  value={filters.priority}
-                  onChange={(e) => handleFilterChange('priority', e.target.value)}
-                  className="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                >
-                  <option value="">All Priorities</option>
-                  {Object.entries(PRIORITIES).map(([key, priority]) => (
-                    <option key={key} value={key}>{priority.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                <select
-                  value={filters.task_type}
-                  onChange={(e) => handleFilterChange('task_type', e.target.value)}
-                  className="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                >
-                  <option value="">All Types</option>
-                  {Object.entries(TASK_TYPES).map(([key, type]) => (
-                    <option key={key} value={key}>{type.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
-                <select
-                  value={filters.due_date}
-                  onChange={(e) => handleFilterChange('due_date', e.target.value)}
-                  className="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                >
-                  <option value="">All Time</option>
-                  <option value="today">Today</option>
-                  <option value="overdue">Overdue</option>
-                  <option value="upcoming">Upcoming</option>
-                </select>
-              </div>
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-5">
+              <Input
+                label="Search"
+                type="text"
+                placeholder="Search tasks..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <SelectField
+                label="Status"
+                value={filters.status}
+                onChange={(e) => handleFilterChange('status', e.target.value)}
+              >
+                <option value="">All Statuses</option>
+                {Object.entries(STATUSES).map(([key, status]) => (
+                  <option key={key} value={key}>{status.label}</option>
+                ))}
+              </SelectField>
+              <SelectField
+                label="Priority"
+                value={filters.priority}
+                onChange={(e) => handleFilterChange('priority', e.target.value)}
+              >
+                <option value="">All Priorities</option>
+                {Object.entries(PRIORITIES).map(([key, priority]) => (
+                  <option key={key} value={key}>{priority.label}</option>
+                ))}
+              </SelectField>
+              <SelectField
+                label="Type"
+                value={filters.task_type}
+                onChange={(e) => handleFilterChange('task_type', e.target.value)}
+              >
+                <option value="">All Types</option>
+                {Object.entries(TASK_TYPES).map(([key, type]) => (
+                  <option key={key} value={key}>{type.label}</option>
+                ))}
+              </SelectField>
+              <SelectField
+                label="Due Date"
+                value={filters.due_date}
+                onChange={(e) => handleFilterChange('due_date', e.target.value)}
+              >
+                <option value="">All Time</option>
+                <option value="today">Today</option>
+                <option value="overdue">Overdue</option>
+                <option value="upcoming">Upcoming</option>
+              </SelectField>
             </div>
           </CardContent>
         </Card>

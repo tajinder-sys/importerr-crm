@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader } from '../../components/common/Card';
+import { Card, CardContent, CardHeader } from '../../components/common/ui/Card';
 import { Copy, Plus, Trash2, Power, ExternalLink, ArrowLeft } from 'lucide-react';
-import Modal from '../../components/common/Modal';
-import Snackbar from '../../components/common/Snackbar';
-import Button from '../../components/common/Button';
-import Input from '../../components/common/Input';
-import ConfirmDialog from '../../components/common/ConfirmDialog';
+import Modal from '../../components/common/ui/Modal';
+import Snackbar from '../../components/common/ui/Snackbar';
+import Button from '../../components/common/ui/Button';
+import Input from '../../components/common/ui/Input';
+import ConfirmDialog from '../../components/common/ui/ConfirmDialog';
+import { UiPageTitle, UiPageDescription, UiSectionTitle } from '../../components/common/ui';
 import api from '../../utils/api';
 import { API_ROUTES } from '../../utils/apiRoutes';
 import { useAuth } from '../../hooks/useAuth';
@@ -161,22 +162,28 @@ const Integrations = () => {
   return (
     <div className="px-4 py-6 sm:px-6 md:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex items-center gap-3">
-          <button
+        <div className="flex items-start gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            iconOnly
+            className="shrink-0"
             onClick={() => navigate('/settings/api-config')}
-            className="rounded-lg p-2 hover:bg-gray-100 transition"
-          >
-            <ArrowLeft className="h-5 w-5 text-gray-600" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{config.name} Integration</h1>
-            <p className="mt-1 text-sm text-gray-500">{config.description}</p>
+            aria-label="Back to integrations"
+            startIcon={<ArrowLeft className="h-5 w-5 text-gray-600" />}
+          />
+          <div className="min-w-0">
+            <UiPageTitle>
+              {config.name} Integration
+            </UiPageTitle>
+            <UiPageDescription>{config.description}</UiPageDescription>
           </div>
         </div>
 
         <Card className="rounded-2xl border-gray-200 shadow-sm">
           <CardHeader className="border-gray-100 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Connected Accounts</h2>
+            <UiSectionTitle className="text-lg">Connected Accounts</UiSectionTitle>
             <Button size="sm" startIcon={<Plus className="h-4 w-4" />} onClick={() => setShowAddModal(true)}>
               Connect New
             </Button>

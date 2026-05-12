@@ -1,13 +1,13 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Pencil, Trash2, MessageSquare, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 
-import Button from '../common/Button';
-import Modal from '../common/Modal';
+import Button from './ui/Button';
+import Modal from './ui/Modal';
 import api from '../../utils/api';
-import { Card, CardContent, CardHeader } from '../common/Card';
-import { UiSectionTitle } from '../common/ui/Typography';
+import { Card, CardContent, CardHeader } from './ui/Card';
+import { UiSectionTitle } from './ui/Typography';
 import { useAuth } from '../../hooks/useAuth';
-import ConfirmDialog from './ConfirmDialog';
+import ConfirmDialog from './ui/ConfirmDialog';
 
 /* ─────────────────────────────────────────────────────────────────
    Shared helpers

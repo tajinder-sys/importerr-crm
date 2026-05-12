@@ -1,7 +1,7 @@
 import { GitBranch } from 'lucide-react';
-import Modal from '../../../../components/common/Modal';
-import SearchableSelect from '../../../../components/common/SearchableSelect';
-import Input from '../../../../components/common/Input';
+import Modal from '../../../../components/common/ui/Modal';
+import SearchableSelect from '../../../../components/common/ui/SearchableSelect';
+import Input from '../../../../components/common/ui/Input';
 
 const PipelineModal = ({
   isOpen,

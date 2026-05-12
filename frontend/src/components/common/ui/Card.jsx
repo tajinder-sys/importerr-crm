@@ -1,5 +1,5 @@
 import React from 'react';
-import { cn } from '../../utils/helpers';
+import { cn } from '../../../utils/helpers';
 
 const Card = React.forwardRef(({ className, children, ...props }, ref) => {
   return (

@@ -1,4 +1,5 @@
 import { UserPlus, LayoutGrid, GitBranch, Layers, CheckCircle2, KanbanSquare, Table2 } from 'lucide-react';
+import { UiToolbarTitle } from '../../components/common/ui';
 
 /**
  * LeadsHeader
@@ -36,9 +37,7 @@ const LeadsHeader = ({
           </div>
 
           <div>
-            <h1 className="text-sm font-bold text-slate-900 tracking-tight leading-tight">
-              Lead Management
-            </h1>
+            <UiToolbarTitle>Lead Management</UiToolbarTitle>
 
             {current ? (
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">

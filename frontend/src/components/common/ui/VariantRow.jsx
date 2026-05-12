@@ -1,6 +1,6 @@
 import { Eye, Send, RotateCcw, Box, Scale } from 'lucide-react';
-import { formatCurrency } from "../../utils/helpers";
-import ImagePreview from "./ui/ImagePreview";
+import { formatCurrency } from '../../../utils/helpers';
+import ImagePreview from './ImagePreview';
 const DimsBadge = ({ length, width, height }) => (
   <span className="inline-flex items-center gap-1 text-[9px] font-medium bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">
     <Box className="w-2.5 h-2.5" />

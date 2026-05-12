@@ -1,5 +1,5 @@
 import { Layers } from 'lucide-react';
-import Modal from '../../../../components/common/Modal';
+import Modal from '../../../../components/common/ui/Modal';
 
 const PRESET_COLORS = [
   '#6366f1', '#8b5cf6', '#ec4899', '#f59e0b',

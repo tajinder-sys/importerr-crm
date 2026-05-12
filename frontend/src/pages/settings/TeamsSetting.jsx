@@ -1,18 +1,19 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Card, CardContent, CardHeader } from '../../components/common/Card';
-import Input from '../../components/common/Input';
-import Button from '../../components/common/Button';
-import Alert from '../../components/common/Alert';
-import Table from '../../components/common/Table';
-import Modal from '../../components/common/Modal';
-import ConfirmationModal from '../../components/common/ConfirmationModal';
-import Chip from '../../components/common/Chip';
-import SearchableSelect from '../../components/common/SearchableSelect';
+import { Card, CardContent, CardHeader } from '../../components/common/ui/Card';
+import Input from '../../components/common/ui/Input';
+import Button from '../../components/common/ui/Button';
+import Alert from '../../components/common/ui/Alert';
+import Table from '../../components/common/ui/Table';
+import Modal from '../../components/common/ui/Modal';
+import ConfirmationModal from '../../components/common/ui/ConfirmationModal';
+import Chip from '../../components/common/ui/Chip';
+import SearchableSelect from '../../components/common/ui/SearchableSelect';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { getChipVariant } from '../../utils/chipConstants';
 import { API_ROUTES } from '../../utils/apiRoutes';
 import api from '../../utils/api';
+import { UiPageTitle, UiPageDescription, UiSectionTitle } from '../../components/common/ui';
 
 const TeamsSetting = () => {
   const { user } = useAuth();
@@ -228,8 +229,8 @@ const TeamsSetting = () => {
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Teams Settings</h1>
-            <p className="mt-1 text-sm text-gray-500">Manage teams, their members and configurations.</p>
+            <UiPageTitle>Teams Settings</UiPageTitle>
+            <UiPageDescription>Manage teams, their members and configurations.</UiPageDescription>
           </div>
           {admin ? (
             <Button
@@ -250,7 +251,7 @@ const TeamsSetting = () => {
 
         <Card className="rounded-2xl border-gray-200 shadow-sm">
           <CardHeader className="border-gray-100">
-            <h2 className="text-md font-semibold text-gray-900">Teams</h2>
+            <UiSectionTitle>Teams</UiSectionTitle>
           </CardHeader>
           <CardContent>
             <Table

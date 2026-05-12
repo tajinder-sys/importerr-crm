@@ -1,4 +1,5 @@
 import { Plus } from 'lucide-react';
+import { UiSectionTitle } from '../../../components/common/ui';
 import LeadCard from './LeadCard';
 
 /**
@@ -33,7 +34,7 @@ const LeadsAccordionView = ({
                   className="h-2.5 w-2.5 flex-shrink-0 rounded-full shadow-sm"
                   style={{ backgroundColor: accent }}
                 />
-                <h2 className="truncate text-sm font-bold text-slate-800">{stage.name}</h2>
+                <UiSectionTitle className="truncate text-sm font-bold text-slate-800">{stage.name}</UiSectionTitle>
                 <span
                   className="flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold"
                   style={{

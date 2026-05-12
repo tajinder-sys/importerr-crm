@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { cn } from '../../utils/helpers';
+import { cn } from '../../../utils/helpers';
 
 const Modal = ({
   isOpen,

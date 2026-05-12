@@ -22,6 +22,7 @@ import PipelineStages from './pages/settings/PipelineStages/PipelineStages.jsx';
 import Integrations from './pages/settings/Integrations.jsx';
 import Leads from './pages/Leads/Lead.jsx';
 import { cn } from './utils/helpers';
+import { surfaces } from './config/designSystem';
 
 const AdminRoute = ({ children }) => {
   const { user } = useAuth();
@@ -122,7 +123,7 @@ function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-slate-50 text-gray-900">
+      <div className={cn(surfaces.appShell)}>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route

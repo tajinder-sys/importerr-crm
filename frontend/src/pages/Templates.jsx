@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Eye, Plus, Pencil, Trash2, Send, Sparkles, X } from 'lucide-react';
-import { Card, CardContent, CardHeader } from '../components/common/Card';
-import Button from '../components/common/Button';
-import Input from '../components/common/Input';
-import Modal from '../components/common/Modal';
-import Snackbar from '../components/common/Snackbar';
+import { Card, CardContent, CardHeader } from '../components/common/ui/Card';
+import Button from '../components/common/ui/Button';
+import Input from '../components/common/ui/Input';
+import Modal from '../components/common/ui/Modal';
+import Snackbar from '../components/common/ui/Snackbar';
 import api from '../utils/api';
 import { API_ROUTES } from '../utils/apiRoutes';
 import { useAuth } from '../hooks/useAuth';

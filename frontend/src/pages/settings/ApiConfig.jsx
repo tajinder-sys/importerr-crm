@@ -1,5 +1,6 @@
 import { useNavigate, Navigate } from 'react-router-dom';
-import { Card, CardContent } from '../../components/common/Card';
+import { Card, CardContent } from '../../components/common/ui/Card';
+import { PageHeader, UiCardTitle } from '../../components/common/ui';
 import { Mail, MessageCircle, Facebook, Instagram, Globe, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -61,10 +62,10 @@ const ApiConfig = () => {
   return (
     <div className="px-4 py-6 sm:px-6 md:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Integrations</h1>
-          <p className="mt-1 text-sm text-gray-500">Connect your lead sources to automatically capture and manage leads.</p>
-        </div>
+        <PageHeader
+          title="Integrations"
+          description="Connect your lead sources to automatically capture and manage leads."
+        />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {SOURCES.map((source) => {
@@ -87,7 +88,7 @@ const ApiConfig = () => {
                     )}
                   </div>
                   <div className="mt-4">
-                    <h3 className="text-sm font-semibold text-gray-900">{source.name}</h3>
+                    <UiCardTitle>{source.name}</UiCardTitle>
                     <p className="mt-1 text-xs text-gray-500">{source.description}</p>
                   </div>
                 </CardContent>

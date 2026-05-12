@@ -5,8 +5,8 @@ import { GitBranch, Plus } from 'lucide-react';
 import { useAuth } from '../../../hooks/useAuth';
 import api from '../../../utils/api';
 import { API_ROUTES } from '../../../utils/apiRoutes';
-import ConfirmDialog from '../../../components/common/ConfirmDialog';
-import Snackbar from '../../../components/common/Snackbar';
+import ConfirmDialog from '../../../components/common/ui/ConfirmDialog';
+import Snackbar from '../../../components/common/ui/Snackbar';
 
 import PipelineHeader from './components/PipelineHeader';
 import PipelineAccordion from './components/PipelineAccordion';

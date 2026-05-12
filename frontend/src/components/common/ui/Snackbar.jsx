@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { CheckCircle2, AlertCircle, X } from 'lucide-react';
-import { cn } from '../../utils/helpers';
+import { cn } from '../../../utils/helpers';
 
 const Snackbar = ({
   open,

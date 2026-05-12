@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import Skeleton from '../common/Skeleton';
+import Skeleton from '../common/ui/Skeleton';
 
 const ProtectedRoute = ({ children, requiredRole = null }) => {
   const { isAuthenticated, isLoading, user } = useAuth();

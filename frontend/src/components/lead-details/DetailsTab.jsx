@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Search, ExternalLink } from 'lucide-react';
-import { Card, CardContent, CardHeader } from '../common/Card';
-import Button from '../common/Button';
-import Skeleton from '../common/Skeleton';
-import Modal from '../common/Modal';
+import { Card, CardContent, CardHeader } from '../common/ui/Card';
+import Button from '../common/ui/Button';
+import Skeleton from '../common/ui/Skeleton';
+import Modal from '../common/ui/Modal';
 import { formatCurrency, formatDateIndian, formatPhone } from '../../utils/helpers';
 import { UiSectionTitle } from '../common/ui/Typography';
 import { IMPORTERR_URL } from '../../utils/api';

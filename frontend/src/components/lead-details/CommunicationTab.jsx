@@ -1,6 +1,6 @@
-import { Card, CardContent, CardHeader } from '../common/Card';
-import Button from '../common/Button';
-import SearchableSelect from '../common/SearchableSelect';
+import { Card, CardContent, CardHeader } from '../common/ui/Card';
+import Button from '../common/ui/Button';
+import SearchableSelect from '../common/ui/SearchableSelect';
 import { formatDateIndian, formatLabel } from '../../utils/helpers';
 import { UiSectionTitle } from '../common/ui/Typography';
 

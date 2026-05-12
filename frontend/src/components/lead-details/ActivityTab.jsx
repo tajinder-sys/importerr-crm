@@ -1,7 +1,7 @@
-import { Card, CardContent, CardHeader } from '../common/Card';
+import { Card, CardContent, CardHeader } from '../common/ui/Card';
 import { formatDateIndian, formatLabel } from '../../utils/helpers';
 import { UiSectionTitle } from '../common/ui/Typography';
-import MetadataViewer from '../common/MetadataViewer';
+import MetadataViewer from '../common/ui/MetadataViewer';
 
 const formatMetadataValue = (value) => {
   if (value === null || value === undefined || value === '') return '-';

@@ -1,6 +1,6 @@
-import { Card, CardContent } from '../common/Card';
-import Button from '../common/Button';
-import Input from '../common/Input';
+import { Card, CardContent } from '../common/ui/Card';
+import Button from '../common/ui/Button';
+import Input from '../common/ui/Input';
 import { formatLabel } from '../../utils/helpers';
 import { RotateCcw } from 'lucide-react';
 

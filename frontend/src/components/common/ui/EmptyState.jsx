@@ -1,4 +1,6 @@
-import Button from '../Button';
+import { cn } from '../../../utils/helpers';
+import { typography } from '../../../config/designSystem';
+import Button from './Button';
 
 const EmptyState = ({
   title = 'No data',
@@ -26,13 +28,13 @@ const EmptyState = ({
       </div>
 
       {/* Title */}
-      <p className="text-sm font-medium text-slate-700">
+      <p className={cn(typography.body, 'font-medium text-slate-700')}>
         {title}
       </p>
 
       {/* Description */}
       {description && (
-        <p className="text-xs text-slate-400 mt-1">
+        <p className={cn(typography.caption, 'mt-1 text-slate-500')}>
           {description}
         </p>
       )}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
-import { cn } from '../../utils/helpers';
+import { cn } from '../../../utils/helpers';
 
 const Button = React.forwardRef(({
   children,

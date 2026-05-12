@@ -1,11 +1,11 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Eye, Pencil, UserPlus, X } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, CardContent, CardHeader } from '../components/common/Card';
-import Table from '../components/common/Table';
-import Button from '../components/common/Button';
-import Modal from '../components/common/Modal';
-import Chip from '../components/common/Chip';
+import { Card, CardContent, CardHeader } from '../components/common/ui/Card';
+import Table from '../components/common/ui/Table';
+import Button from '../components/common/ui/Button';
+import Modal from '../components/common/ui/Modal';
+import Chip from '../components/common/ui/Chip';
 import LeadForm from '../components/leads/LeadForm';
 import api from '../utils/api';
 import {
