@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { GitBranch, Plus } from 'lucide-react';
 
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from '../../../hooks/useAuth';
 import api from '../../../utils/api';
 import { API_ROUTES } from '../../../utils/apiRoutes';
 import ConfirmDialog from '../../../components/common/ConfirmDialog';

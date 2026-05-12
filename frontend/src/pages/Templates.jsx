@@ -8,7 +8,7 @@ import Modal from '../components/common/Modal';
 import Snackbar from '../components/common/Snackbar';
 import api from '../utils/api';
 import { API_ROUTES } from '../utils/apiRoutes';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 
 import { BlockEditor, AddBlockPanel, BLOCK_TYPES } from './emailBuilder/BlockEditor';
 import { EmailPreview } from './emailBuilder/EmailPreview';

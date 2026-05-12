@@ -26,6 +26,7 @@ app.use('/api/templates', require('./routes/templateRoutes'));
 app.use('/api/payment-methods', require('./routes/paymentMethodRoutes'));
 app.use('/api/pipelines', require('./routes/pipelineRoutes'));
 app.use('/api/stages', require('./routes/stageRoutes'));
+app.use('/api/tasks', require('./routes/taskRoutes'));
 app.use('/api/importerr', require('./routes/callImporterr/product'));
 app.use('/api/crm', require('./routes/callByImporterr/auth'));
 app.use('/api/crm', require('./routes/callByImporterr/lead'));

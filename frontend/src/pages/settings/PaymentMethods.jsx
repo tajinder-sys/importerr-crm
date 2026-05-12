@@ -5,7 +5,7 @@ import Modal from '../../components/common/Modal';
 import Snackbar from '../../components/common/Snackbar';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import api from '../../utils/api';
 import { API_ROUTES } from '../../utils/apiRoutes';
 import {

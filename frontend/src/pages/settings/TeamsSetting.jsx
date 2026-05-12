@@ -9,7 +9,7 @@ import ConfirmationModal from '../../components/common/ConfirmationModal';
 import Chip from '../../components/common/Chip';
 import SearchableSelect from '../../components/common/SearchableSelect';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { getChipVariant } from '../../utils/chipConstants';
 import { API_ROUTES } from '../../utils/apiRoutes';
 import api from '../../utils/api';

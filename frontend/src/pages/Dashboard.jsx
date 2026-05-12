@@ -23,9 +23,8 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { formatCurrency, formatLabel } from '../utils/helpers';
-import { getChipVariant } from '../utils/chipConstants';
 import api from '../utils/api';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { API_ROUTES } from '../utils/apiRoutes';
 import { UiPageTitle, UiSectionTitle } from '../components/common/ui/Typography';
 

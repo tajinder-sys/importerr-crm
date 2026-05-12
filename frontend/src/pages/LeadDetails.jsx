@@ -9,7 +9,7 @@ import Skeleton from '../components/common/Skeleton';
 import LeadForm from '../components/leads/LeadForm';
 import api from '../utils/api';
 import { formatIndianPhoneInput, getPhonePayload, validatePhone } from '../utils/helpers';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import LeadDetailsOverviewCard from '../components/lead-details/LeadDetailsOverviewCard';
 import CommunicationTab from '../components/lead-details/CommunicationTab';
 import ActivityTab from '../components/lead-details/ActivityTab';

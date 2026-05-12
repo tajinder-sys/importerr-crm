@@ -6,7 +6,7 @@ import Modal from '../common/Modal';
 import api from '../../utils/api';
 import { Card, CardContent, CardHeader } from '../common/Card';
 import { UiSectionTitle } from '../common/ui/Typography';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import ConfirmDialog from './ConfirmDialog';
 
 /* ─────────────────────────────────────────────────────────────────

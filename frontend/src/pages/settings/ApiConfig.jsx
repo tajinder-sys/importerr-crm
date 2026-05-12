@@ -1,7 +1,7 @@
 import { useNavigate, Navigate } from 'react-router-dom';
 import { Card, CardContent } from '../../components/common/Card';
-import { useAuth } from '../../contexts/AuthContext';
 import { Mail, MessageCircle, Facebook, Instagram, Globe, ChevronRight } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 
 const SOURCES = [
   {

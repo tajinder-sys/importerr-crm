@@ -12,7 +12,7 @@ import SearchableSelect from '../components/common/SearchableSelect';
 import { UserPlus, Pencil, Trash2, Users } from 'lucide-react';
 import { formatPhone, validatePhone } from '../utils/helpers';
 import api from '../utils/api';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { getChipVariant } from '../utils/chipConstants';
 import { API_ROUTES } from '../utils/apiRoutes';
 import TeamFilters from '../components/teams/TeamFilters';

@@ -15,7 +15,7 @@ import {
   getPhonePayload,
   validatePhone
 } from '../utils/helpers';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { getChipVariant } from '../utils/chipConstants';
 import { API_ROUTES } from '../utils/apiRoutes';
 import { UiPageTitle, UiSectionTitle } from '../components/common/ui/Typography';

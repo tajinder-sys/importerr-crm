@@ -85,5 +85,15 @@ export const API_ROUTES = {
     update: (id) => `/stages/${encodeURIComponent(id)}`,
     delete: (id) => `/stages/${encodeURIComponent(id)}`,
     toggle: (id) => `/stages/${encodeURIComponent(id)}/toggle`
+  },
+  tasks: {
+    list: '/tasks',
+    create: '/tasks',
+    byId: (id) => `/tasks/${encodeURIComponent(id)}`,
+    update: (id) => `/tasks/${encodeURIComponent(id)}`,
+    delete: (id) => `/tasks/${encodeURIComponent(id)}`,
+    stats: '/tasks/stats',
+    addNote: (id) => `/tasks/${encodeURIComponent(id)}/notes`,
+    complete: (id) => `/tasks/${encodeURIComponent(id)}/complete`
   }
 };

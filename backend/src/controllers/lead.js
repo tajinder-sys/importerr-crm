@@ -10,6 +10,7 @@ const { validateLeadData } = require('../utils/validators');
 const { LEAD_STATUSES, ACTIVITY_TYPES, USER_ROLES, COMMUNICATION_SOURCES } = require('../utils/constants');
 const Pipeline = require('../models/Pipeline');
 const Stage = require('../models/Stage');
+const Task = require('../models/Task');
 
 const isAdminUser = (user) => user?.role === 'admin';
 const isTeamUser = (user) =>
@@ -105,12 +106,35 @@ const getLeads = async (req, res) => {
       .populate('stageId', 'name order color')
       .sort(sort)
       .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .skip((page - 1) * limit)
+      .lean();
+
+    const leadIds = leads.map((lead) => lead._id);
+
+    const tasks = await Task.find({
+      lead_id: { $in: leadIds },
+      deletedAt: { $exists: false }
+    })
+
+    const tasksMap = {};
+
+    tasks.forEach((task) => {
+      const leadId = task.lead_id.toString();
+
+      if (!tasksMap[leadId]) {
+        tasksMap[leadId] = [];
+      }
+
+      tasksMap[leadId].push(task);
+    });
 
     const total = await Lead.countDocuments(query);
-
+    const leadsWithTasks = leads.map((lead) => ({
+      ...lead,
+      tasks: tasksMap[lead._id.toString()] || []
+    }));
     sendSuccess(res, 'Leads retrieved successfully', {
-      leads,
+      leads: leadsWithTasks,
       pagination: {
         page: parseInt(page, 10),
         limit: parseInt(limit, 10),
@@ -128,8 +152,7 @@ const getLeadById = async (req, res) => {
   try {
     const lead = await Lead.findById(req.params.id)
       .populate('assignedTo', 'name email')
-      .populate('duplicateOf', 'name email');
-
+      .populate('duplicateOf', 'name email')
     if (!lead) {
       return sendNotFound(res, 'Lead not found');
     }
@@ -153,10 +176,19 @@ const getLeadById = async (req, res) => {
       .populate('senderUser', 'name email role')
       .sort({ createdAt: 1 });
 
+    const tasks = await Task.find({
+      lead_id: lead._id,
+      deletedAt: { $exists: false }
+    })
+    .populate('assigned_to', 'name email')
+    .populate('created_by', 'name email')
+    .sort({ createdAt: -1 });
+    
     sendSuccess(res, 'Lead retrieved successfully', {
       lead,
       activities,
-      communications
+      communications,
+      tasks
     });
   } catch (error) {
     console.error('Get lead error:', error);
