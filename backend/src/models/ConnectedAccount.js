@@ -14,7 +14,10 @@ const connectedAccountSchema = new mongoose.Schema({
   googleClientId: { type: String, default: null },
   googleClientSecret: { type: String, default: null },
   googleRedirectUri: { type: String, default: null },
-  pubsubTopic: { type: String, default: null }
+  pubsubTopic: { type: String, default: null },
+  waPhoneNumberId: { type: String, default: null },
+  waAccessToken: { type: String, default: null },
+  waVerifyToken: { type: String, default: null }
 }, { timestamps: true });
 
 module.exports = mongoose.model('ConnectedAccount', connectedAccountSchema);

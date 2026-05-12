@@ -24,7 +24,9 @@ const normalizePhone = (value) => {
   const digits = String(value || '').replace(/\D/g, '');
   if (!digits) return '';
   if (digits.length === 10) return digits;
-  if (digits.startsWith('91') && digits.length === 12) return digits.slice(2);
+  if (digits.length === 11 && digits.startsWith('0')) return digits.slice(1);
+  if (digits.length === 12 && digits.startsWith('91')) return digits.slice(2);
+  if (digits.length === 13 && digits.startsWith('091')) return digits.slice(3);
   return digits.slice(-10);
 };
 
@@ -40,15 +42,13 @@ const mapPayloadToLeadData = (channel, payload = {}) => {
 
   return {
     name,
-    phone,
-    email,
+    phone: phone || null,
+    email: email || null,
     message: String(message || '').trim(),
     source: SOURCE_MAP[channel],
     status: LEAD_STATUSES.NEW,
     leadType: normalizeLeadType(pickFirst(payload, ['leadType'])),
     userId: pickFirst(payload, ['userId', 'customerId']) || null,
-    productIntentId: pickFirst(payload, ['productIntentId', 'intentId']) || null,
-    cartId: pickFirst(payload, ['cartId']) || null,
     accountId: payload._accountId || null
   };
 };
@@ -118,25 +118,15 @@ const ingestLeadFromChannel = async (channel, payload) => {
   if (!duplicateQuery.$or.length) return { ok: false, errors: ['phone or email required'] };
 
   let existingLead = await Lead.findOne(duplicateQuery).select(
-    '_id phone email status assignedTo message userId productIntentId cartId leadType lastInteraction'
+    '_id phone email status assignedTo message userId leadType'
   );
   if (existingLead) {
     if (!existingLead.assignedTo) {
       const autoAssignedTo = await getAutoAssignableTeamMemberId();
-      if (autoAssignedTo) {
-        existingLead.assignedTo = autoAssignedTo;
-      }
+      if (autoAssignedTo) existingLead.assignedTo = autoAssignedTo;
     }
-    existingLead.lastInteraction = new Date();
-    if (!existingLead.message && leadData.message) {
-      existingLead.message = leadData.message;
-    }
+    if (!existingLead.message && leadData.message) existingLead.message = leadData.message;
     if (!existingLead.userId && leadData.userId) existingLead.userId = leadData.userId;
-    if (!existingLead.productIntentId && leadData.productIntentId) {
-      existingLead.productIntentId = leadData.productIntentId;
-    }
-    if (!existingLead.cartId && leadData.cartId) existingLead.cartId = leadData.cartId;
-    if (!existingLead.leadType && leadData.leadType) existingLead.leadType = leadData.leadType;
     await existingLead.save();
     if (leadData.message) {
       await Communication.create({
@@ -154,8 +144,7 @@ const ingestLeadFromChannel = async (channel, payload) => {
   const autoAssignedTo = await getAutoAssignableTeamMemberId();
   const lead = await Lead.create({
     ...leadData,
-    ...(autoAssignedTo ? { assignedTo: autoAssignedTo } : {}),
-    lastInteraction: new Date()
+    ...(autoAssignedTo ? { assignedTo: autoAssignedTo } : {})
   });
 
   if (leadData.message) {

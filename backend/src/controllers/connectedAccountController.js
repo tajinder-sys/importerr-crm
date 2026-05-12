@@ -6,7 +6,7 @@ const { sendSuccess, sendCreated, sendBadRequest, sendNotFound, sendServerError 
 const listAccounts = async (req, res) => {
   try {
     const accounts = await ConnectedAccount.find().sort({ createdAt: -1 }).lean();
-    const safe = accounts.map(({ accessToken, refreshToken, googleClientSecret, ...rest }) => rest);
+    const safe = accounts.map(({ accessToken, refreshToken, googleClientSecret, waAccessToken, ...rest }) => rest);
     return sendSuccess(res, 'Accounts fetched', safe);
   } catch {
     return sendServerError(res, 'Failed to fetch accounts');
@@ -14,14 +14,17 @@ const listAccounts = async (req, res) => {
 };
 
 const createAccount = async (req, res) => {
-  const { name, type, googleClientId, googleClientSecret, googleRedirectUri, pubsubTopic } = req.body;
+  const { name, type, googleClientId, googleClientSecret, googleRedirectUri, pubsubTopic, waPhoneNumberId, waAccessToken, waVerifyToken } = req.body;
   if (!name || !type) return sendBadRequest(res, 'name and type are required');
   if (type === 'gmail' && (!googleClientId || !googleClientSecret || !googleRedirectUri || !pubsubTopic))
     return sendBadRequest(res, 'Google Client ID, Secret, Redirect URI and Pub/Sub Topic are required for Gmail');
+  if (type === 'whatsapp' && (!waPhoneNumberId || !waAccessToken || !waVerifyToken))
+    return sendBadRequest(res, 'Phone Number ID, Access Token and Verify Token are required for WhatsApp');
   try {
     const account = new ConnectedAccount({
       name, type,
-      ...(type === 'gmail' && { googleClientId, googleClientSecret, googleRedirectUri, pubsubTopic })
+      ...(type === 'gmail' && { googleClientId, googleClientSecret, googleRedirectUri, pubsubTopic }),
+      ...(type === 'whatsapp' && { waPhoneNumberId, waAccessToken, waVerifyToken })
     });
     account.accountId = account._id.toString();
     await account.save();

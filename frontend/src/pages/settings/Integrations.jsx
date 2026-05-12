@@ -18,10 +18,10 @@ const INTEGRATION_CONFIG = {
   gmail: {
     name: 'Gmail',
     description: 'Connect Gmail accounts to automatically capture leads from emails',
-    fields: ['googleClientId', 'googleClientSecret', 'googleRedirectUri', 'pubsubTopic'],
     guide: {
-      title: 'Setup Guide — console.cloud.google.com',
+      title: 'Setup Guide',
       link: 'https://console.cloud.google.com',
+      linkLabel: 'console.cloud.google.com',
       steps: [
         {
           title: 'Step 1 — OAuth Credentials',
@@ -42,13 +42,13 @@ const INTEGRATION_CONFIG = {
           ]
         },
         {
-          title: 'Step 3 — Pub/Sub Setup (for real-time email notifications)',
+          title: 'Step 3 — Pub/Sub Setup',
           items: [
-            'Go to Pub/Sub → Topics → Create Topic — e.g. gmail-notifications',
+            'Go to Pub/Sub → Topics → Create Topic (e.g. gmail-notifications)',
             'Click the topic → Permissions tab → Add Principal',
             'Enter: gmail-api-push@system.gserviceaccount.com',
             'Role: Pub/Sub Publisher → Save',
-            'Now go to Subscriptions → Create Subscription',
+            'Go to Subscriptions → Create Subscription',
             'Delivery type: Push',
             'Endpoint URL: https://yourdomain.com/api/channels/webhook/gmail'
           ]
@@ -60,10 +60,60 @@ const INTEGRATION_CONFIG = {
   whatsapp: {
     name: 'WhatsApp',
     description: 'Connect WhatsApp Business accounts to capture leads from messages',
-    fields: [],
-    guide: null
+    guide: {
+      title: 'Setup Guide',
+      link: 'https://developers.facebook.com',
+      linkLabel: 'developers.facebook.com',
+      steps: [
+        {
+          title: 'Step 1 — Create Meta App',
+          items: [
+            'Go to developers.facebook.com → My Apps → Create App',
+            'Select Business type → give your app a name',
+            'Add WhatsApp product to your app'
+          ]
+        },
+        {
+          title: 'Step 2 — Get Phone Number ID & Access Token',
+          items: [
+            'Go to WhatsApp → API Setup in your app dashboard',
+            'Copy the Phone Number ID shown on the page',
+            'Generate a temporary access token (or create a System User for permanent token)',
+            'For permanent token: Business Settings → System Users → Add → Generate Token'
+          ]
+        },
+        {
+          title: 'Step 3 — Configure Webhook',
+          items: [
+            'Go to WhatsApp → Configuration → Webhook → Edit',
+            'Callback URL: https://yourdomain.com/api/channels/webhook/whatsapp/YOUR_ACCOUNT_ID',
+            'Verify Token: any secret string you choose (same as what you enter below)',
+            'Subscribe to the messages field'
+          ]
+        }
+      ],
+      warning: 'Use a permanent System User token in production — temporary tokens expire in 24 hours'
+    }
   }
 };
+
+const GuideBox = ({ guide }) => (
+  <div className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-xs text-amber-800 space-y-2">
+    <p className="font-semibold text-amber-900 break-words">
+      📋 {guide.title} —{' '}
+      <a href={guide.link} target="_blank" rel="noreferrer" className="underline break-all">{guide.linkLabel}</a>
+    </p>
+    {guide.steps.map((step, idx) => (
+      <div key={idx}>
+        <p className="font-medium text-amber-900 pt-1">{step.title}</p>
+        <ol className="list-decimal list-inside space-y-0.5">
+          {step.items.map((item, i) => <li key={i} className="break-words">{item}</li>)}
+        </ol>
+      </div>
+    ))}
+    {guide.warning && <p className="mt-1 text-amber-700 break-words">⚠️ {guide.warning}</p>}
+  </div>
+);
 
 const Integrations = () => {
   const { source } = useParams();
@@ -72,25 +122,17 @@ const Integrations = () => {
   const isAdmin = user?.role === 'admin';
 
   const config = INTEGRATION_CONFIG[source];
+
+  const emptyForm = { name: '', googleClientId: '', googleClientSecret: '', googleRedirectUri: '', pubsubTopic: '', waPhoneNumberId: '', waAccessToken: '', waVerifyToken: '' };
+
   const [accounts, setAccounts] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [form, setForm] = useState({ name: '', type: source, googleClientId: '', googleClientSecret: '', googleRedirectUri: '', pubsubTopic: '' });
+  const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', type: 'success' });
 
   const showSnack = (message, type = 'success') => setSnackbar({ open: true, message, type });
-
-  useEffect(() => {
-    if (!config) return;
-    let cancelled = false;
-    api.get(API_ROUTES.connectedAccounts.list)
-      .then((res) => {
-        if (!cancelled) setAccounts((res?.data || []).filter(a => a.type === source));
-      })
-      .catch(() => { if (!cancelled) showSnack('Failed to load accounts', 'error'); });
-    return () => { cancelled = true; };
-  }, [source, config]);
 
   const handleCopyUrl = async (url) => {
     try {
@@ -100,6 +142,20 @@ const Integrations = () => {
       showSnack('Failed to copy URL', 'error');
     }
   };
+
+  const refreshAccounts = async () => {
+    const res = await api.get(API_ROUTES.connectedAccounts.list);
+    setAccounts((res?.data || []).filter(a => a.type === source));
+  };
+
+  useEffect(() => {
+    if (!config) return;
+    let cancelled = false;
+    api.get(API_ROUTES.connectedAccounts.list)
+      .then((res) => { if (!cancelled) setAccounts((res?.data || []).filter(a => a.type === source)); })
+      .catch(() => { if (!cancelled) showSnack('Failed to load accounts', 'error'); });
+    return () => { cancelled = true; };
+  }, [source]);
 
   const handleAddAccount = async (e) => {
     e.preventDefault();
@@ -114,14 +170,18 @@ const Integrations = () => {
           googleClientSecret: form.googleClientSecret.trim(),
           googleRedirectUri: form.googleRedirectUri.trim(),
           pubsubTopic: form.pubsubTopic.trim()
+        }),
+        ...(source === 'whatsapp' && {
+          waPhoneNumberId: form.waPhoneNumberId.trim(),
+          waAccessToken: form.waAccessToken.trim(),
+          waVerifyToken: form.waVerifyToken.trim()
         })
       };
       await api.post(API_ROUTES.connectedAccounts.create, payload);
       showSnack('Account added');
       setShowAddModal(false);
-      setForm({ name: '', type: source, googleClientId: '', googleClientSecret: '', googleRedirectUri: '', pubsubTopic: '' });
-      const res = await api.get(API_ROUTES.connectedAccounts.list);
-      setAccounts((res?.data || []).filter(a => a.type === source));
+      setForm(emptyForm);
+      await refreshAccounts();
     } catch {
       showSnack('Failed to add account', 'error');
     } finally {
@@ -132,9 +192,7 @@ const Integrations = () => {
   const handleToggle = async (account) => {
     try {
       await api.patch(API_ROUTES.connectedAccounts.toggle(account._id));
-      showSnack('Account updated');
-      const res = await api.get(API_ROUTES.connectedAccounts.list);
-      setAccounts((res?.data || []).filter(a => a.type === source));
+      await refreshAccounts();
     } catch {
       showSnack('Failed to update account', 'error');
     }
@@ -146,8 +204,7 @@ const Integrations = () => {
       await api.delete(API_ROUTES.connectedAccounts.delete(deleteTarget._id));
       showSnack('Account deleted');
       setDeleteTarget(null);
-      const res = await api.get(API_ROUTES.connectedAccounts.list);
-      setAccounts((res?.data || []).filter(a => a.type === source));
+      await refreshAccounts();
     } catch {
       showSnack('Failed to delete account', 'error');
     }
@@ -155,6 +212,8 @@ const Integrations = () => {
 
   const getWebhookUrl = (account) =>
     `${BASE_URL}/webhook/${account.type === 'gmail' ? 'email' : account.type}/${account.accountId}`;
+
+  const f = (key) => ({ value: form[key], onChange: (e) => setForm(p => ({ ...p, [key]: e.target.value })) });
 
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
   if (!config) return <Navigate to="/settings/api-config" replace />;
@@ -205,12 +264,7 @@ const Integrations = () => {
                         </div>
                         <div className="mt-1 flex items-center gap-1">
                           <p className="break-all text-xs text-primary-700">{getWebhookUrl(account)}</p>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyUrl(getWebhookUrl(account))}
-                            className="shrink-0 rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-primary-700"
-                            title="Copy webhook URL"
-                          >
+                          <button type="button" onClick={() => handleCopyUrl(getWebhookUrl(account))} className="shrink-0 rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-primary-700">
                             <Copy className="h-3.5 w-3.5" />
                           </button>
                         </div>
@@ -219,47 +273,24 @@ const Integrations = () => {
                         {account.type === 'gmail' && (
                           <button
                             type="button"
-                            disabled={account.gmailEmail}
                             onClick={async () => {
                               try {
                                 const res = await api.get(`/channels/auth/gmail/${account._id}/url`);
                                 if (res?.data?.url) window.open(res.data.url, '_blank');
-                              } catch {
-                                showSnack('Failed to get auth URL', 'error');
-                              }
+                              } catch { showSnack('Failed to get auth URL', 'error'); }
                             }}
-                            className={`rounded-md px-2 py-1 text-xs font-medium ${
-                              account.gmailEmail
-                                ? 'bg-green-50 text-green-700'
-                                : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                            }`}
-                            title={account.gmailEmail || 'Connect Gmail'}
+                            className={`rounded-md px-2 py-1 text-xs font-medium ${account.gmailEmail ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}
                           >
                             {account.gmailEmail ? `✓ ${account.gmailEmail}` : 'Connect Gmail'}
                           </button>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/leads?accountId=${account.accountId}&accountName=${encodeURIComponent(account.name)}`)}
-                          className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-primary-700"
-                          title="View leads"
-                        >
+                        <button type="button" onClick={() => navigate(`/leads?accountId=${account.accountId}&accountName=${encodeURIComponent(account.name)}`)} className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-primary-700" title="View leads">
                           <ExternalLink className="h-4 w-4" />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleToggle(account)}
-                          className={`rounded-md p-1.5 hover:bg-gray-100 ${account.isActive ? 'text-green-600' : 'text-gray-400'}`}
-                          title={account.isActive ? 'Disable' : 'Enable'}
-                        >
+                        <button type="button" onClick={() => handleToggle(account)} className={`rounded-md p-1.5 hover:bg-gray-100 ${account.isActive ? 'text-green-600' : 'text-gray-400'}`}>
                           <Power className="h-4 w-4" />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteTarget(account)}
-                          className="rounded-md p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600"
-                          title="Delete"
-                        >
+                        <button type="button" onClick={() => setDeleteTarget(account)} className="rounded-md p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600">
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
@@ -272,68 +303,33 @@ const Integrations = () => {
         </Card>
       </div>
 
-      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title={`Connect ${config.name}`} size="sm">
+      <Modal isOpen={showAddModal} onClose={() => { setShowAddModal(false); setForm(emptyForm); }} title={`Connect ${config.name}`} size="lg">
         <form onSubmit={handleAddAccount} className="space-y-4">
-          <Input
-            label="Account Name"
-            value={form.name}
-            onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-            placeholder={`e.g. My ${config.name} Account`}
-            required
-          />
-          {source === 'gmail' && config.guide && (
-            <div className="space-y-3">
-              <div className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-xs text-amber-800 space-y-2">
-                <p className="font-semibold text-amber-900">
-                  📋 {config.guide.title} — <a href={config.guide.link} target="_blank" rel="noreferrer" className="underline">{config.guide.link}</a>
-                </p>
-                {config.guide.steps.map((step, idx) => (
-                  <div key={idx}>
-                    <p className="font-medium text-amber-900 pt-1">{step.title}</p>
-                    <ol className="list-decimal list-inside space-y-0.5">
-                      {step.items.map((item, i) => (
-                        <li key={i} dangerouslySetInnerHTML={{ __html: item.replace(/`([^`]+)`/g, '<code class="bg-amber-100 px-1 rounded">$1</code>') }} />
-                      ))}
-                    </ol>
-                  </div>
-                ))}
-                {config.guide.warning && <p className="mt-1 text-amber-700">⚠️ {config.guide.warning}</p>}
-              </div>
-              <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 space-y-3">
-                <p className="text-xs font-medium text-blue-700">Google OAuth Credentials</p>
-                <Input
-                  label="Client ID"
-                  value={form.googleClientId}
-                  onChange={(e) => setForm((p) => ({ ...p, googleClientId: e.target.value }))}
-                  placeholder="xxxxx.apps.googleusercontent.com"
-                  required
-                />
-                <Input
-                  label="Client Secret"
-                  value={form.googleClientSecret}
-                  onChange={(e) => setForm((p) => ({ ...p, googleClientSecret: e.target.value }))}
-                  placeholder="GOCSPX-..."
-                  required
-                />
-                <Input
-                  label="Redirect URI"
-                  value={form.googleRedirectUri}
-                  onChange={(e) => setForm((p) => ({ ...p, googleRedirectUri: e.target.value }))}
-                  placeholder="https://yourdomain.com/api/channels/auth/gmail/callback"
-                  required
-                />
-                <Input
-                  label="Pub/Sub Topic"
-                  value={form.pubsubTopic}
-                  onChange={(e) => setForm((p) => ({ ...p, pubsubTopic: e.target.value }))}
-                  placeholder="projects/your-project-id/topics/gmail-notifications"
-                  required
-                />
-              </div>
+          <Input label="Account Name" value={form.name} onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))} placeholder={`e.g. My ${config.name} Account`} required />
+
+          {config.guide && <GuideBox guide={config.guide} />}
+
+          {source === 'gmail' && (
+            <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 space-y-3">
+              <p className="text-xs font-medium text-blue-700">Google OAuth Credentials</p>
+              <Input label="Client ID" placeholder="xxxxx.apps.googleusercontent.com" required {...f('googleClientId')} />
+              <Input label="Client Secret" placeholder="GOCSPX-..." required {...f('googleClientSecret')} />
+              <Input label="Redirect URI" placeholder="https://yourdomain.com/api/channels/auth/gmail/callback" required {...f('googleRedirectUri')} />
+              <Input label="Pub/Sub Topic" placeholder="projects/your-project-id/topics/gmail-notifications" required {...f('pubsubTopic')} />
             </div>
           )}
+
+          {source === 'whatsapp' && (
+            <div className="rounded-lg border border-green-100 bg-green-50 p-3 space-y-3">
+              <p className="text-xs font-medium text-green-700">WhatsApp Business API Credentials</p>
+              <Input label="Phone Number ID" placeholder="1234567890123456" required {...f('waPhoneNumberId')} />
+              <Input label="Access Token" placeholder="EAAxxxxx..." required {...f('waAccessToken')} />
+              <Input label="Verify Token" placeholder="my_secret_verify_token" required {...f('waVerifyToken')} />
+            </div>
+          )}
+
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setShowAddModal(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => { setShowAddModal(false); setForm(emptyForm); }}>Cancel</Button>
             <Button type="submit" loading={saving}>Connect</Button>
           </div>
         </form>
@@ -349,12 +345,7 @@ const Integrations = () => {
         type="danger"
       />
 
-      <Snackbar
-        open={snackbar.open}
-        message={snackbar.message}
-        type={snackbar.type}
-        onClose={() => setSnackbar((p) => ({ ...p, open: false }))}
-      />
+      <Snackbar open={snackbar.open} message={snackbar.message} type={snackbar.type} onClose={() => setSnackbar(p => ({ ...p, open: false }))} />
     </div>
   );
 };
