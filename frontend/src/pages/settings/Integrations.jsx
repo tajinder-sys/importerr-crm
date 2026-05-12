@@ -7,9 +7,9 @@ import Snackbar from '../../components/common/Snackbar';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
-import { useAuth } from '../../contexts/AuthContext';
 import api from '../../utils/api';
 import { API_ROUTES } from '../../utils/apiRoutes';
+import { useAuth } from '../../hooks/useAuth';
 
 const BASE_URL = import.meta.env.VITE_API_URL + '/channels';
 
