@@ -116,7 +116,7 @@ const Sidebar = () => {
                           )}
                         >
                           <Globe className="h-3 w-3" />
-                          API Config
+                          Lead Sources
                         </a>
                         <a
                           href="/settings/payment-methods"

@@ -15,6 +15,7 @@ import Sidebar from './components/layout/Sidebar';
 import ApiConfig from './pages/settings/ApiConfig.jsx';
 import TeamsSetting from './pages/settings/TeamsSetting.jsx';
 import PipelineStages from './pages/settings/PipelineStages/PipelineStages.jsx';
+import Integrations from './pages/settings/Integrations.jsx';
 import Leads from './pages/Leads/Lead.jsx';
 
 const AdminRoute = ({ children }) => {
@@ -54,6 +55,14 @@ function App() {
                             element={(
                               <AdminRoute>
                                 <ApiConfig />
+                              </AdminRoute>
+                            )}
+                          />
+                          <Route
+                            path="/settings/integrations/:source"
+                            element={(
+                              <AdminRoute>
+                                <Integrations />
                               </AdminRoute>
                             )}
                           />
