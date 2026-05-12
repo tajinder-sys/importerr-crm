@@ -7,7 +7,9 @@ const Modal = ({
   title,
   children,
   footer,
-  size = 'md'
+  size = 'md',
+  className = '',
+  panelClassName = '',
 }) => {
   if (!isOpen) {
     return null;
@@ -16,12 +18,25 @@ const Modal = ({
   const sizeClasses = {
     sm: 'max-w-md',
     md: 'max-w-lg',
-    lg: 'max-w-2xl'
+    lg: 'max-w-2xl',
+    xl: 'max-w-4xl',
+    '2xl': 'max-w-6xl',
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 !mt-0">
-      <div className={cn('flex max-h-[85vh] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-xl', sizeClasses[size])}>
+    <div
+      className={cn(
+        'fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 !mt-0',
+        className
+      )}
+    >
+      <div
+        className={cn(
+          'flex max-h-[90vh] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-xl',
+          sizeClasses[size] || sizeClasses.md,
+          panelClassName
+        )}
+      >
         <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4">
           <div className="flex-1">
             {typeof title === 'string' ? (

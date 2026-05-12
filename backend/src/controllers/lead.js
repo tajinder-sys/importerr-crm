@@ -217,6 +217,10 @@ const createOrUpdateLead = async (req, res) => {
       userId         = null,
       pipelineId,
       stageId,
+      productId,
+      productSku,
+      variants,
+      totalQuantity,
     } = req.body;
 
     let resolvedAssignedTo = assignedTo;
@@ -309,6 +313,24 @@ const createOrUpdateLead = async (req, res) => {
 
     if (resolvedPipelineId) lead.pipelineId = resolvedPipelineId;
     if (resolvedStageId)    lead.stageId    = resolvedStageId;
+
+    if (isExplicitUpdate) {
+      if (productId !== undefined) {
+        lead.productId = productId ? String(productId).trim() : null;
+      }
+      if (productSku !== undefined) {
+        lead.productSku = productSku ? String(productSku).trim() : null;
+      }
+      if (variants !== undefined) {
+        lead.variants =
+          variants && typeof variants === 'object'
+            ? JSON.parse(JSON.stringify(variants))
+            : null;
+      }
+      if (totalQuantity !== undefined) {
+        lead.totalQuantity = Number(totalQuantity) >= 0 ? Number(totalQuantity) : 0;
+      }
+    }
 
     lead.lastInteraction = new Date();
     await lead.save();

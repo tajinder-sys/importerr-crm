@@ -15,8 +15,9 @@ import CommunicationTab from '../components/lead-details/CommunicationTab';
 import ActivityTab from '../components/lead-details/ActivityTab';
 import { API_ROUTES } from '../utils/apiRoutes';
 import { getChipVariant } from '../utils/chipConstants';
-import QuotesTab from '../components/lead-details//Quote/index';
+import QuotesTab from '../components/lead-details/Quote/index';
 import LeadNotes from '../components/common/LeadNotes';
+import LeadTasksTab from '../components/lead-details/LeadTasksTab';
 import PageHeader from '../components/common/ui/PageHeader';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -25,6 +26,7 @@ const TABS = [
   { key: 'lead_details', label: 'Details' },
   { key: 'notes', label: 'Notes' },
   { key: 'quotes', label: 'Quotes' },
+  { key: 'tasks', label: 'Tasks' },
   { key: 'communication', label: 'Communication' },
   { key: 'activity', label: 'Activity', adminOnly: true },
 ];
@@ -138,8 +140,6 @@ const LeadDetails = () => {
   const [updatingLead, setUpdatingLead] = useState(false);
   const [updateLeadError, setUpdateLeadError] = useState('');
   const [assignableMembers, setAssignableMembers] = useState([]);
-  const [quote, setQuote] = useState(null);
-
   // ─── Snackbar helpers ──────────────────────────────────────────────────────
   const showSuccess = useCallback((msg) => setSnackbar({ open: true, message: msg, type: 'success' }), []);
   const showError = useCallback((msg) => setSnackbar({ open: true, message: msg, type: 'error' }), []);
@@ -225,7 +225,6 @@ const LeadDetails = () => {
 
   // ─── Effects ──────────────────────────────────────────────────────────────
 
-  console.log('quote',quote);
   // Initial load
   useEffect(() => {
     const t = setTimeout(fetchLeadDetail, 0);
@@ -335,6 +334,40 @@ const LeadDetails = () => {
     }
   }, [lead, leadForm, canManageLeadAssignment, closeEditLeadModal, showSuccess, fetchLeadDetail]);
 
+  const handleAttachManualProduct = useCallback(
+    async (productPayload, options = {}) => {
+      if (!lead?._id) {
+        throw new Error('No lead loaded');
+      }
+      const normalizedPhone = getPhonePayload(formatIndianPhoneInput(lead.phone || ''));
+      if (!normalizedPhone || !validatePhone(normalizedPhone)) {
+        throw new Error('Add a valid 10-digit mobile on the lead before attaching a product.');
+      }
+      await api.put(API_ROUTES.leads.update(lead._id), {
+        name: String(lead.name || '').trim(),
+        email: String(lead.email || '').trim(),
+        phone: normalizedPhone,
+        source: lead.source,
+        leadType: lead.leadType || 'guest',
+        status: lead.status || 'new',
+        ...(canManageLeadAssignment
+          ? { assignedTo: lead.assignedTo?._id || lead.assignedTo || null }
+          : {}),
+        ...productPayload,
+      });
+      setFinalPrice(null);
+      setInitialFinalPrice(null);
+      setInitialBreakdown(null);
+      setPricingVariantsDraft([]);
+      setPricingFormulaDraft({});
+      setVariantPriceDetails(null);
+      setSelectedProduct(null);
+      await fetchLeadDetail();
+      showSuccess(options?.isEdit ? 'Product updated on lead' : 'Product added to lead');
+    },
+    [lead, canManageLeadAssignment, fetchLeadDetail, showSuccess]
+  );
+
   // ─── Shared pricing props (avoids repeating the same object twice) ──────
 
   return (
@@ -408,6 +441,7 @@ const LeadDetails = () => {
                   setPricingFormulaDraft = {setPricingFormulaDraft}
                   setInitialBreakdown = {setInitialBreakdown}
                   setPricingVariantsDraft = {setPricingVariantsDraft}
+                  onAttachManualProduct={handleAttachManualProduct}
                 />
               )}
 
@@ -437,6 +471,15 @@ const LeadDetails = () => {
 
               {activeTab === 'quotes' && (
                 <QuotesTab lead={lead} showError={showError}/>
+              )}
+
+              {activeTab === 'tasks' && (
+                <LeadTasksTab
+                  leadId={lead._id}
+                  leadName={lead.name || lead.email || 'Lead'}
+                  showError={showError}
+                  showSuccess={showSuccess}
+                />
               )}
 
               {activeTab === 'activity' && (

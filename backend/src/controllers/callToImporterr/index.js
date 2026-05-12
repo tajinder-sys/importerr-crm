@@ -65,6 +65,23 @@ const getImporterrProductVariantPriceDetails = async (req, res) => {
   }
 };
 
+const getImporterrProductBySku = async (req, res) => {
+  try {
+    const sku = String(req.params?.sku || '').trim();
+    if (!sku) {
+      return sendBadRequest(res, 'sku is required');
+    }
+    const config = getRuntimeConfig();
+    const path = toPath(PRODUCT_API_ROUTES.PRODUCT_BY_SKU, { sku });
+    const payload = await callImporterrApi({ config, path });
+    const data = payload?.data ?? payload;
+    sendSuccess(res, payload?.message || 'Product fetched successfully', data);
+  } catch (error) {
+    console.error('Get importerr product by sku error:', error);
+    sendBadRequest(res, error.message || 'Failed to fetch product');
+  }
+};
+
 const getImporterrSellers = async (req, res) => {
   try {
     const config = getRuntimeConfig();
@@ -127,6 +144,7 @@ const getImporterrFinalPriceByOfferId = async (req, res) => {
 module.exports = {
   getImporterrUserByUserId,
   getImporterrSellers,
+  getImporterrProductBySku,
   getImporterrProductVariantPriceDetails,
   getImporterrFinalPriceByOfferId,
 };

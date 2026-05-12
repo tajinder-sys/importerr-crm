@@ -32,7 +32,6 @@ const TASK_PRIORITY = {
 
 const isAdminUser = (user) => user?.role === 'admin';
 const isTeamUser = (user) => user?.role === 'team_member' || user?.role === 'team_manager';
-const canManageAllTasks = (user) => user?.role === 'admin' || user?.role === 'team_manager';
 const canViewTask = (task, user) => {
   if (isAdminUser(user)) return true;
   if (task.assigned_to?.toString() === user.id) return true;
@@ -77,6 +76,11 @@ const getTasks = async (req, res) => {
     // Team filter
     if (team_id) query.team_id = team_id;
 
+    // Admins see all tasks; everyone else only tasks they created
+    if (!isAdminUser(req.user)) {
+      query.created_by = req.user.id;
+    }
+
     // Date range filters
     if (due_date) {
       const today = new Date();
@@ -110,23 +114,8 @@ const getTasks = async (req, res) => {
       ];
     }
 
-    // Permission-based filtering
-    if (!canManageAllTasks(req.user)) {
-      // Team members can only see their assigned tasks or tasks they created
-      query.$or = [
-        { assigned_to: req.user.id },
-        { created_by: req.user.id }
-      ];
-    } else if (req.user.team_id) {
-      // Team managers can see tasks from their team
-      query.team_id = req.user.team_id;
-    }
-
-    // Assigned to filter (with permission check)
+    // Assigned to filter (admins may filter by any assignee)
     if (assigned_to) {
-      if (!canManageAllTasks(req.user) && assigned_to !== req.user.id) {
-        return sendForbidden(res, 'You can only view your assigned tasks');
-      }
       query.assigned_to = assigned_to;
     }
 
@@ -435,15 +424,8 @@ const markTaskComplete = async (req, res) => {
 const getTaskStats = async (req, res) => {
   try {
     const baseQuery = {};
-    
-    // Permission-based filtering
-    if (!canManageAllTasks(req.user)) {
-      baseQuery.$or = [
-        { assigned_to: req.user.id },
-        { created_by: req.user.id }
-      ];
-    } else if (req.user.team_id) {
-      baseQuery.team_id = req.user.team_id;
+    if (!isAdminUser(req.user)) {
+      baseQuery.created_by = req.user.id;
     }
 
     const [

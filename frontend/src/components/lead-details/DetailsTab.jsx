@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Search, ExternalLink } from 'lucide-react';
+import { ExternalLink, Pencil } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../common/ui/Card';
 import Button from '../common/ui/Button';
 import Skeleton from '../common/ui/Skeleton';
@@ -7,6 +7,7 @@ import Modal from '../common/ui/Modal';
 import { formatCurrency, formatDateIndian, formatPhone } from '../../utils/helpers';
 import { UiSectionTitle } from '../common/ui/Typography';
 import { IMPORTERR_URL } from '../../utils/api';
+import AddManualProductModal from './AddManualProductModal';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -49,13 +50,14 @@ const ProductSkeleton = () => (
   </div>
 );
 
-const EmptyProduct = ({ hasLeadSku }) => (
-  <div className="flex h-full min-h-40 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50/70 p-6 text-center">
+const EmptyProduct = ({ hasLeadSku, children }) => (
+  <div className="flex min-h-40 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-gray-300 bg-gray-50/70 p-6 text-center">
     <p className="text-sm text-gray-600">
       {hasLeadSku
         ? 'Product auto-loading from lead SKU.'
-        : <>Enter SKU and click <span className="font-semibold">Fetch Product</span></>}
+        : <>No product linked yet. Search by SKU to attach one from Importerr.</>}
     </p>
+    {children}
   </div>
 );
 
@@ -66,14 +68,48 @@ const DetailsTab = ({
   selectedProduct,
   isFetchingProduct,
   embedded = false,
+  onAttachManualProduct,
 }) => {
   const [previewImageUrl, setPreviewImageUrl] = useState('');
   const [variantsOpen, setVariantsOpen] = useState(false);
+  const [manualProductOpen, setManualProductOpen] = useState(false);
+  const [manualProductMode, setManualProductMode] = useState('add');
 
   const hasLeadSku = Boolean(String(lead?.productSku || '').trim());
   const leadVariants = lead?.variants && typeof lead.variants === 'object' ? lead.variants : null;
 
   const leadVariantRows = useMemo(() => flattenVariants(leadVariants), [leadVariants]);
+
+  const canEditLinkedProduct =
+    typeof onAttachManualProduct === 'function' && hasLeadSku;
+
+  const showManualProductCta =
+    typeof onAttachManualProduct === 'function' &&
+    !hasLeadSku &&
+    leadVariantRows.length === 0 &&
+    !selectedProduct;
+
+  const memoEditContext = useMemo(() => {
+    if (!manualProductOpen || manualProductMode !== 'edit') return null;
+    const sku = String(lead?.productSku || '').trim();
+    if (!sku) return null;
+    return { sku, variantRows: leadVariantRows };
+  }, [manualProductOpen, manualProductMode, lead?.productSku, leadVariantRows]);
+
+  const openManualProductAdd = () => {
+    setManualProductMode('add');
+    setManualProductOpen(true);
+  };
+
+  const openManualProductEdit = () => {
+    setManualProductMode('edit');
+    setManualProductOpen(true);
+  };
+
+  const closeManualProductModal = () => {
+    setManualProductOpen(false);
+    setManualProductMode('add');
+  };
 
   const content = (
     <div className={embedded ? 'space-y-4' : 'space-y-4 bg-slate-50/60'}>
@@ -98,17 +134,30 @@ const DetailsTab = ({
               <div className="flex justify-between items-center border-b pb-2">
                 <p className="text-sm font-semibold text-gray-900">Product Details</p>
 
-                {hasLeadSku && (
-                  <a
-                    href={`${IMPORTERR_URL}/product-details?ali=1&offer=${lead?.productSku}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs text-blue-600 flex items-center gap-1"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    View
-                  </a>
-                )}
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {hasLeadSku ? (
+                    <a
+                      href={`${IMPORTERR_URL}/product-details?ali=1&offer=${lead?.productSku}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 text-xs text-blue-600"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      View
+                    </a>
+                  ) : null}
+                  {canEditLinkedProduct ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      startIcon={<Pencil className="h-3 w-3" />}
+                      onClick={openManualProductEdit}
+                    >
+                      Edit product
+                    </Button>
+                  ) : null}
+                </div>
               </div>
 
               <div className="grid grid-cols-[80px_1fr] gap-3">
@@ -142,7 +191,20 @@ const DetailsTab = ({
               </div>
             </div>
           ) : (
-            <EmptyProduct hasLeadSku={hasLeadSku} />
+            <EmptyProduct hasLeadSku={hasLeadSku}>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {showManualProductCta ? (
+                  <Button type="button" size="sm" variant="primary" onClick={openManualProductAdd}>
+                    Add manual product
+                  </Button>
+                ) : null}
+                {canEditLinkedProduct && !selectedProduct ? (
+                  <Button type="button" size="sm" variant="outline" startIcon={<Pencil className="h-3 w-3" />} onClick={openManualProductEdit}>
+                    Edit product & variants
+                  </Button>
+                ) : null}
+              </div>
+            </EmptyProduct>
           )}
         </div>
       </div>
@@ -258,6 +320,18 @@ const DetailsTab = ({
           />
         </div>
       </Modal>
+
+      {typeof onAttachManualProduct === 'function' ? (
+        <AddManualProductModal
+          isOpen={manualProductOpen}
+          onClose={closeManualProductModal}
+          mode={manualProductMode}
+          editKey={lead?._id}
+          editContext={memoEditContext}
+          leadName={lead?.name || lead?.email || ''}
+          onLinked={onAttachManualProduct}
+        />
+      ) : null}
     </>
   );
 };

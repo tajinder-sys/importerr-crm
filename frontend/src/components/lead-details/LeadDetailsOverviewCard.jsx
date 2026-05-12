@@ -78,12 +78,17 @@ const LeadDetailsOverviewCard = ({
   setPricingFormulaDraft,
   setInitialBreakdown,
   setPricingVariantsDraft,
+  onAttachManualProduct,
 }) => {
   const [open, setOpen] = useState(false);
   const [isSendingQuote, setIsSendingQuote] = useState(false);
   const [initialVariants, setInitialVariants] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', type: 'success' });
   const hasFetchedRef = useRef(false);
+
+  useEffect(() => {
+    hasFetchedRef.current = false;
+  }, [lead?._id, lead?.productSku]);
 
   const leadVariants =
     lead?.variants && typeof lead.variants === 'object' ? lead.variants : null;
@@ -243,6 +248,7 @@ const LeadDetailsOverviewCard = ({
             lead={lead}
             selectedProduct={selectedProduct}
             isFetchingProduct={isFetchingProduct}
+            onAttachManualProduct={onAttachManualProduct}
           />
 
           {/* ── Pricing snapshot ── */}
