@@ -79,6 +79,7 @@ const HTTP_STATUS = {
 
 const PRODUCT_API_ROUTES = {
   USER_BY_ID: '/users/{userId}',
+  SELLERS_LIST: '/users/sellers',
   PRODUCT_BY_SKU: '/products/sku/{sku}',
   PRODUCT_DETAILS: '/products/{productRef}/product-details',
   GET_FINAL_PRICE: '/products/get-final-price',

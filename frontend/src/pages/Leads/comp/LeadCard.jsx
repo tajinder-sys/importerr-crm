@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { Eye, Pencil, Phone, Mail, User, Calendar, MessageSquare, ListTodo, ChevronDown } from 'lucide-react';
+import { Eye, Pencil, Phone, Mail, User, Calendar, MessageSquare, ListTodo, ChevronDown, Percent, Timer } from 'lucide-react';
 import { formatDateIndian } from '../../../utils/helpers';
 import LeadQuickViewModal from './LeadQuickViewModal';
 import LeadNotes from '../../../components/common/LeadNotes';
@@ -37,8 +37,53 @@ const Pill = ({ label, cls }) => (
   </span>
 );
 
+/** Merge column stage config with populated lead.stageId (API may omit fields after optimistic updates). */
+const mergeStageMeta = (lead, columnStage) => {
+  const embedded = lead.stageId && typeof lead.stageId === 'object' ? lead.stageId : null;
+  const leadSid = embedded?._id ?? lead.stageId;
+  if (!columnStage) return embedded;
+  if (!leadSid || String(columnStage._id) !== String(leadSid)) return embedded;
+  return { ...columnStage, ...embedded };
+};
+
+const StageTargetChips = ({ stageMeta, dense }) => {
+  if (!stageMeta) return null;
+  const prob = stageMeta.probabilityPercent;
+  const days = stageMeta.followUpDays;
+  const hasProb = prob != null && prob !== '';
+  const hasDays = days != null && days !== '';
+  if (!hasProb && !hasDays) return null;
+
+  const gap = dense ? 'gap-1' : 'gap-1.5';
+  const text = dense ? 'text-[9px]' : 'text-[10px]';
+
+  return (
+    <div className={`flex flex-wrap items-center ${gap}`}>
+      {hasProb && (
+        <span
+          className={`inline-flex items-center gap-0.5 rounded-md bg-violet-50 px-1.5 py-0.5 font-semibold text-violet-700 ring-1 ring-violet-100 ${text}`}
+          title="Win probability for this pipeline stage"
+        >
+          <Percent size={dense ? 9 : 10} className="opacity-80" />
+          {prob}%
+        </span>
+      )}
+      {hasDays && (
+        <span
+          className={`inline-flex items-center gap-0.5 rounded-md bg-amber-50 px-1.5 py-0.5 font-semibold text-amber-900 ring-1 ring-amber-100 ${text}`}
+          title="Suggested follow-up interval for this stage"
+        >
+          <Timer size={dense ? 9 : 10} className="opacity-80" />
+          {days === 0 ? 'Same day' : `${days}d follow-up`}
+        </span>
+      )}
+    </div>
+  );
+};
+
 const LeadCard = ({
   lead,
+  columnStage = null,
   onEdit = () => {},
   onNotify = () => {},
 }) => {
@@ -46,6 +91,8 @@ const LeadCard = ({
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const [editTask, setEditTask] = useState(null);
   const [expanded, setExpanded] = useState(false);
+
+  const stageMeta = mergeStageMeta(lead, columnStage);
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: lead._id,
@@ -151,6 +198,7 @@ const LeadCard = ({
             <span className="truncate text-[10px] font-medium text-slate-600">{fmtPhone(lead.phone)}</span>
             <Pill label={lead.source} cls={SOURCE_CLS[lead.source]} />
             <Pill label={lead.status} cls={STATUS_CLS[lead.status]} />
+            <StageTargetChips stageMeta={stageMeta} dense />
             {lead.tasks?.length > 0 && (
               <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">
                 {lead.tasks.length} task{lead.tasks.length !== 1 ? 's' : ''}
@@ -189,10 +237,13 @@ const LeadCard = ({
           </div>
         )}
 
-        {/* Pills */}
-        <div className="flex flex-wrap gap-1 mb-3">
-          <Pill label={lead.source} cls={SOURCE_CLS[lead.source]} />
-          <Pill label={lead.status} cls={STATUS_CLS[lead.status]} />
+        {/* Pills + stage targets */}
+        <div className="mb-3 space-y-2">
+          <div className="flex flex-wrap gap-1">
+            <Pill label={lead.source} cls={SOURCE_CLS[lead.source]} />
+            <Pill label={lead.status} cls={STATUS_CLS[lead.status]} />
+          </div>
+          <StageTargetChips stageMeta={stageMeta} />
         </div>
 
         {/* Footer */}

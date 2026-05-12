@@ -124,8 +124,8 @@ const Table = ({
   };
 
   return (
-    <div className="space-y-3">
-      <div className={cn('overflow-x-auto', framed && 'rounded-xl border border-gray-200')}>
+    <div className="space-y-3 overflow-y-auto">
+      <div className={cn('overflow-x-auto min-h-[300px] overflow-y-auto', framed && 'rounded-xl border border-gray-200')}>
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>

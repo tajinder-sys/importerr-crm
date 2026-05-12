@@ -6,6 +6,21 @@ const {
   sendNotFound
 } = require('../utils/responseHandler');
 
+const parseOptionalInt = (value, { min, max, label }) => {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+  const n = Number(value);
+  if (!Number.isFinite(n)) {
+    return { error: `${label} must be a number` };
+  }
+  const clamped = Math.round(n);
+  if (clamped < min || clamped > max) {
+    return { error: `${label} must be between ${min} and ${max}` };
+  }
+  return clamped;
+};
+
 // =========================
 // Get All Stages
 // =========================
@@ -131,10 +146,13 @@ const createStage = async (req, res) => {
   try {
     const {
       name,
+      description,
       pipelineId,
       order,
       color,
-      isActive
+      isActive,
+      followUpDays,
+      probabilityPercent
     } = req.body;
 
     if (!name || name.trim() === '') {
@@ -165,12 +183,33 @@ const createStage = async (req, res) => {
       return sendBadRequest(res, 'Stage with this order already exists in this pipeline');
     }
 
+    const parsedFollowUp = parseOptionalInt(followUpDays, {
+      min: 0,
+      max: 365,
+      label: 'Follow-up days'
+    });
+    if (parsedFollowUp?.error) {
+      return sendBadRequest(res, parsedFollowUp.error);
+    }
+
+    const parsedProbability = parseOptionalInt(probabilityPercent, {
+      min: 0,
+      max: 100,
+      label: 'Probability percent'
+    });
+    if (parsedProbability?.error) {
+      return sendBadRequest(res, parsedProbability.error);
+    }
+
     const stage = new Stage({
       name: name.trim(),
+      description: typeof description === 'string' ? description.trim() : '',
       pipelineId,
       order: Number(order),
       color: color || '#6B7280',
-      isActive: isActive !== undefined ? isActive : true
+      isActive: isActive !== undefined ? isActive : true,
+      followUpDays: parsedFollowUp,
+      probabilityPercent: parsedProbability
     });
 
     await stage.save();
@@ -197,10 +236,13 @@ const updateStage = async (req, res) => {
     const stageId = req.params.id;
     const {
       name,
+      description,
       pipelineId,
       order,
       color,
-      isActive
+      isActive,
+      followUpDays,
+      probabilityPercent
     } = req.body;
 
     const stage = await Stage.findById(stageId);
@@ -232,6 +274,34 @@ const updateStage = async (req, res) => {
 
     if (name && name.trim() !== stage.name) {
       stage.name = name.trim();
+    }
+
+    if (description !== undefined) {
+      stage.description = typeof description === 'string' ? description.trim() : '';
+    }
+
+    if (followUpDays !== undefined) {
+      const parsed = parseOptionalInt(followUpDays, {
+        min: 0,
+        max: 365,
+        label: 'Follow-up days'
+      });
+      if (parsed?.error) {
+        return sendBadRequest(res, parsed.error);
+      }
+      stage.followUpDays = parsed;
+    }
+
+    if (probabilityPercent !== undefined) {
+      const parsed = parseOptionalInt(probabilityPercent, {
+        min: 0,
+        max: 100,
+        label: 'Probability percent'
+      });
+      if (parsed?.error) {
+        return sendBadRequest(res, parsed.error);
+      }
+      stage.probabilityPercent = parsed;
     }
 
     if (pipelineId) {

@@ -65,6 +65,24 @@ const getImporterrProductVariantPriceDetails = async (req, res) => {
   }
 };
 
+const getImporterrSellers = async (req, res) => {
+  try {
+    const config = getRuntimeConfig();
+    const q = new URLSearchParams();
+    if (req.query.page != null && req.query.page !== '') q.set('page', String(req.query.page));
+    if (req.query.limit != null && req.query.limit !== '') q.set('limit', String(req.query.limit));
+    if (req.query.search != null && req.query.search !== '') q.set('search', String(req.query.search));
+    const qs = q.toString();
+    const path = `${PRODUCT_API_ROUTES.SELLERS_LIST}${qs ? `?${qs}` : ''}`;
+    const payload = await callImporterrApi({ config, path });
+    const data = payload?.data ?? payload;
+    sendSuccess(res, payload?.message || 'Sellers fetched successfully', data);
+  } catch (error) {
+    console.error('Get importerr sellers error:', error);
+    sendBadRequest(res, error.message || 'Failed to fetch importerr sellers');
+  }
+};
+
 const getImporterrFinalPriceByOfferId = async (req, res) => {
   try {
     const { variants, offerId, overrides, freightTimeoutMs, toProvinceCode, toCityCode, toCountryCode } = req.body;
@@ -108,6 +126,7 @@ const getImporterrFinalPriceByOfferId = async (req, res) => {
 
 module.exports = {
   getImporterrUserByUserId,
+  getImporterrSellers,
   getImporterrProductVariantPriceDetails,
   getImporterrFinalPriceByOfferId,
 };

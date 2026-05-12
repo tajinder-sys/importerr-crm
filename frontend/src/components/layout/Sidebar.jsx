@@ -15,6 +15,7 @@ import {
   MessageSquare,
   CreditCard,
   GitBranch,
+  Store,
   ChevronDown,
   ChevronRight,
   ChevronLeft,
@@ -45,6 +46,7 @@ const Sidebar = () => {
         { href: '/settings/payment-methods', icon: CreditCard, title: 'Payment Methods' },
         { href: '/settings/teams', icon: Users, title: 'Teams' },
         { href: '/settings/pipelines', icon: GitBranch, title: 'Pipelines & Stages' },
+        { href: '/settings/seller-users', icon: Store, title: 'Seller users' },
         { href: '/templates/email', icon: Mail, title: 'Email templates' },
         { href: '/templates/whatsapp', icon: MessageSquare, title: 'WhatsApp templates' },
       ]
@@ -255,6 +257,22 @@ const Sidebar = () => {
                           >
                             <GitBranch className="h-3 w-3" />
                             Pipelines & Stages
+                          </a>
+                          <a
+                            href="/settings/seller-users"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              navigate('/settings/seller-users');
+                            }}
+                            className={cn(
+                              'flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors',
+                              isActive('/settings/seller-users')
+                                ? 'bg-primary-100/70 font-medium text-primary-700'
+                                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                            )}
+                          >
+                            <Store className="h-3 w-3" />
+                            Seller users
                           </a>
                         </div>
                       ) : null}

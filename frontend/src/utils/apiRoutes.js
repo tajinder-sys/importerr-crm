@@ -25,6 +25,7 @@ export const API_ROUTES = {
   },
   importerr: {
     userById: (userId) => `/importerr/users/${encodeURIComponent(userId)}`,
+    sellersList: '/importerr/users/sellers',
     productBySku: (sku) => `/importerr/products/sku/${encodeURIComponent(sku)}`,
     productVariantPriceDetails: (productRef) =>
       `/importerr/products/${encodeURIComponent(productRef)}/product-details`,
@@ -95,5 +96,9 @@ export const API_ROUTES = {
     stats: '/tasks/stats',
     addNote: (id) => `/tasks/${encodeURIComponent(id)}/notes`,
     complete: (id) => `/tasks/${encodeURIComponent(id)}/complete`
-  }
+  },
+  sellerAssignments: {
+    list: '/seller-assignments',
+    upsert: (importerrUserId) => `/seller-assignments/${encodeURIComponent(importerrUserId)}`,
+  },
 };

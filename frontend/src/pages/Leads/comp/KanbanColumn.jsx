@@ -108,7 +108,14 @@ const KanbanColumn = ({
         {!isLoading && leads.length > 0 && (
           <SortableContext items={leadIds} strategy={verticalListSortingStrategy}>
             {leads.map((lead) => (
-              <LeadCard key={lead._id} lead={lead} onView={onView} onEdit={onEdit} onNotify={onNotify}/>
+              <LeadCard
+                key={lead._id}
+                lead={lead}
+                columnStage={stage}
+                onView={onView}
+                onEdit={onEdit}
+                onNotify={onNotify}
+              />
             ))}
           </SortableContext>
         )}

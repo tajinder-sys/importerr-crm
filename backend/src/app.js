@@ -28,6 +28,7 @@ app.use('/api/pipelines', require('./routes/pipelineRoutes'));
 app.use('/api/stages', require('./routes/stageRoutes'));
 app.use('/api/tasks', require('./routes/taskRoutes'));
 app.use('/api/importerr', require('./routes/callImporterr/product'));
+app.use('/api/seller-assignments', require('./routes/sellerAssignmentRoutes'));
 app.use('/api/crm', require('./routes/callByImporterr/auth'));
 app.use('/api/crm', require('./routes/callByImporterr/lead'));
 app.use('/api/quote', require('./routes/quote'));

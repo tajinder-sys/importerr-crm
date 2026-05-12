@@ -129,14 +129,22 @@ const KanbanBoard = ({
         stageId: toStageId,
       });
 
-      setLeadsByStage((prev) => ({
-        ...prev,
-        [toStageId]: (prev[toStageId] || []).map((l) =>
-          l._id === leadId
-            ? { ...l, stageId: { ...(l.stageId || {}), _id: toStageId } }
-            : l
-        ),
-      }));
+      setLeadsByStage((prev) => {
+        const targetStage = stages.find((s) => String(s._id) === String(toStageId));
+        return {
+          ...prev,
+          [toStageId]: (prev[toStageId] || []).map((l) =>
+            l._id === leadId
+              ? {
+                  ...l,
+                  stageId: targetStage
+                    ? { ...targetStage }
+                    : { ...(typeof l.stageId === 'object' ? l.stageId : {}), _id: toStageId },
+                }
+              : l
+          ),
+        };
+      });
 
       onNotify('Lead moved successfully');
     } catch (e) {
@@ -156,6 +164,11 @@ const KanbanBoard = ({
       setUpdatingId(null);
     }
   };
+
+  const dragOverlayStage =
+    activeLead != null
+      ? stages.find((s) => String(s._id) === String(activeLead.stageId?._id || activeLead.stageId))
+      : undefined;
 
   return (
     <DndContext
@@ -192,6 +205,7 @@ const KanbanBoard = ({
           <div className="w-72 rotate-2 scale-105 opacity-95 pointer-events-none shadow-2xl">
             <LeadCard
               lead={activeLead}
+              columnStage={dragOverlayStage}
               onEdit={() => {}}
               onNotify={onNotify}
             />

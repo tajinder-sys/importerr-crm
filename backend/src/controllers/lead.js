@@ -103,7 +103,7 @@ const getLeads = async (req, res) => {
     const leads = await Lead.find(query)
       .populate('assignedTo', 'name email')
       .populate('pipelineId', 'name')
-      .populate('stageId', 'name order color')
+      .populate('stageId', 'name order color followUpDays probabilityPercent')
       .sort(sort)
       .limit(limit * 1)
       .skip((page - 1) * limit)
@@ -382,7 +382,7 @@ const createOrUpdateLead = async (req, res) => {
     const populatedLead = await Lead.findById(lead._id)
       .populate('assignedTo', 'name email')
       .populate('pipelineId', 'name')
-      .populate('stageId',    'name color order');
+      .populate('stageId',    'name color order followUpDays probabilityPercent');
 
     const message_  = isNewLead             ? 'Lead created successfully'
                     : isExplicitUpdate       ? 'Lead updated successfully'
@@ -529,7 +529,7 @@ const updateLeadStage = async (req, res) => {
 
     if (lead.stageId?.toString() === stageId) {
       const populated = await Lead.findById(id)
-        .populate('stageId',    'name color order')
+        .populate('stageId',    'name color order followUpDays probabilityPercent')
         .populate('pipelineId', 'name');
       return sendSuccess(res, 'Lead is already in this stage', populated);
     }
@@ -577,7 +577,7 @@ const updateLeadStage = async (req, res) => {
     const updatedLead = await Lead.findById(lead._id)
       .populate('assignedTo', 'name email')
       .populate('pipelineId', 'name')
-      .populate('stageId',    'name color order');
+      .populate('stageId',    'name color order followUpDays probabilityPercent');
 
     return sendSuccess(res, 'Lead stage updated successfully', updatedLead);
 

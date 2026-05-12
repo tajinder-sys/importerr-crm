@@ -16,7 +16,14 @@ import StageModal from './components/StageModal';
 /* ─── Defaults ────────────────────────────────────────────────── */
 const DEFAULT_PIPELINE_FORM = { name: '', description: '', teamId: '' };
 const DEFAULT_STAGE_FORM = {
-  name: '', description: '', pipelineId: '', order: 0, color: '#6366f1', isActive: true,
+  name: '',
+  description: '',
+  pipelineId: '',
+  order: 0,
+  color: '#6366f1',
+  isActive: true,
+  followUpDays: '',
+  probabilityPercent: '',
 };
 
 const PipelineStages = () => {
@@ -86,9 +93,39 @@ const PipelineStages = () => {
   const handleStageSubmit = async (e) => {
     e.preventDefault();
     try {
+      const pipelineId =
+        typeof stageForm.pipelineId === 'object' && stageForm.pipelineId !== null
+          ? stageForm.pipelineId._id
+          : stageForm.pipelineId;
+
+      const followRaw =
+        typeof stageForm.followUpDays === 'string'
+          ? stageForm.followUpDays.trim()
+          : stageForm.followUpDays === undefined || stageForm.followUpDays === null
+            ? ''
+            : String(stageForm.followUpDays);
+
+      const probRaw =
+        typeof stageForm.probabilityPercent === 'string'
+          ? stageForm.probabilityPercent.trim()
+          : stageForm.probabilityPercent === undefined || stageForm.probabilityPercent === null
+            ? ''
+            : String(stageForm.probabilityPercent);
+
+      const followUpDays = followRaw === '' ? null : Number(followRaw);
+      const probabilityPercent = probRaw === '' ? null : Number(probRaw);
+
+      const payload = {
+        ...stageForm,
+        pipelineId,
+        order: Number(stageForm.order),
+        followUpDays: Number.isFinite(followUpDays) ? followUpDays : null,
+        probabilityPercent: Number.isFinite(probabilityPercent) ? probabilityPercent : null,
+      };
+
       const res = editingStage
-        ? await api.put(API_ROUTES.stages.update(editingStage._id), stageForm)
-        : await api.post(API_ROUTES.stages.create, stageForm);
+        ? await api.put(API_ROUTES.stages.update(editingStage._id), payload)
+        : await api.post(API_ROUTES.stages.create, payload);
       if (res.success) {
         notify(`Stage ${editingStage ? 'updated' : 'created'} successfully`);
         closeStageModal();
@@ -151,10 +188,19 @@ const PipelineStages = () => {
 
   const openEditStage = (stage) => {
     setEditingStage(stage);
+    const pipelineId =
+      typeof stage.pipelineId === 'object' && stage.pipelineId !== null
+        ? stage.pipelineId._id
+        : stage.pipelineId;
     setStageForm({
-      name: stage.name, description: stage.description || '',
-      pipelineId: stage.pipelineId, order: stage.order,
-      color: stage.color || '#6366f1', isActive: stage.isActive,
+      name: stage.name,
+      description: stage.description || '',
+      pipelineId,
+      order: stage.order,
+      color: stage.color || '#6366f1',
+      isActive: stage.isActive,
+      followUpDays: stage.followUpDays ?? '',
+      probabilityPercent: stage.probabilityPercent ?? '',
     });
     setShowStageModal(true);
   };

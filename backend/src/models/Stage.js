@@ -12,6 +12,26 @@ const stageSchema = new mongoose.Schema({
     trim: true,
     maxlength: 100
   },
+  description: {
+    type: String,
+    trim: true,
+    maxlength: 500,
+    default: ''
+  },
+  /** Suggested interval before a follow-up while a deal sits in this stage (days). */
+  followUpDays: {
+    type: Number,
+    default: null,
+    min: 0,
+    max: 365
+  },
+  /** Win probability when the deal is in this stage (0–100). */
+  probabilityPercent: {
+    type: Number,
+    default: null,
+    min: 0,
+    max: 100
+  },
   order: {
     type: Number,
     required: true,

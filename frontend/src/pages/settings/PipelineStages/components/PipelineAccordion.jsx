@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import {
   ChevronDown, ChevronRight, Edit2, Plus,
   GitBranch, Layers, Users, CheckCircle2, Circle
@@ -36,7 +36,7 @@ const PipelineTimeline = ({ stages }) => {
   return (
     <div className="flex items-center w-full py-4 px-2">
       {stages.map((stage, index) => (
-        <React.Fragment key={stage._id}>
+        <Fragment key={stage._id}>
           {/* Stage node */}
           <div className="flex flex-col items-center gap-2 group relative">
             {/* Circle */}
@@ -63,7 +63,13 @@ const PipelineTimeline = ({ stages }) => {
             {/* Tooltip */}
             <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-500 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-sm pointer-events-none">
               <p className="font-medium text-slate-800 mb-0.5">{stage.name}</p>
-              <p>{stage.description}</p>
+              {stage.description ? <p>{stage.description}</p> : <p className="text-slate-400">No description</p>}
+              {stage.probabilityPercent != null && (
+                <p className="mt-1 text-slate-600">{stage.probabilityPercent}% win probability</p>
+              )}
+              {stage.followUpDays != null && (
+                <p className="text-slate-600">Follow-up every {stage.followUpDays} day{stage.followUpDays === 1 ? '' : 's'}</p>
+              )}
               <p className={`mt-1 font-medium ${stage.isActive ? 'text-emerald-600' : 'text-slate-400'}`}>
                 {stage.isActive ? '● Active' : '○ Inactive'}
               </p>
@@ -77,7 +83,7 @@ const PipelineTimeline = ({ stages }) => {
               style={{ background: stage.isActive ? stage.color : '#e2e8f0' }}
             />
           )}
-        </React.Fragment>
+        </Fragment>
       ))}
     </div>
   );

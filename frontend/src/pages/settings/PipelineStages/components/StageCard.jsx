@@ -27,10 +27,22 @@ const StageCard = ({ stage, index, onEdit, onDelete, onToggle }) => {
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-semibold text-slate-800 truncate">{stage.name}</span>
           {stage.description && (
             <span className="hidden sm:block text-xs text-slate-400 truncate max-w-xs">{stage.description}</span>
+          )}
+        </div>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          {stage.probabilityPercent != null && stage.probabilityPercent !== '' && (
+            <span className="inline-flex items-center rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 ring-1 ring-violet-100">
+              {stage.probabilityPercent}% win
+            </span>
+          )}
+          {stage.followUpDays != null && stage.followUpDays !== '' && (
+            <span className="inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-100">
+              Follow-up {stage.followUpDays}d
+            </span>
           )}
         </div>
       </div>

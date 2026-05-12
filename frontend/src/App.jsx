@@ -20,6 +20,7 @@ import Activities from './pages/Activities/Activities.jsx';
 import TeamsSetting from './pages/settings/TeamsSetting.jsx';
 import PipelineStages from './pages/settings/PipelineStages/PipelineStages.jsx';
 import Integrations from './pages/settings/Integrations.jsx';
+import SellerUsers from './pages/settings/SellerUsers.jsx';
 import Leads from './pages/Leads/Lead.jsx';
 import { cn } from './utils/helpers';
 import { surfaces } from './config/designSystem';
@@ -75,10 +76,10 @@ const AuthenticatedShell = () => {
               )}
             />
             <Route
-              path="/settings/payment-methods"
+              path="/settings/seller-users"
               element={(
                 <AdminRoute>
-                  <PaymentMethods />
+                  <SellerUsers />
                 </AdminRoute>
               )}
             />

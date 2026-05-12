@@ -4,6 +4,7 @@ const {
   sendBadRequest,
   sendNotFound
 } = require('../utils/responseHandler');
+const { USER_ROLES } = require('../utils/constants');
 
 const {
   validateUserData,
@@ -19,6 +20,7 @@ const getUsers = async (req, res) => {
   try {
     const {
       role,
+      roles,
       search,
       includeAdmin = 'false',
       page = 1,
@@ -30,17 +32,27 @@ const getUsers = async (req, res) => {
       isActive: true
     };
 
-    // Hide admin users by default
-    if (includeAdmin !== 'true') {
+    const roleList = roles
+      ? String(roles)
+        .split(',')
+        .map((r) => r.trim())
+        .filter(Boolean)
+      : [];
+
+    if (roleList.length > 0) {
+      const allowed = roleList.filter((r) => Object.values(USER_ROLES).includes(r));
+      if (allowed.length !== roleList.length) {
+        return sendBadRequest(res, 'Invalid role in roles filter');
+      }
+      query.role = allowed.length === 1 ? allowed[0] : { $in: allowed };
+    } else if (role) {
+      query.role = role;
+    } else if (includeAdmin !== 'true') {
       query.role = { $ne: 'admin' };
     }
 
-    if (role) {
-      query.role = role;
-    }
-
-    if(team_id){
-      query.team_id = team_id
+    if (team_id) {
+      query.team_id = team_id;
     }
 
     if (search) {

@@ -107,6 +107,56 @@ const StageModal = ({
           </div>
         </div>
 
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Follow-up time (days)
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={365}
+              step={1}
+              value={formData.followUpDays ?? ''}
+              onChange={(e) =>
+                setFormData((p) => ({
+                  ...p,
+                  followUpDays: e.target.value,
+                }))
+              }
+              placeholder="e.g. 7"
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition focus:border-violet-400 focus:outline-none focus:ring-4 focus:ring-violet-500/10"
+            />
+            <p className="mt-1 text-[11px] text-slate-400">
+              Suggested days until the next follow-up while a deal is in this stage. Leave empty if not used.
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Win probability (%)
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={formData.probabilityPercent ?? ''}
+              onChange={(e) =>
+                setFormData((p) => ({
+                  ...p,
+                  probabilityPercent: e.target.value,
+                }))
+              }
+              placeholder="e.g. 25"
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition focus:border-violet-400 focus:outline-none focus:ring-4 focus:ring-violet-500/10"
+            />
+            <p className="mt-1 text-[11px] text-slate-400">
+              Expected chance to close when the deal reaches this stage (0–100%).
+            </p>
+          </div>
+        </div>
+
         <div>
           <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-600">
             Pipeline <span className="text-rose-500">*</span>

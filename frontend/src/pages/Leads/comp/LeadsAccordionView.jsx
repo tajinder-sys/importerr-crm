@@ -94,6 +94,7 @@ const LeadsAccordionView = ({
                   <LeadCard
                     key={lead._id}
                     lead={lead}
+                    columnStage={stage}
                     variant="accordion"
                     accordionGroupName={`stage-${stage._id}`}
                     onEdit={onEdit}
