@@ -100,7 +100,7 @@ const leadSchema = new mongoose.Schema({
   },
   notes: [noteSchema],
   accountId: { type: String, default: null, index: true },
-  priority: { type: String, enum: ['high', 'medium', 'low'], default: 'medium' },
+  priority: { type: String, enum: ['high', 'medium', 'low','urgent'], default: 'medium' },
   gmailThreadId: { type: String, default: null, index: true }
 }, { timestamps: true });
 
