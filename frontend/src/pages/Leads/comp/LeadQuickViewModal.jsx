@@ -60,7 +60,6 @@ const VariantRow = ({ variant }) => (
     </div>
     <div className="flex items-center gap-3 text-right">
       <span className="text-[11px] text-slate-400 dark:text-slate-500">×{variant.quantity}</span>
-      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">₹{variant.totalPrice.toLocaleString('en-IN')}</span>
     </div>
   </div>
 );
@@ -69,7 +68,6 @@ const LeadQuickViewModal = ({ lead, isOpen, onClose }) => {
   if (!lead) return null;
 
   const initials = (lead.name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
-  const totalValue = lead.variants?.reduce((sum, v) => sum + v.totalPrice, 0) ?? 0;
 
   const titleNode = (
     <div className="flex items-center gap-3">
@@ -126,18 +124,9 @@ const LeadQuickViewModal = ({ lead, isOpen, onClose }) => {
         <>
           <SectionHeading>
             Order Variants
-            <span className="ml-2 normal-case font-normal text-slate-500 dark:text-slate-400">
-              ({lead.totalQuantity} units · ₹{totalValue.toLocaleString('en-IN')} total)
-            </span>
           </SectionHeading>
           <div className="bg-slate-50/70 rounded-xl px-3 divide-y divide-slate-100 dark:bg-slate-700/30 dark:divide-slate-700">
             {lead.variants.map((v) => <VariantRow key={v.skuId} variant={v} />)}
-          </div>
-          <div className="flex justify-end mt-2">
-            <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-lg px-4 py-2 dark:bg-indigo-900/30 dark:border-indigo-700">
-              <span className="text-xs font-medium text-indigo-500 dark:text-indigo-400">Total Order Value</span>
-              <span className="text-base font-bold text-indigo-700 dark:text-indigo-300">₹{totalValue.toLocaleString('en-IN')}</span>
-            </div>
           </div>
         </>
       )}

@@ -70,7 +70,7 @@ Lead:
 - Total Quantity: ${lead.totalQuantity || 0}
 
 Reply in this exact JSON format only, no explanation:
-{"priority": "<high|medium|low>"}`;
+{"priority": "<urgent|high|medium|low>"}`;
 
   const response = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
@@ -81,7 +81,7 @@ Reply in this exact JSON format only, no explanation:
   });
 
   const parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
-  return ['high', 'medium', 'low'].includes(parsed.priority) ? parsed.priority : 'medium';
+  return ['urgent', 'high', 'medium', 'low'].includes(parsed.priority) ? parsed.priority : 'medium';
 };
 
 // ─── Assign team member: priority-match first, then least-loaded ─
