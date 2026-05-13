@@ -50,6 +50,26 @@ const validateAssignableUser = async (assignedTo) => {
   return { valid: true };
 };
 
+/**
+ * Mongoose casts filters for find/countDocuments, but aggregate $match does not.
+ * Normalize ObjectId fields so priority (aggregate) path matches the same docs.
+ */
+const castLeadFilterForAggregate = (filter) => {
+  const q = { ...filter };
+  const toOid = (v) => {
+    if (v == null) return v;
+    if (v instanceof mongoose.Types.ObjectId) return v;
+    if (typeof v === 'object' && !Array.isArray(v)) return v;
+    const s = String(v);
+    if (mongoose.Types.ObjectId.isValid(s) && s.length === 24) return new mongoose.Types.ObjectId(s);
+    return v;
+  };
+  if (q.assignedTo !== undefined) q.assignedTo = toOid(q.assignedTo);
+  if (q.stageId !== undefined) q.stageId = toOid(q.stageId);
+  if (q.pipelineId !== undefined) q.pipelineId = toOid(q.pipelineId);
+  return q;
+};
+
 const getLeads = async (req, res) => {
   try {
     const {
@@ -116,8 +136,9 @@ const getLeads = async (req, res) => {
 
     let leads;
     if (sortField === 'priority') {
+      const aggregateMatch = castLeadFilterForAggregate(query);
       const ranked = await Lead.aggregate([
-        { $match: query },
+        { $match: aggregateMatch },
         {
           $addFields: {
             _priorityRank: {

@@ -6,6 +6,8 @@ export const USER_ROLES = {
 
 export const LEAD_SOURCES = {
   IMPORTERR_INQUIRY: 'importerr_inquiry',
+  IMPORTERR_Contact: 'importerr_contact',
+  IMPORTERR_Ticket: 'importerr_ticket',
   EMAIL: 'email',
   WHATSAPP: 'whatsapp',
   META_ADS: 'meta_ads',
@@ -70,6 +72,8 @@ export const STATUS_COLORS = {
 
 export const SOURCE_LABELS = {
   [LEAD_SOURCES.IMPORTERR_INQUIRY]: 'Importerr Inquiry',
+  [LEAD_SOURCES.IMPORTERR_Contact]: 'Importerr Contact',
+  [LEAD_SOURCES.IMPORTERR_Ticket]: 'Importerr Ticket',
   [LEAD_SOURCES.EMAIL]: 'Email',
   [LEAD_SOURCES.WHATSAPP]: 'WhatsApp',
   [LEAD_SOURCES.META_ADS]: 'Meta Ads',

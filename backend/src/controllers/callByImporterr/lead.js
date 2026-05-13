@@ -88,9 +88,11 @@ const createLeadFromImporterr = async (req, res) => {
       productSku = null,
       variants = null,
       totalQuantity = 0,
-      message = ''
+      orderId = null,
+      message = '',
+      subject = null,
+      issueCategory = null
     } = req.body || {};
-
     if (!name || !String(name).trim()) {
       return sendBadRequest(res, 'name is required');
     }
@@ -102,6 +104,9 @@ const createLeadFromImporterr = async (req, res) => {
     }
 
     const normalizedUserId = userId ? String(userId).trim() : null;
+    const normalizedOrderId= orderId ? String(orderId).trim() : null;
+    const normalizedSubject = subject ? String(subject).trim() : null;
+    const normalizedIssueCategory = issueCategory ? String(issueCategory).trim() : null;
     const normalizedProductSku = productSku ? String(productSku).trim() : null;
     const normalizedVariants =
       variants && typeof variants === 'object'
@@ -123,7 +128,10 @@ const createLeadFromImporterr = async (req, res) => {
         const previousStatus = existingLead.status;
         existingLead.status = LEAD_STATUSES.NEW;
         existingLead.message = resolvedMessage;
+        existingLead.subject = normalizedSubject;
+        existingLead.issueCategory = normalizedIssueCategory;
         existingLead.source = resolvedSource;
+        existingLead.orderId = normalizedOrderId;
         existingLead.totalQuantity = Number(totalQuantity) || 0;
         if (normalizedVariants) {
           existingLead.variants = normalizedVariants;
@@ -171,6 +179,8 @@ const createLeadFromImporterr = async (req, res) => {
       source: resolvedSource,
       status: status || LEAD_STATUSES.NEW,
       message: resolvedMessage,
+      subject: normalizedSubject,
+      issueCategory: normalizedIssueCategory,
       leadType: leadType || 'registered',
       assignedTo: assignedTo || null,
       duplicateOf: duplicateOf || null,
@@ -178,7 +188,8 @@ const createLeadFromImporterr = async (req, res) => {
       productId: productId ? String(productId).trim() : null,
       productSku: normalizedProductSku,
       variants: normalizedVariants,
-      totalQuantity: Number(totalQuantity) > 0 ? Number(totalQuantity) : 0
+      totalQuantity: Number(totalQuantity) > 0 ? Number(totalQuantity) : 0,
+      orderId: normalizedOrderId
     });
 
     await createInboundClientCommunication({

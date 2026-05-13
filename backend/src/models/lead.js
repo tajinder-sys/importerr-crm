@@ -44,6 +44,16 @@ const leadSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  subject: {
+    type: String,
+    trim: true,
+    default: "",
+  },
+  issueCategory: {
+    type: String,
+    trim: true,
+    default: "",
+  },
   status: {
     type: String,
     enum: Object.values(LEAD_STATUSES),
@@ -97,6 +107,11 @@ const leadSchema = new mongoose.Schema({
   duplicateOf: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Lead'
+  },
+  orderId: {
+    type: String,
+    trim: true,
+    default: null
   },
   notes: [noteSchema],
   accountId: { type: String, default: null, index: true },
