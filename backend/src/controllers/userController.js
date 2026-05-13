@@ -212,7 +212,8 @@ const updateUser = async (req, res) => {
       phone,
       isActive,
       team_id,
-      priority
+      priority,
+      password
     } = req.body;
 
     // User can update own profile
@@ -270,6 +271,14 @@ const updateUser = async (req, res) => {
       }
 
       user.role = role;
+    }
+
+    if (password && req.user.role === 'admin') {
+      user.password = password;
+    }
+
+    if (isActive !== undefined) {
+      user.isActive = isActive;
     }
 
     if (team_id !== undefined) {
