@@ -2,6 +2,7 @@ const Lead = require('../models/lead');
 const Communication = require('../models/Communication');
 const User = require('../models/User');
 const ConnectedAccount = require('../models/ConnectedAccount');
+const { assignLeadWithAI } = require('./aiAssignmentService');
 const { LEAD_SOURCES, LEAD_STATUSES } = require('../utils/constants');
 
 const SOURCE_MAP = {
@@ -104,14 +105,16 @@ const getAutoAssignableTeamMemberId = async () => {
 const ingestLeadFromChannel = async (channel, payload) => {
   const leadData = mapPayloadToLeadData(channel, payload);
   const errors = validateInboundLeadData(leadData);
-  if (errors.length > 0) {
-    return { ok: false, errors };
-  }
+  if (errors.length > 0) return { ok: false, errors };
 
   const duplicateQuery = {
     $or: [
       ...(leadData.phone ? [{ phone: leadData.phone }] : []),
-      ...(leadData.email ? [{ email: leadData.email }] : [])
+      ...(leadData.email
+        ? channel === 'email'
+          ? [{ email: leadData.email, message: leadData.message }] // same email + same message = duplicate
+          : [{ email: leadData.email }]
+        : [])
     ]
   };
 
@@ -157,6 +160,9 @@ const ingestLeadFromChannel = async (channel, payload) => {
       message: leadData.message
     });
   }
+
+  // AI pipeline + member assignment (async, non-blocking)
+  assignLeadWithAI(lead).catch(err => console.error('AI assignment failed:', err.message));
 
   return { ok: true, lead, isNew: true };
 };

@@ -100,7 +100,7 @@ const INTEGRATION_CONFIG = {
 const GuideBox = ({ guide }) => (
   <div className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-xs text-amber-800 space-y-2">
     <p className="font-semibold text-amber-900 break-words">
-      📋 {guide.title} —{' '}
+      {guide.title} —{' '}
       <a href={guide.link} target="_blank" rel="noreferrer" className="underline break-all">{guide.linkLabel}</a>
     </p>
     {guide.steps.map((step, idx) => (
