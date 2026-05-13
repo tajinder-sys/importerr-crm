@@ -83,9 +83,11 @@ const Navbar = () => {
           </div>
           </div>
 
-          <div className="hidden md:flex md:items-center">
-           <TaskCalendarPanel/>
-            <div className="flex items-center space-x-3">
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="flex items-center p-1.5 bg-transparent md:p-0 md:shadow-none">
+              <TaskCalendarPanel />
+            </div>
+            <div className="hidden md:flex md:items-center">
               <Button
                 variant="ghost"
                 size="sm"

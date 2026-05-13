@@ -127,18 +127,18 @@ export default function TaskCalendarPanel() {
     <>
       {/* ── Trigger button (goes in your header) ── */}
       <button
+        type="button"
         onClick={() => setOpen((o) => !o)}
-        className="relative flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium
-          border border-slate-200 rounded-lg bg-white text-slate-700
-          hover:bg-slate-50 transition-all shadow-sm"
+        title="Task calendar"
+        aria-label="Open task calendar"
+        className="relative flex h-9 w-9 items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-100 md:h-auto md:w-auto md:gap-1.5 md:px-1.5 md:py-1.5 md:text-sm md:font-medium md:hover:bg-slate-50"
       >
-        <Calendar size={15} />
-        Calendar
+        <Calendar className="h-5 w-5 md:h-[20px] md:w-[20px]" />
         {todayTasksCount > 0 && (
           <span
             className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-0.5
             text-[9px] font-bold bg-violet-600 text-white rounded-full
-            flex items-center justify-center border-2 border-white"
+            flex items-center justify-center"
             title={`${todayTasksCount} task${todayTasksCount === 1 ? '' : 's'} due today`}
           >
             {todayTasksCount > 99 ? '99+' : todayTasksCount}
