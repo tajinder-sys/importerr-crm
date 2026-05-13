@@ -2,6 +2,7 @@ const User = require('../../models/User');
 const Lead = require('../../models/lead');
 const Communication = require('../../models/Communication');
 const ActivityService = require('../../services/ActivityService');
+const { assignLeadWithAI } = require('../../services/aiAssignmentService');
 const {
   LEAD_SOURCES,
   LEAD_STATUSES,
@@ -163,8 +164,6 @@ const createLeadFromImporterr = async (req, res) => {
       }
     }
 
-    const resolvedAssignedTo = assignedTo || (await resolveAutoAssignedTeamMember());
-
     const lead = await Lead.create({
       name: String(name).trim(),
       email: String(email).trim().toLowerCase(),
@@ -173,7 +172,7 @@ const createLeadFromImporterr = async (req, res) => {
       status: status || LEAD_STATUSES.NEW,
       message: resolvedMessage,
       leadType: leadType || 'registered',
-      assignedTo: resolvedAssignedTo || null,
+      assignedTo: assignedTo || null,
       duplicateOf: duplicateOf || null,
       userId: normalizedUserId,
       productId: productId ? String(productId).trim() : null,
@@ -188,7 +187,7 @@ const createLeadFromImporterr = async (req, res) => {
       message: lead.message
     });
 
-    const activityActor = await resolveActivityActor(resolvedAssignedTo);
+    const activityActor = await resolveActivityActor(assignedTo);
     if (activityActor) {
       await ActivityService.createActivity({
         leadId: lead._id,
@@ -205,21 +204,8 @@ const createLeadFromImporterr = async (req, res) => {
         }
       });
     }
-    if(lead.email && lead.assignedTo) {
-      try {
-          const assignedUser = await User.findById(lead.assignedTo);
-          await EmailService.sendTemplateEmail({
-              to: assignedUser.email,
-              slug: 'new-lead-submission',
-              data: {
-                name: assignedUser.name,
-                link: `${process.env.FRONTEND_URL}/leads/${lead._id}`,
-              },
-          });
-      } catch (err) {
-        console.error('Email send failed:', err.message);
-      }
-    }
+    // AI pipeline + priority + user assignment (non-blocking)
+    assignLeadWithAI(lead).catch(err => console.error('AI assignment failed:', err.message));
 
     return sendSuccess(res, 'Lead created from importerr inquiry', lead);
   } catch (error) {

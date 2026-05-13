@@ -94,7 +94,9 @@ const leadSchema = new mongoose.Schema({
     ref: 'Lead'
   },
   notes: [noteSchema],
-  accountId: { type: String, default: null, index: true }
+  accountId: { type: String, default: null, index: true },
+  priority: { type: String, enum: ['high', 'medium', 'low'], default: 'medium' },
+  gmailThreadId: { type: String, default: null, index: true }
 }, { timestamps: true });
 
 leadSchema.index({ phone: 1, email: 1 });

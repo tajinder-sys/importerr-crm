@@ -82,7 +82,7 @@ const parseEmail = (message) => {
   };
   extractBody(message.payload);
 
-  return { name, email, subject, body };
+  return { name, email, subject, body, threadId: message.threadId || null };
 };
 
 const getMessagesFromHistory = async (account, startHistoryId) => {

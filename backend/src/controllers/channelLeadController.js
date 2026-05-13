@@ -1,6 +1,8 @@
 const { sendBadRequest, sendCreated, sendSuccess, sendServerError } = require('../utils/responseHandler');
 const { ingestLeadFromChannel } = require('../services/channelLeadService');
 const ConnectedAccount = require('../models/ConnectedAccount');
+const Lead = require('../models/lead');
+const Communication = require('../models/Communication');
 const { fetchEmailById, parseEmail, getMessagesFromHistory } = require('../services/gmailService');
 
 const SUPPORTED_CHANNELS = ['whatsapp', 'email', 'meta'];
@@ -22,9 +24,36 @@ const handleGmailPubSub = async (req, res, account) => {
     for (const messageId of messageIds) {
       try {
         const emailData = await fetchEmailById(account, messageId);
-        const { name, email, body, subject } = parseEmail(emailData);
+        const { name, email, body, subject, threadId } = parseEmail(emailData);
         if (!email) continue;
-        await ingestLeadFromChannel('email', { name: name || email.split('@')[0], email, phone: '', message: body || subject || '', _accountId: account.accountId });
+
+        // Thread reply — add to existing lead's communication
+        if (threadId) {
+          const threadLead = await Lead.findOne({ gmailThreadId: threadId }).lean();
+          if (threadLead) {
+            await Communication.create({
+              lead: threadLead._id,
+              senderType: 'client',
+              senderUser: null,
+              source: 'email',
+              direction: 'inbound',
+              message: body || subject || '',
+              threadId
+            });
+            console.log(`Thread reply added to lead ${threadLead._id} (threadId: ${threadId})`);
+            continue;
+          }
+        }
+
+        // New email — create new lead
+        await ingestLeadFromChannel('email', {
+          name: name || email.split('@')[0],
+          email,
+          phone: '',
+          message: body || subject || '',
+          _accountId: account.accountId,
+          _threadId: threadId
+        });
       } catch (err) {
         console.error('Error processing email:', err.message);
       }

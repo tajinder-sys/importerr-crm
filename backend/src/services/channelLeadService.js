@@ -50,7 +50,8 @@ const mapPayloadToLeadData = (channel, payload = {}) => {
     status: LEAD_STATUSES.NEW,
     leadType: normalizeLeadType(pickFirst(payload, ['leadType'])),
     userId: pickFirst(payload, ['userId', 'customerId']) || null,
-    accountId: payload._accountId || null
+    accountId: payload._accountId || null,
+    gmailThreadId: payload._threadId || null
   };
 };
 
@@ -144,11 +145,7 @@ const ingestLeadFromChannel = async (channel, payload) => {
     return { ok: true, lead: existingLead, isNew: false };
   }
 
-  const autoAssignedTo = await getAutoAssignableTeamMemberId();
-  const lead = await Lead.create({
-    ...leadData,
-    ...(autoAssignedTo ? { assignedTo: autoAssignedTo } : {})
-  });
+  const lead = await Lead.create({ ...leadData });
 
   if (leadData.message) {
     await Communication.create({

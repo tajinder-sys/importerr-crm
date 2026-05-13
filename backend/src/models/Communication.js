@@ -32,6 +32,11 @@ const communicationSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true
+    },
+    threadId: {
+      type: String,
+      default: null,
+      index: true
     }
   },
   { timestamps: true }
