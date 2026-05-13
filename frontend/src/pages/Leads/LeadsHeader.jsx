@@ -69,6 +69,10 @@ const LeadsHeader = ({
                   </>
                 )}
               </div>
+            ) : pipelines.length === 0 ? (
+              <p className="mt-0.5 text-[11px] text-amber-700">
+                No active pipelines. Open Settings → Pipelines & stages to activate a pipeline.
+              </p>
             ) : (
               <p className="text-[11px] text-slate-400 mt-0.5">Select a pipeline to view leads</p>
             )}

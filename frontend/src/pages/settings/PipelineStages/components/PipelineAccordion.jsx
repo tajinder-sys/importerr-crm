@@ -1,7 +1,7 @@
 import { useState, Fragment } from 'react';
 import {
-  ChevronDown, ChevronRight, Edit2, Plus,
-  GitBranch, Layers, Users, CheckCircle2, Circle
+  ChevronRight, Edit2, Plus,
+  GitBranch, Layers, Users, CheckCircle2, Circle, Star,
 } from 'lucide-react';
 import StageCard from './StageCard';
 
@@ -94,6 +94,7 @@ const PipelineAccordion = ({
   teamName,
   defaultOpen = false,
   onEditPipeline,
+  onPatchPipeline,
   onAddStage,
   onEditStage,
   onDeleteStage,
@@ -103,6 +104,27 @@ const PipelineAccordion = ({
 
   const activeCount = stages.filter((s) => s.isActive).length;
   const inactiveCount = stages.length - activeCount;
+  const pipelineActive = pipeline.isActive !== false;
+
+  const pillToggle = (checked, onClick, title) => (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${
+        checked ? 'bg-emerald-400' : 'bg-slate-300'
+      }`}
+      title={title}
+    >
+      <span
+        className={`absolute top-0.5 h-3.5 w-3.5 rounded-full bg-white shadow transition-all duration-200 ${
+          checked ? 'left-[18px]' : 'left-0.5'
+        }`}
+      />
+    </button>
+  );
 
   return (
     <div
@@ -110,16 +132,16 @@ const PipelineAccordion = ({
         isOpen ? 'border-indigo-200 shadow-md shadow-indigo-50' : 'border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md'
       }`}
     >
-      {/* ── Accordion Header (always visible) ─────────────── */}
-      <button
-        type="button"
-        onClick={() => setIsOpen((v) => !v)}
-        className="w-full text-left"
-      >
-        <div className="flex items-center gap-4 px-5 py-4">
+      {/* ── Accordion Header ─────────────── */}
+      <div className="flex items-stretch">
+        <button
+          type="button"
+          onClick={() => setIsOpen((v) => !v)}
+          className="flex min-w-0 flex-1 items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50/50"
+        >
           {/* Chevron */}
           <div
-            className={`flex-shrink-0 w-5 h-5 flex items-center justify-center text-slate-400 transition-transform duration-200 ${
+            className={`flex h-5 w-5 flex-shrink-0 items-center justify-center text-slate-400 transition-transform duration-200 ${
               isOpen ? 'rotate-90' : 'rotate-0'
             }`}
           >
@@ -128,7 +150,7 @@ const PipelineAccordion = ({
 
           {/* Pipeline icon */}
           <div
-            className={`flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
+            className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl transition-colors ${
               isOpen
                 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
                 : 'bg-indigo-50 text-indigo-500'
@@ -138,45 +160,87 @@ const PipelineAccordion = ({
           </div>
 
           {/* Pipeline name + team */}
-          <div className="flex-shrink-0 min-w-[160px]">
-            <div className="text-sm font-bold text-slate-900 leading-tight">{pipeline.name}</div>
+          <div className="min-w-[140px] flex-shrink-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <div className="text-sm font-bold leading-tight text-slate-900">{pipeline.name}</div>
+              {pipeline.isDefault && (
+                <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800 ring-1 ring-amber-100">
+                  <Star size={9} className="fill-amber-500 text-amber-600" />
+                  Default
+                </span>
+              )}
+              <span
+                className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ${
+                  pipelineActive
+                    ? 'bg-emerald-50 text-emerald-700 ring-emerald-100'
+                    : 'bg-slate-100 text-slate-500 ring-slate-200'
+                }`}
+              >
+                {pipelineActive ? 'Active' : 'Inactive'}
+              </span>
+            </div>
             {teamName && (
-              <div className="flex items-center gap-1 mt-0.5">
+              <div className="mt-0.5 flex items-center gap-1">
                 <Users size={10} className="text-slate-400" />
-                <span className="text-[11px] text-slate-400 font-medium">{teamName}</span>
+                <span className="text-[11px] font-medium text-slate-400">{teamName}</span>
               </div>
             )}
           </div>
 
           {/* Divider */}
-          <div className="h-8 w-px bg-slate-100 flex-shrink-0" />
+          <div className="h-8 w-px flex-shrink-0 bg-slate-100" />
 
           {/* Stage flow strip */}
-          <div className="flex-1 min-w-0 overflow-hidden">
+          <div className="min-w-0 flex-1 overflow-hidden">
             <StageFlowStrip stages={stages} />
           </div>
 
           {/* Stats */}
-          <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
-            <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-100">
+          <div className="ml-auto flex flex-shrink-0 items-center gap-2">
+            <div className="flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-1">
               <Layers size={11} className="text-slate-400" />
               <span className="text-[11px] font-semibold text-slate-500">{stages.length}</span>
             </div>
             {activeCount > 0 && (
-              <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-100">
+              <div className="flex items-center gap-1 rounded-lg border border-emerald-100 bg-emerald-50 px-2.5 py-1">
                 <CheckCircle2 size={11} className="text-emerald-500" />
                 <span className="text-[11px] font-semibold text-emerald-600">{activeCount}</span>
               </div>
             )}
             {inactiveCount > 0 && (
-              <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-100">
+              <div className="flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-1">
                 <Circle size={11} className="text-slate-300" />
                 <span className="text-[11px] font-semibold text-slate-400">{inactiveCount}</span>
               </div>
             )}
           </div>
+        </button>
+
+        {/* Pipeline status / default — does not toggle accordion */}
+        <div
+          className="flex flex-col justify-center gap-2 border-l border-slate-100 bg-slate-50/60 px-3 py-2"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          role="presentation"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              Active
+            </span>
+            {pillToggle(pipelineActive, () => {
+              onPatchPipeline(pipeline._id, { isActive: !pipelineActive });
+            }, pipelineActive ? 'Deactivate pipeline' : 'Activate pipeline')}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              Default
+            </span>
+            {pillToggle(!!pipeline.isDefault, () => {
+              onPatchPipeline(pipeline._id, { isDefault: !pipeline.isDefault });
+            }, pipeline.isDefault ? 'Unset default' : 'Set as default')}
+          </div>
         </div>
-      </button>
+      </div>
 
       {/* ── Accordion Body (stages) ────────────────────────── */}
       {isOpen && (

@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { sendSuccess, sendBadRequest, sendUnauthorized } = require('../utils/responseHandler');
+const { countTodayTasksForUser } = require('../utils/todayTasksCount');
 
 const generateToken = (user) => {
   console.log('ussssss',user)
@@ -49,10 +50,12 @@ const login = async (req, res) => {
     await user.save();
 
     const token = generateToken(user);
+    const todayTasksCount = await countTodayTasksForUser(user);
 
     sendSuccess(res, 'Login successful', {
       user,
-      token
+      token,
+      todayTasksCount,
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -67,7 +70,9 @@ const me = async (req, res) => {
       return sendUnauthorized(res, 'User not found');
     }
 
-    sendSuccess(res, 'User profile retrieved', { user });
+    const todayTasksCount = await countTodayTasksForUser(user);
+
+    sendSuccess(res, 'User profile retrieved', { user, todayTasksCount });
   } catch (error) {
     console.error('Profile error:', error);
     sendBadRequest(res, 'Failed to retrieve profile');

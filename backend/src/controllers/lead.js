@@ -55,6 +55,7 @@ const getLeads = async (req, res) => {
     const {
       page = 1,
       limit = 10,
+      skip: skipRaw,
       status,
       source,
       assignedTo,
@@ -73,7 +74,6 @@ const getLeads = async (req, res) => {
     if (assignedTo) query.assignedTo = assignedTo;
     if (stageId) query.stageId = mongoose.Types.ObjectId.isValid(stageId) ? new mongoose.Types.ObjectId(stageId) : stageId;
     if (pipelineId) query.pipelineId = mongoose.Types.ObjectId.isValid(pipelineId) ? new mongoose.Types.ObjectId(pipelineId) : pipelineId;
-    console.log(query, stageId);
     if (accountId) query.accountId = accountId;
 
     // Non-admin team users can only view leads assigned to themselves.
@@ -97,16 +97,30 @@ const getLeads = async (req, res) => {
       query.stageId = { $exists: true, $ne: null };
     }
 
+    const allowedSort = new Set(['name', 'email', 'phone', 'createdAt', 'updatedAt', 'status', 'source']);
+    const sortField = allowedSort.has(String(sortBy)) ? String(sortBy) : 'createdAt';
     const sort = {};
-    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    sort[sortField] = sortOrder === 'desc' ? -1 : 1;
+    // sort._id = sortOrder === 'desc' ? -1 : 1;
+
+    const limitNum = Math.min(200, Math.max(1, parseInt(String(limit), 10) || 10));
+    let skipVal;
+    if (skipRaw !== undefined && skipRaw !== null && skipRaw !== '') {
+      const s = parseInt(String(skipRaw), 10);
+      skipVal = Number.isFinite(s) && s >= 0 ? s : 0;
+    } else {
+      const p = Math.max(1, parseInt(String(page), 10) || 1);
+      skipVal = (p - 1) * limitNum;
+    }
+    const pageNum = Math.floor(skipVal / limitNum) + 1;
 
     const leads = await Lead.find(query)
       .populate('assignedTo', 'name email')
       .populate('pipelineId', 'name')
       .populate('stageId', 'name order color followUpDays probabilityPercent')
       .sort(sort)
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
+      .limit(limitNum)
+      .skip(skipVal)
       .lean();
 
     const leadIds = leads.map((lead) => lead._id);
@@ -136,10 +150,10 @@ const getLeads = async (req, res) => {
     sendSuccess(res, 'Leads retrieved successfully', {
       leads: leadsWithTasks,
       pagination: {
-        page: parseInt(page, 10),
-        limit: parseInt(limit, 10),
+        page: pageNum,
+        limit: limitNum,
         total,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / limitNum)
       }
     });
   } catch (error) {
@@ -575,24 +589,26 @@ const updateLeadStage = async (req, res) => {
 
     const oldStageId    = lead.stageId?.toString()    || null;
     const oldPipelineId = lead.pipelineId?.toString() || null;
+    const oldPipelineName = await Pipeline.findById(oldPipelineId).select('name');
+    const newPipelineName = await Pipeline.findById(newStage.pipelineId).select('name');
 
     lead.stageId         = newStage._id;
     lead.pipelineId      = newStage.pipelineId; // keep pipeline in sync
     lead.lastInteraction = new Date();
 
     await lead.save();
-
+    const oldStageName = await Stage.findById(oldStageId).select('name');
     await ActivityService.createActivity({
       leadId:      lead._id,
       type:        ACTIVITY_TYPES.STAGE_CHANGED,
-      description: `Stage changed from "${oldStageId || 'none'}" to "${newStage.name}"`,
+      description: `Stage changed from "${oldStageName?.name || 'none'}" to "${newStage?.name || 'none'}"`,
       performedBy: req.user.id,
       metadata: {
-        oldStageId,
+        oldStageName: oldStageName?.name || 'none',
         newStageId:    newStage._id.toString(),
-        newStageName:  newStage.name,
-        oldPipelineId,
-        newPipelineId: newStage.pipelineId.toString(),
+        newStageName:  newStage?.name || 'none',
+        oldPipelineName: oldPipelineName?.name || 'none',
+        newPipelineName: newPipelineName?.name || 'none',
       },
     });
 
@@ -601,7 +617,7 @@ const updateLeadStage = async (req, res) => {
       .populate('pipelineId', 'name')
       .populate('stageId',    'name color order followUpDays probabilityPercent');
 
-    return sendSuccess(res, 'Lead stage updated successfully', updatedLead);
+    return sendSuccess(res, `Lead ${lead.name || ''} moved to ${newStage?.name || 'none'}`, updatedLead);
 
   } catch (error) {
     console.error('updateLeadStage error:', error);

@@ -14,7 +14,13 @@ import PipelineModal from './components/PipelineModal';
 import StageModal from './components/StageModal';
 
 /* ─── Defaults ────────────────────────────────────────────────── */
-const DEFAULT_PIPELINE_FORM = { name: '', description: '', teamId: '' };
+const DEFAULT_PIPELINE_FORM = {
+  name: '',
+  description: '',
+  teamId: '',
+  isActive: true,
+  isDefault: false,
+};
 const DEFAULT_STAGE_FORM = {
   name: '',
   description: '',
@@ -55,8 +61,19 @@ const PipelineStages = () => {
   /* ─── Fetch ───────────────────────────────────────────────── */
   const fetchPipelines = async () => {
     try {
-      const res = await api.get(API_ROUTES.pipelines.list);
-      if (res.success) setPipelines(res.data?.pipelines || res.data || []);
+      const res = await api.get(API_ROUTES.pipelines.list, { params: { limit: 200 } });
+      if (res.success) {
+        const raw = res.data?.pipelines || res.data || [];
+        const sorted = [...raw].sort((a, b) => {
+          if (a.isDefault && !b.isDefault) return -1;
+          if (!a.isDefault && b.isDefault) return 1;
+          if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+          return String(a.name || '').localeCompare(String(b.name || ''), undefined, {
+            sensitivity: 'base',
+          });
+        });
+        setPipelines(sorted);
+      }
       else notify('Failed to load pipelines', 'error');
     } catch (e) {
       notify(e.message || 'Failed to load pipelines', 'error');
@@ -85,8 +102,20 @@ const PipelineStages = () => {
         notify(`Pipeline ${editingPipeline ? 'updated' : 'created'} successfully`);
         closePipelineModal();
         fetchPipelines();
-      } else notify(res.message || 'Failed to save pipeline', 'error');
+      }       else notify(res.message || 'Failed to save pipeline', 'error');
     } catch (e) { notify(e.message || 'Failed to save pipeline', 'error'); }
+  };
+
+  const handlePatchPipeline = async (pipelineId, patch) => {
+    try {
+      const res = await api.put(API_ROUTES.pipelines.update(pipelineId), patch);
+      if (res.success) {
+        notify('Pipeline updated');
+        fetchPipelines();
+      } else notify(res.message || 'Failed to update pipeline', 'error');
+    } catch (e) {
+      notify(e.message || 'Failed to update pipeline', 'error');
+    }
   };
 
   /* ─── Stage CRUD ──────────────────────────────────────────── */
@@ -170,7 +199,17 @@ const PipelineStages = () => {
 
   const openEditPipeline = (pipeline) => {
     setEditingPipeline(pipeline);
-    setPipelineForm({ name: pipeline.name, description: pipeline.description || '', teamId: pipeline.teamId || '' });
+    const tid =
+      typeof pipeline.teamId === 'object' && pipeline.teamId !== null
+        ? pipeline.teamId._id
+        : pipeline.teamId;
+    setPipelineForm({
+      name: pipeline.name,
+      description: pipeline.description || '',
+      teamId: tid || '',
+      isActive: pipeline.isActive !== false,
+      isDefault: !!pipeline.isDefault,
+    });
     setShowPipelineModal(true);
   };
 
@@ -218,8 +257,12 @@ const PipelineStages = () => {
   };
 
   const getTeamName = (pipeline) => {
-    if (pipeline.team?.name) return pipeline.team.name;
-    const found = teams.find((t) => t._id === pipeline.teamId);
+    if (pipeline.teamId?.name) return pipeline.teamId.name;
+    const tid =
+      typeof pipeline.teamId === 'object' && pipeline.teamId !== null
+        ? pipeline.teamId._id
+        : pipeline.teamId;
+    const found = teams.find((t) => t._id === tid);
     return found?.name || null;
   };
 
@@ -276,8 +319,9 @@ const PipelineStages = () => {
                 pipeline={pipeline}
                 stages={getStagesForPipeline(pipeline)}
                 teamName={getTeamName(pipeline)}
-                defaultOpen={i === 0}               
+                defaultOpen={i === 0}
                 onEditPipeline={openEditPipeline}
+                onPatchPipeline={handlePatchPipeline}
                 onAddStage={openAddStage}
                 onEditStage={openEditStage}
                 onDeleteStage={handleDelete}

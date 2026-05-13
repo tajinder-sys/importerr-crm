@@ -76,7 +76,7 @@ const AuthenticatedShell = () => {
               )}
             />
             <Route
-              path="/settings/seller-users"
+              path="/seller-users"
               element={(
                 <AdminRoute>
                   <SellerUsers />

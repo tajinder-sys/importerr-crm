@@ -19,7 +19,6 @@ import { useAuth } from '../hooks/useAuth';
 import { getChipVariant } from '../utils/chipConstants';
 import { API_ROUTES } from '../utils/apiRoutes';
 import { UiPageTitle, UiSectionTitle } from '../components/common/ui/Typography';
-import LeadFilters from '../components/leads/LeadFilters';
 import { useEffect } from 'react';
 
 const formatLeadPhoneDisplay = (phone) => {
@@ -46,17 +45,6 @@ const Leads = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const accountId = searchParams.get('accountId') || '';
   const accountName = searchParams.get('accountName') || '';
-
-  const [draftFilters, setDraftFilters] = useState({
-    search: '',
-    status: 'all',
-    source: 'all'
-  });
-  const [appliedFilters, setAppliedFilters] = useState({
-    search: '',
-    status: 'all',
-    source: 'all'
-  });
   const [tableRefreshKey, setTableRefreshKey] = useState(0);
   const [showCreateLeadModal, setShowCreateLeadModal] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
@@ -74,37 +62,7 @@ const Leads = () => {
   });
   const [pipelines, setPipelines] = useState([]);
   const [selectedPipeline, setSelectedPipeline] = useState(null);
-  const navigate = useNavigate();
   const canManageLeadAssignment = user?.role === 'admin' || user?.role === 'team_manager';
-
-  const setFilter = (name, value) => {
-    setDraftFilters((prev) => {
-      const next = { ...prev, [name]: value };
-      setAppliedFilters({
-        search: next.search.trim(),
-        status: next.status,
-        source: next.source
-      });
-      return next;
-    });
-  };
-
-  const setSearchDraft = (value) => {
-    setDraftFilters((prev) => ({ ...prev, search: value }));
-  };
-
-  const applySearchFilter = () => {
-    setAppliedFilters((prev) => ({
-      ...prev,
-      search: draftFilters.search.trim()
-    }));
-  };
-
-  const resetFilters = () => {
-    const resetState = { search: '', status: 'all', source: 'all' };
-    setDraftFilters(resetState);
-    setAppliedFilters(resetState);
-  };
 
   const resetLeadForm = () => {
     setLeadForm({
@@ -126,17 +84,6 @@ const Leads = () => {
     });
     setAssignableMembers(response?.data?.users || []);
   }, [canManageLeadAssignment]);
-
-  const fetchPipelines = useCallback(async () => {
-    try {
-      const response = await api.get(API_ROUTES.pipelines.list);
-      if (response.success) {
-        setPipelines(response.data?.pipelines || []);
-      }
-    } catch (error) {
-      console.error('Error fetching pipelines:', error);
-    }
-  }, []);
 
   const openCreateLeadModal = async () => {
     resetLeadForm();
@@ -323,14 +270,11 @@ const Leads = () => {
 
   const tableQueryParams = useMemo(
     () => ({
-      search: appliedFilters.search,
-      status: appliedFilters.status,
-      source: appliedFilters.source,
       refreshKey: tableRefreshKey,
       pipelineId: selectedPipeline,
       accountId
     }),
-    [appliedFilters, tableRefreshKey, selectedPipeline, accountId]
+    [tableRefreshKey, selectedPipeline, accountId]
   );
 
   const columns = [

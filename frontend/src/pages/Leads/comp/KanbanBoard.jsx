@@ -12,71 +12,85 @@ import KanbanColumn from './KanbanColumn';
 import LeadCard from './LeadCard';
 import api from '../../../utils/api';
 import { API_ROUTES } from '../../../utils/apiRoutes';
+import { defaultKanbanListQuery, KANBAN_PAGE_SIZE } from '../hooks/kanbanPaginationConstants';
 
 const KanbanBoard = ({
   stages,
   leadsByStage,
+  stageKanbanMeta,
   setLeadsByStage,
+  setStageKanbanMeta,
+  goToStagePage,
+  updateStageListQuery,
   isLoading,
   onView,
   onEdit,
   onAddLead,
   onNotify,
+  canFilterByAssignee,
+  assignableMembers,
 }) => {
   const [activeLead, setActiveLead] = useState(null);
-  const [updatingId, setUpdatingId] = useState(null);
 
-  const dragOriginStageId  = useRef(null); // where the card started — for rollback
-  const dragCurrentStageId = useRef(null); // where the card is RIGHT NOW — updated each onDragOver
+  const dragOriginStageId = useRef(null);
+  const dragCurrentStageId = useRef(null);
   const dragDidCrossColumn = useRef(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8, // must move 8px before drag starts → clicks always fire cleanly
+        distance: 8,
       },
     }),
   );
 
-  const findStageOfLead = useCallback((leadId) => {
-    for (const [stageId, leads] of Object.entries(leadsByStage)) {
-      if (leads.some((l) => l._id === leadId)) return stageId;
-    }
-    return null;
-  }, [leadsByStage]);
+  const findStageOfLead = useCallback(
+    (leadId) => {
+      for (const [stageId, leads] of Object.entries(leadsByStage)) {
+        if (leads.some((l) => l._id === leadId)) return stageId;
+      }
+      return null;
+    },
+    [leadsByStage],
+  );
 
-  /* ── Drag start ─────────────────────────────────────────────── */
   const handleDragStart = ({ active }) => {
     const stageId = findStageOfLead(active.id);
-    dragOriginStageId.current  = stageId;
-    dragCurrentStageId.current = stageId; // initialise current to origin
+    dragOriginStageId.current = stageId;
+    dragCurrentStageId.current = stageId;
     dragDidCrossColumn.current = false;
     setActiveLead(leadsByStage[stageId]?.find((l) => l._id === active.id) || null);
   };
 
-  /* ── Drag over: optimistic cross-column move ─────────────────── */
   const handleDragOver = ({ active, over }) => {
     if (!over) return;
 
-    // Always read from the CURRENT position, not origin —
-    // so A→B→C works as three clean sequential moves
     const fromStageId = dragCurrentStageId.current;
     if (!fromStageId) return;
 
-    const toStageId = leadsByStage[over.id] !== undefined
-      ? over.id
-      : findStageOfLead(over.id);
+    const toStageId = leadsByStage[over.id] !== undefined ? over.id : findStageOfLead(over.id);
 
     if (!toStageId || fromStageId === toStageId) return;
 
-    // Update current position BEFORE mutating state
     dragCurrentStageId.current = toStageId;
     dragDidCrossColumn.current = true;
 
+    setStageKanbanMeta((prev) => ({
+      ...prev,
+      [fromStageId]: {
+        ...(prev[fromStageId] || {}),
+        total: Math.max(0, (prev[fromStageId]?.total || 0) - 1),
+      },
+      [toStageId]: {
+        ...(prev[toStageId] || {}),
+        total: (prev[toStageId]?.total || 0) + 1,
+      },
+    }));
+
     setLeadsByStage((prev) => {
       const fromLeads = [...(prev[fromStageId] || [])];
-      const toLeads   = [...(prev[toStageId]   || [])];
-      const idx       = fromLeads.findIndex((l) => l._id === active.id);
+      const toLeads = [...(prev[toStageId] || [])];
+      const idx = fromLeads.findIndex((l) => l._id === active.id);
       if (idx === -1) return prev;
       const [moved] = fromLeads.splice(idx, 1);
       toLeads.unshift(moved);
@@ -84,24 +98,21 @@ const KanbanBoard = ({
     });
   };
 
-  /* ── Drag end ────────────────────────────────────────────────── */
   const handleDragEnd = async ({ active, over }) => {
     setActiveLead(null);
 
-    const originStageId  = dragOriginStageId.current;
-    const currentStageId = dragCurrentStageId.current; // where it actually landed
-    const crossedColumn  = dragDidCrossColumn.current;
+    const originStageId = dragOriginStageId.current;
+    const currentStageId = dragCurrentStageId.current;
+    const crossedColumn = dragDidCrossColumn.current;
 
-    // Reset refs immediately
-    dragOriginStageId.current  = null;
+    dragOriginStageId.current = null;
     dragCurrentStageId.current = null;
     dragDidCrossColumn.current = false;
 
     if (!over || !originStageId) return;
 
-    /* ── Same column: local reorder only, no API call ──────────── */
     if (!crossedColumn) {
-      const leads  = leadsByStage[originStageId] || [];
+      const leads = leadsByStage[originStageId] || [];
       const oldIdx = leads.findIndex((l) => l._id === active.id);
       const newIdx = leads.findIndex((l) => l._id === over.id);
 
@@ -114,20 +125,21 @@ const KanbanBoard = ({
       return;
     }
 
-    /* ── Cross-column: use currentStageId — ground truth from refs ─
-       Do NOT use findStageOfLead here; state updates are async and
-       may not reflect the final column yet at this point.           */
     const toStageId = currentStageId;
-
     if (!toStageId || toStageId === originStageId) return;
 
     const leadId = active.id;
-    setUpdatingId(leadId);
 
     try {
-      await api.put(API_ROUTES.leads.updateStage(leadId), {
+      const { success, message } = await api.put(API_ROUTES.leads.updateStage(leadId), {
         stageId: toStageId,
       });
+
+      if (success) {
+        onNotify(message);
+      } else {
+        onNotify(message, 'error');
+      }
 
       setLeadsByStage((prev) => {
         const targetStage = stages.find((s) => String(s._id) === String(toStageId));
@@ -141,18 +153,29 @@ const KanbanBoard = ({
                     ? { ...targetStage }
                     : { ...(typeof l.stageId === 'object' ? l.stageId : {}), _id: toStageId },
                 }
-              : l
+              : l,
           ),
         };
       });
 
-      onNotify('Lead moved successfully');
     } catch (e) {
+      console.error('handleDragEnd error:', e);
       onNotify(e?.message || 'Failed to move lead', 'error');
 
-      // Rollback: move card from its current column back to origin
+      setStageKanbanMeta((prev) => ({
+        ...prev,
+        [toStageId]: {
+          ...(prev[toStageId] || {}),
+          total: Math.max(0, (prev[toStageId]?.total || 0) - 1),
+        },
+        [originStageId]: {
+          ...(prev[originStageId] || {}),
+          total: (prev[originStageId]?.total || 0) + 1,
+        },
+      }));
+
       setLeadsByStage((prev) => {
-        const toLeads     = [...(prev[toStageId]     || [])];
+        const toLeads = [...(prev[toStageId] || [])];
         const originLeads = [...(prev[originStageId] || [])];
         const idx = toLeads.findIndex((l) => l._id === leadId);
         if (idx === -1) return prev;
@@ -160,8 +183,6 @@ const KanbanBoard = ({
         originLeads.unshift(moved);
         return { ...prev, [toStageId]: toLeads, [originStageId]: originLeads };
       });
-    } finally {
-      setUpdatingId(null);
     }
   };
 
@@ -179,19 +200,35 @@ const KanbanBoard = ({
       onDragEnd={handleDragEnd}
     >
       <div className="flex gap-4 overflow-x-auto min-h-[80vh] items-start pb-2">
-        {stages.map((stage) => (
-          <KanbanColumn
-            key={stage._id}
-            stage={stage}
-            leads={leadsByStage[stage._id] || []}
-            isLoading={isLoading}
-            updatingLeadId={updatingId}
-            onView={onView}
-            onEdit={onEdit}
-            onAddLead={onAddLead}
-            onNotify={onNotify}
-          />
-        ))}
+        {stages.map((stage) => {
+          const meta = stageKanbanMeta?.[stage._id] || {
+            total: 0,
+            page: 1,
+            loadingMore: false,
+            listQuery: defaultKanbanListQuery(),
+          };
+          return (
+            <KanbanColumn
+              key={stage._id}
+              stage={stage}
+              leads={leadsByStage[stage._id] || []}
+              totalCount={meta.total}
+              page={meta.page || 1}
+              pageSize={KANBAN_PAGE_SIZE}
+              loadingMore={meta.loadingMore}
+              listQuery={meta.listQuery || defaultKanbanListQuery()}
+              onUpdateListQuery={(patch) => updateStageListQuery(stage._id, patch)}
+              onPageChange={(p) => goToStagePage(stage._id, p)}
+              isLoading={isLoading}
+              onView={onView}
+              onEdit={onEdit}
+              onAddLead={onAddLead}
+              onNotify={onNotify}
+              canFilterByAssignee={canFilterByAssignee}
+              assignableMembers={assignableMembers}
+            />
+          );
+        })}
 
         {!isLoading && stages.length === 0 && (
           <div className="flex-1 flex items-center justify-center py-32">

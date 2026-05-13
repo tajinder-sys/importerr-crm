@@ -423,10 +423,16 @@ const markTaskComplete = async (req, res) => {
 
 const getTaskStats = async (req, res) => {
   try {
-    const baseQuery = {};
-    if (!isAdminUser(req.user)) {
-      baseQuery.created_by = req.user.id;
-    }
+    const isAdmin = isAdminUser(req.user);
+
+    const baseQuery = isAdmin
+      ? {}
+      : { created_by: req.user.id };
+
+    const activeStatuses = [
+      TASK_STATUS.PENDING,
+      TASK_STATUS.IN_PROGRESS
+    ];
 
     const [
       totalTasks,
@@ -438,27 +444,62 @@ const getTaskStats = async (req, res) => {
       upcomingTasks
     ] = await Promise.all([
       Task.countDocuments(baseQuery),
-      Task.countDocuments({ ...baseQuery, status: TASK_STATUS.PENDING }),
-      Task.countDocuments({ ...baseQuery, status: TASK_STATUS.IN_PROGRESS }),
-      Task.countDocuments({ ...baseQuery, status: TASK_STATUS.COMPLETED }),
-      Task.findOverdue().countDocuments(),
-      Task.findDueToday().countDocuments(),
+
+      Task.countDocuments({
+        ...baseQuery,
+        status: TASK_STATUS.PENDING
+      }),
+
+      Task.countDocuments({
+        ...baseQuery,
+        status: TASK_STATUS.IN_PROGRESS
+      }),
+
+      Task.countDocuments({
+        ...baseQuery,
+        status: TASK_STATUS.COMPLETED
+      }),
+
+      Task.countDocuments({
+        ...baseQuery,
+        due_date: { $lt: new Date() },
+        status: { $ne: TASK_STATUS.COMPLETED }
+      }),
+
+      Task.countDocuments({
+        ...baseQuery,
+        due_date: {
+          $gte: new Date(new Date().setHours(0, 0, 0, 0)),
+          $lte: new Date(new Date().setHours(23, 59, 59, 999))
+        }
+      }),
+
       Task.countDocuments({
         ...baseQuery,
         due_date: { $gte: new Date() },
-        status: { $in: ['pending', 'in_progress'] }
+        status: { $in: activeStatuses }
       })
     ]);
 
     const tasksByType = await Task.aggregate([
       { $match: baseQuery },
-      { $group: { _id: '$task_type', count: { $sum: 1 } } },
+      {
+        $group: {
+          _id: '$task_type',
+          count: { $sum: 1 }
+        }
+      },
       { $sort: { count: -1 } }
     ]);
 
     const tasksByPriority = await Task.aggregate([
       { $match: baseQuery },
-      { $group: { _id: '$priority', count: { $sum: 1 } } },
+      {
+        $group: {
+          _id: '$priority',
+          count: { $sum: 1 }
+        }
+      },
       { $sort: { count: -1 } }
     ]);
 

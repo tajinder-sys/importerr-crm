@@ -363,7 +363,7 @@ const LeadForm = ({
         </div>
 
         {/* ── Pipeline assignment ── */}
-        {pipelines.length > 0 && (
+        {(pipelines.length > 0) && (canManageLeadAssignment) && (
           <>
             <SectionDivider title="Pipeline Assignment" />
 

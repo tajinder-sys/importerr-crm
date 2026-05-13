@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import api from '../../utils/api';
 import { API_ROUTES } from '../../utils/apiRoutes';
@@ -42,6 +42,7 @@ const Leads = () => {
     selectedPipelineId,
     activeStages,
     leadsByStage,
+    stageKanbanMeta,
     loadingStages,
     setSelectedPipelineId,
     refreshStage,
@@ -50,8 +51,10 @@ const Leads = () => {
     setSnackbar,
     notify,
     setLeadsByStage,
+    setStageKanbanMeta,
+    goToStagePage,
+    updateStageListQuery,
   } = useKanban();
-  console.log("snackbarsnackbar",snackbar)
   /* ── View toggle (kanban / table) ───────────────────── */
   const [view, setView] = useState('kanban');
 
@@ -76,6 +79,12 @@ const Leads = () => {
     });
     setAssignableMembers(res?.data?.users || []);
   }, [canManageAssignment]);
+
+  useEffect(() => {
+    if (view === 'kanban' && canManageAssignment) {
+      loadMembers().catch(() => {});
+    }
+  }, [view, canManageAssignment, loadMembers]);
 
   /* ── Open create lead modal ─────────────────────────── */
   const openCreateLead = useCallback(async (pipelineId = '', stageId = '') => {
@@ -283,12 +292,18 @@ const Leads = () => {
           <KanbanBoard
             stages={activeStages}
             leadsByStage={leadsByStage}
+            stageKanbanMeta={stageKanbanMeta}
+            setLeadsByStage={setLeadsByStage}
+            setStageKanbanMeta={setStageKanbanMeta}
+            goToStagePage={goToStagePage}
+            updateStageListQuery={updateStageListQuery}
             isLoading={loadingStages}
             onAddLead={openCreateLead}
             onView={openViewLead}
             onEdit={openEditLead}
-            setLeadsByStage={setLeadsByStage}
             onNotify={notify}
+            canFilterByAssignee={canManageAssignment}
+            assignableMembers={assignableMembers}
           />
         )}
 

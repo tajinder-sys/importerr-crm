@@ -7,6 +7,7 @@ import {
   RotateCcw, Zap, Clock, Bell, RefreshCw, ListCheck,
 } from 'lucide-react';
 import { fetchCalendarTasks } from '../../store/tasksSlice';
+import { refreshTodayTasksCount } from '../../store/authSlice';
 
 /* ── constants ───────────────────────────────────────────────── */
 const MONTHS = [
@@ -62,6 +63,7 @@ export default function TaskCalendarPanel() {
   const dispatch = useDispatch();
   const tasks = useSelector((s) => s.tasks.calendarTasks);
   const loading = useSelector((s) => s.tasks.calendarLoading);
+  const todayTasksCount = useSelector((s) => s.auth.todayTasksCount ?? 0);
   const [open, setOpen]           = useState(false);
   const [curYear, setCurYear]     = useState(today.getFullYear());
   const [curMonth, setCurMonth]   = useState(today.getMonth());
@@ -69,7 +71,10 @@ export default function TaskCalendarPanel() {
   const panelRef = useRef(null);
 
   useEffect(() => {
-    if (open) dispatch(fetchCalendarTasks());
+    if (open) {
+      dispatch(fetchCalendarTasks());
+      dispatch(refreshTodayTasksCount());
+    }
   }, [open, dispatch]);
 
   /* close on outside click */
@@ -90,7 +95,6 @@ export default function TaskCalendarPanel() {
     byDate[k].push(t);
   });
 
-  const overdueCount = tasks.filter((t) => t.isOverdue).length;
   const monthStr = `${curYear}-${String(curMonth + 1).padStart(2, '0')}`;
   const monthTaskCount = Object.keys(byDate)
     .filter((k) => k.startsWith(monthStr))
@@ -130,11 +134,14 @@ export default function TaskCalendarPanel() {
       >
         <Calendar size={15} />
         Calendar
-        {tasks.length > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-0.5
-            text-[9px] font-bold bg-rose-500 text-white rounded-full
-            flex items-center justify-center border-2 border-white">
-            {overdueCount || tasks.length}
+        {todayTasksCount > 0 && (
+          <span
+            className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-0.5
+            text-[9px] font-bold bg-violet-600 text-white rounded-full
+            flex items-center justify-center border-2 border-white"
+            title={`${todayTasksCount} task${todayTasksCount === 1 ? '' : 's'} due today`}
+          >
+            {todayTasksCount > 99 ? '99+' : todayTasksCount}
           </span>
         )}
       </button>

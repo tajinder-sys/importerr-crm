@@ -29,20 +29,33 @@ const pipelineSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for better query performance
-pipelineSchema.index({ teamId: 1 });
+// List pipelines by team (sorted lists)
+pipelineSchema.index({ teamId: 1, createdAt: -1 });
 pipelineSchema.index({ name: 1, teamId: 1 }, { unique: true });
 
-// Ensure only one default pipeline per team
-pipelineSchema.pre('save', async function save() {
+// At most one default pipeline per team (DB-enforced)
+pipelineSchema.index(
+  { teamId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { isDefault: true },
+    name: 'uniq_default_pipeline_per_team',
+  }
+);
+
+// Before saving a default pipeline, clear default on all other pipelines for this team.
+pipelineSchema.pre('save', async function enforceSingleDefault() {
   if (!this.isDefault) {
     return;
   }
 
-  // Unset other default pipelines for this team
-  await this.constructor.updateMany(
-    { teamId: this.teamId, _id: { $ne: this._id } },
-    { isDefault: false }
+  const Model = this.constructor;
+  const teamId = this.teamId;
+  const id = this._id;
+
+  await Model.updateMany(
+    { teamId, _id: { $ne: id } },
+    { $set: { isDefault: false } }
   );
 });
 

@@ -29,7 +29,10 @@ export const initializeAuth = createAsyncThunk(
     }
     try {
       const response = await getCurrentUser();
-      return response.data.user;
+      return {
+        user: response.data.user,
+        todayTasksCount: response.data.todayTasksCount ?? 0,
+      };
     } catch (error) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -46,6 +49,7 @@ export const loginWithCredentials = createAsyncThunk(
       return {
         user: response.data.user,
         token: response.data.token,
+        todayTasksCount: response.data.todayTasksCount ?? 0,
       };
     } catch (error) {
       return rejectWithValue(getLoginErrorMessage(error));
@@ -53,11 +57,24 @@ export const loginWithCredentials = createAsyncThunk(
   }
 );
 
+export const refreshTodayTasksCount = createAsyncThunk(
+  'auth/refreshTodayTasksCount',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await getCurrentUser();
+      return response.data?.todayTasksCount ?? 0;
+    } catch (error) {
+      return rejectWithValue(typeof error === 'string' ? error : 'Failed to refresh');
+    }
+  },
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
     user: null,
     token: tokenFromStorage(),
+    todayTasksCount: 0,
     isLoading: true,
     isAuthenticated: false,
     error: null,
@@ -69,6 +86,7 @@ const authSlice = createSlice({
     sessionCleared: (state) => {
       state.user = null;
       state.token = null;
+      state.todayTasksCount = 0;
       state.isAuthenticated = false;
       state.isLoading = false;
       state.error = null;
@@ -81,16 +99,18 @@ const authSlice = createSlice({
       })
       .addCase(initializeAuth.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.user = action.payload;
+        state.user = action.payload.user;
+        state.todayTasksCount = action.payload.todayTasksCount ?? 0;
         state.token = tokenFromStorage();
         state.isAuthenticated = true;
         state.error = null;
-        persistSession(action.payload, state.token);
+        persistSession(action.payload.user, state.token);
       })
       .addCase(initializeAuth.rejected, (state, action) => {
         state.isLoading = false;
         state.user = null;
         state.token = null;
+        state.todayTasksCount = 0;
         state.isAuthenticated = false;
         if (action.payload !== NO_SESSION) {
           state.error = typeof action.payload === 'string' ? action.payload : null;
@@ -105,15 +125,20 @@ const authSlice = createSlice({
       .addCase(loginWithCredentials.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload.user;
+        state.todayTasksCount = action.payload.todayTasksCount ?? 0;
         state.token = action.payload.token;
         state.isAuthenticated = true;
         state.error = null;
         persistSession(action.payload.user, action.payload.token);
       })
+      .addCase(refreshTodayTasksCount.fulfilled, (state, action) => {
+        state.todayTasksCount = action.payload;
+      })
       .addCase(loginWithCredentials.rejected, (state, action) => {
         state.isLoading = false;
         state.user = null;
         state.token = null;
+        state.todayTasksCount = 0;
         state.isAuthenticated = false;
         state.error = action.payload || 'Login failed';
         persistSession(null, null);

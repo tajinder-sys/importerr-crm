@@ -1,10 +1,52 @@
 const Pipeline = require('../models/Pipeline');
 const Stage = require('../models/Stage');
+const mongoose = require('mongoose');
 const {
   sendSuccess,
   sendBadRequest,
   sendNotFound
 } = require('../utils/responseHandler');
+
+/** Normalize request booleans (string "false" is truthy in JS). */
+const parseBool = (val, fallback) => {
+  if (val === undefined || val === null) return fallback;
+  if (typeof val === 'boolean') return val;
+  if (val === 'true' || val === 1 || val === '1') return true;
+  if (val === 'false' || val === 0 || val === '0') return false;
+  return fallback;
+};
+
+const asObjectId = (id) => {
+  if (!id) return id;
+  if (id instanceof mongoose.Types.ObjectId) return id;
+  if (mongoose.Types.ObjectId.isValid(id)) return new mongoose.Types.ObjectId(String(id));
+  return id;
+};
+
+/** Clear isDefault on every other pipeline in the team (call before save when this doc is default). */
+const unsetOtherDefaults = async (teamId, keepPipelineId) => {
+  const tid = asObjectId(teamId);
+  const keep = asObjectId(keepPipelineId);
+  await Pipeline.updateMany(
+    { teamId: tid, _id: { $ne: keep } },
+    { $set: { isDefault: false } }
+  );
+};
+
+/** If multiple defaults exist (e.g. race), keep the most recently updated one. */
+const dedupeDefaultsForTeam = async (teamId) => {
+  const tid = asObjectId(teamId);
+  const rows = await Pipeline.find({ teamId: tid, isDefault: true })
+    .sort({ updatedAt: -1 })
+    .select('_id')
+    .lean();
+  if (rows.length <= 1) return;
+  const keep = rows[0]._id;
+  await Pipeline.updateMany(
+    { teamId: tid, _id: { $ne: keep } },
+    { $set: { isDefault: false } }
+  );
+};
 
 // =========================
 // Get All Pipelines
@@ -26,10 +68,9 @@ const getPipelines = async (req, res) => {
       query.teamId = teamId;
     }
     const user = req.user;
-    if((user.role === 'team_member') || (user.role == 'team_manager')) {
+    if ((user.role === 'team_member') || (user.role === 'team_manager')) {
       query.teamId = user.teamId;
     }
-    console.log(query, user.role);
 
     if (isDefault !== undefined) {
       query.isDefault = isDefault === 'true';
@@ -184,15 +225,23 @@ const createPipeline = async (req, res) => {
       return sendBadRequest(res, 'Pipeline with this name already exists for this team');
     }
 
+    const wantsDefault = parseBool(isDefault, false);
+    const wantsActive = parseBool(isActive, true);
+
     const pipeline = new Pipeline({
       name: name.trim(),
       teamId,
       description: description?.trim() || '',
-      isDefault: isDefault || false,
-      isActive: isActive !== undefined ? isActive : true
+      isDefault: wantsDefault,
+      isActive: wantsActive
     });
 
+    if (wantsDefault) {
+      await unsetOtherDefaults(teamId, pipeline._id);
+    }
+
     await pipeline.save();
+    await dedupeDefaultsForTeam(teamId);
 
     const populatedPipeline = await Pipeline.findById(pipeline._id)
       .populate('teamId', 'name');
@@ -203,6 +252,9 @@ const createPipeline = async (req, res) => {
       populatedPipeline
     );
   } catch (error) {
+    if (error?.code === 11000) {
+      return sendBadRequest(res, 'Only one default pipeline is allowed per team');
+    }
     console.error('Create pipeline error:', error);
     sendBadRequest(res, 'Failed to create pipeline');
   }
@@ -252,14 +304,21 @@ const updatePipeline = async (req, res) => {
     }
 
     if (isDefault !== undefined) {
-      pipeline.isDefault = isDefault;
+      pipeline.isDefault = parseBool(isDefault, false);
     }
 
     if (isActive !== undefined) {
-      pipeline.isActive = isActive;
+      pipeline.isActive = parseBool(isActive, true);
+    }
+
+    const finalTeamId = pipeline.teamId;
+
+    if (pipeline.isDefault) {
+      await unsetOtherDefaults(finalTeamId, pipeline._id);
     }
 
     await pipeline.save();
+    await dedupeDefaultsForTeam(finalTeamId);
 
     const populatedPipeline = await Pipeline.findById(pipeline._id)
       .populate('teamId', 'name');
@@ -270,6 +329,9 @@ const updatePipeline = async (req, res) => {
       populatedPipeline
     );
   } catch (error) {
+    if (error?.code === 11000) {
+      return sendBadRequest(res, 'Only one default pipeline is allowed per team');
+    }
     console.error('Update pipeline error:', error);
     sendBadRequest(res, 'Failed to update pipeline');
   }
