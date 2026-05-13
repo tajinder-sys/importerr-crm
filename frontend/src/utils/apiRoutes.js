@@ -7,7 +7,9 @@ export const API_ROUTES = {
   users: {
     list: '/users',
     create: '/users',
-    byId: (userId) => `/users/${encodeURIComponent(userId)}`
+    byId: (userId) => `/users/${encodeURIComponent(userId)}`,
+    update: (userId) => `/users/${encodeURIComponent(userId)}`,
+    updatePassword: (userId) => `/users/${encodeURIComponent(userId)}/password`
   },
   leads: {
     list: '/leads',

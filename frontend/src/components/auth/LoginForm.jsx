@@ -1,191 +1,193 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Users, ChartNoAxesCombined } from 'lucide-react';
+import { ShieldCheck, Users, ChartNoAxesCombined, Mail, Lock, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import Button from '../common/ui/Button';
-import Input from '../common/ui/Input';
-import Alert from '../common/ui/Alert';
 import { validateEmail, validateRequired } from '../../utils/helpers';
 
 const LoginForm = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({});
+  const [showPass, setShowPass] = useState(false);
   const { login, isLoading, error, clearError } = useAuth();
   const navigate = useNavigate();
-  const appLogo = '/images/image.png';
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
-    
-    if (error) {
-      clearError();
-    }
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
+    if (error) clearError();
   };
 
   const validateForm = () => {
     const newErrors = {};
-    
     const emailError = validateRequired(formData.email, 'Email');
     if (emailError) newErrors.email = emailError;
     else if (!validateEmail(formData.email)) newErrors.email = 'Invalid email format';
-    
     const passwordError = validateRequired(formData.password, 'Password');
     if (passwordError) newErrors.password = passwordError;
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (!validateForm()) return;
-    
     try {
       await login(formData.email, formData.password);
       navigate('/dashboard');
-    } catch (error) {
-      console.error('Login failed:', error);
+    } catch (e){
+      console.error('Login failed:', e);
     }
   };
 
+  const features = [
+    { icon: Users, title: 'Team-first workflow', desc: 'Assign and manage leads across your team from one place.' },
+    { icon: ChartNoAxesCombined, title: 'Faster conversions', desc: 'Prioritize leads and act with full context.' },
+    { icon: ShieldCheck, title: 'Secure access', desc: 'Role-based access control for your organization.' },
+  ];
+
   return (
-    <div className="min-h-screen bg-slate-100 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center justify-center">
-        <div className="grid w-full max-w-5xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:grid-cols-2">
-          <div className="hidden border-r border-slate-200 bg-slate-50 p-12 lg:flex lg:items-center">
-            <div className="mx-auto max-w-md">
-            <img src={appLogo} alt="Importerr CRM" className="mb-8 h-12 w-auto rounded-md" />
-            <h1 className="text-3xl font-semibold leading-tight text-slate-900">
-              Built for modern teams managing leads at scale
-            </h1>
-            <p className="mt-4 text-sm leading-relaxed text-slate-600">
-              Importerr CRM centralizes lead tracking, ownership, and follow-ups so your team can close deals faster
-              with better visibility.
-            </p>
+    <div className="min-h-screen flex">
 
-            <div className="mt-8 space-y-4">
-              <div className="flex items-start gap-3">
-                <span className="rounded-lg bg-white p-2 text-slate-700 ring-1 ring-slate-200">
-                  <Users className="h-4 w-4" />
-                </span>
-                <div>
-                  <p className="text-sm font-medium text-slate-900">Team-first workflow</p>
-                  <p className="text-xs text-slate-600">Assign and manage members from one place.</p>
+      {/* ── Left panel ── */}
+      <div className="hidden lg:flex lg:w-[52%] flex-col bg-primary-700 relative overflow-hidden">
+        {/* Decorative circles */}
+        <div className="absolute -top-40 -left-40 w-96 h-96 rounded-full bg-white/5" />
+        <div className="absolute -bottom-32 -right-32 w-[500px] h-[500px] rounded-full bg-white/5" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full border border-white/10" />
+
+        {/* Content */}
+        <div className="relative z-10 flex flex-col justify-between h-full p-12">
+          {/* Logo */}
+          <div>
+            <img
+              src="/images/transprint_light_logo.png"
+              alt="Importerr CRM"
+              className="w-48 h-auto object-contain"
+            />
+          </div>
+
+          {/* Middle content */}
+          <div className="space-y-8">
+            <div>
+              <h1 className="text-4xl font-bold text-white leading-tight">
+                Manage leads.<br />Close deals faster.
+              </h1>
+              <p className="mt-4 text-base text-primary-200 leading-relaxed max-w-sm">
+                Importerr CRM centralizes lead tracking, team assignments, and follow-ups so you never miss an opportunity.
+              </p>
+            </div>
+
+            <div className="space-y-5">
+              {features.map(({ icon: Icon, title, desc }) => (
+                <div key={title} className="flex items-start gap-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                    <Icon className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">{title}</p>
+                    <p className="text-xs text-primary-200 mt-0.5">{desc}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="rounded-lg bg-white p-2 text-slate-700 ring-1 ring-slate-200">
-                  <ChartNoAxesCombined className="h-4 w-4" />
-                </span>
-                <div>
-                  <p className="text-sm font-medium text-slate-900">Faster conversions</p>
-                  <p className="text-xs text-slate-600">Prioritize leads and act with clear context.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="rounded-lg bg-white p-2 text-slate-700 ring-1 ring-slate-200">
-                  <ShieldCheck className="h-4 w-4" />
-                </span>
-                <div>
-                  <p className="text-sm font-medium text-slate-900">Secure access</p>
-                  <p className="text-xs text-slate-600">Admin-controlled accounts for your organization.</p>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
+
+          {/* Footer */}
+          <p className="text-xs text-primary-300">
+            © {new Date().getFullYear()} Importerr CRM. All rights reserved.
+          </p>
         </div>
+      </div>
 
-          <div className="flex items-center justify-center p-6 sm:p-10 lg:p-12">
-            <div className="w-full max-w-md">
-              <div className="mb-8 border-b border-slate-100 pb-6">
-                <div className="mb-5 lg:hidden">
-                  <img src={appLogo} alt="Importerr CRM" className="h-12 w-auto rounded-md object-contain" />
-                </div>
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary-700">Welcome Back</p>
-                <h2 className="mt-2 text-2xl font-bold text-slate-900">Sign in to Importerr CRM</h2>
-                <p className="mt-2 text-sm text-slate-500">Use your admin or team member credentials to continue.</p>
-              </div>
-              <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 lg:hidden">
-                Secure login for authorized team members only.
-              </div>
+      {/* ── Right panel ── */}
+      <div className="flex flex-1 items-center justify-center bg-white p-8">
+        <div className="w-full max-w-sm">
 
-              <form className="space-y-5" onSubmit={handleSubmit}>
-                {error && (
-                  <Alert variant="error" dismissible onDismiss={clearError}>
-                    {error}
-                  </Alert>
-                )}
-
-                <div className="space-y-4">
-                  <Input
-                    name="email"
-                    type="email"
-                    label="Email address"
-                    value={formData.email}
-                    onChange={handleChange}
-                    error={errors.email}
-                    required
-                    autoComplete="email"
-                    placeholder="Enter your email"
-                  />
-
-                  <Input
-                    name="password"
-                    type="password"
-                    label="Password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    error={errors.password}
-                    required
-                    autoComplete="current-password"
-                    placeholder="Enter your password"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <input
-                      id="remember-me"
-                      name="remember-me"
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                    />
-                    <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                      Remember me
-                    </label>
-                  </div>
-
-                  <div className="text-sm">
-                    <a href="#" className="font-medium text-primary-600 hover:text-primary-500">
-                      Need help?
-                    </a>
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full"
-                  loading={isLoading}
-                  disabled={isLoading}
-                >
-                  Sign in
-                </Button>
-
-                <p className="text-center text-xs text-gray-500">
-                  Need access? Contact the system administrator.
-                </p>
-              </form>
-            </div>
+          {/* Mobile logo */}
+          <div className="mb-8 lg:hidden">
+            <img src="/images/image.png" alt="Importerr CRM" className="h-10 w-auto" />
           </div>
+
+          {/* Heading */}
+          <div className="mb-8">
+            <span className="inline-block rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700 mb-4">
+              Welcome back
+            </span>
+            <h2 className="text-3xl font-bold text-slate-900">Sign in</h2>
+            <p className="mt-2 text-sm text-slate-500">Enter your credentials to access your account.</p>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="mb-5 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <ShieldCheck className="h-4 w-4 shrink-0" />
+              {error}
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+
+            {/* Email */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">Email address</label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  name="email" type="email" value={formData.email}
+                  onChange={handleChange} autoComplete="email"
+                  placeholder="you@company.com"
+                  className={`w-full rounded-xl border pl-10 pr-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all ${errors.email ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-slate-50 hover:border-slate-300 focus:bg-white'}`}
+                />
+              </div>
+              {errors.email && <p className="mt-1.5 text-xs text-red-600">{errors.email}</p>}
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  name="password" type={showPass ? 'text' : 'password'} value={formData.password}
+                  onChange={handleChange} autoComplete="current-password"
+                  placeholder="Enter your password"
+                  className={`w-full rounded-xl border pl-10 pr-14 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all ${errors.password ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-slate-50 hover:border-slate-300 focus:bg-white'}`}
+                />
+                <button type="button" onClick={() => setShowPass(s => !s)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 hover:text-primary-600 transition-colors">
+                  {showPass ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              {errors.password && <p className="mt-1.5 text-xs text-red-600">{errors.password}</p>}
+            </div>
+
+            {/* Remember + Help */}
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" className="h-4 w-4 rounded border-slate-300 accent-primary-600" />
+                <span className="text-sm text-slate-600">Remember me</span>
+              </label>
+              <a href="#" className="text-sm font-medium text-primary-600 hover:text-primary-700">Need help?</a>
+            </div>
+
+            {/* Submit */}
+            <button
+              type="submit" disabled={isLoading}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+            >
+              {isLoading ? (
+                <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> Signing in…</>
+              ) : (
+                <>Sign in <ArrowRight className="h-4 w-4" /></>
+              )}
+            </button>
+
+            <p className="text-center text-xs text-slate-400">
+              Need access? Contact your system administrator.
+            </p>
+          </form>
         </div>
       </div>
     </div>

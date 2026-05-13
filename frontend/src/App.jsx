@@ -20,6 +20,7 @@ import ApiConfig from './pages/settings/ApiConfig.jsx';
 import Activities from './pages/Activities/Activities.jsx';
 import TeamsSetting from './pages/settings/TeamsSetting.jsx';
 import PipelineStages from './pages/settings/PipelineStages/PipelineStages.jsx';
+import Profile from './pages/Profile.jsx';
 import Integrations from './pages/settings/Integrations.jsx';
 import SellerUsers from './pages/settings/SellerUsers.jsx';
 import Leads from './pages/Leads/Lead.jsx';
@@ -51,6 +52,7 @@ const AuthenticatedShell = () => {
             <Route path="/leads" element={<Leads />} />
             <Route path="/leads/:id" element={<LeadDetails />} />
             <Route path="/activities" element={<Activities />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/teams" element={<Teams />} />
             <Route
               path="/settings/api-config"

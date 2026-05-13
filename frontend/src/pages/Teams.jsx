@@ -9,7 +9,7 @@ import Modal from '../components/common/ui/Modal';
 import ConfirmationModal from '../components/common/ui/ConfirmationModal';
 import Chip from '../components/common/ui/Chip';
 import SearchableSelect from '../components/common/ui/SearchableSelect';
-import { UserPlus, Pencil, Trash2, Users } from 'lucide-react';
+import { UserPlus, Pencil, Trash2 } from 'lucide-react';
 import { formatPhone, validatePhone } from '../utils/helpers';
 import { UiPageTitle, UiPageDescription, UiSectionTitle } from '../components/common/ui';
 import api from '../utils/api';
@@ -136,6 +136,7 @@ const Teams = () => {
     setError('');
     try {
       const payload = { ...formData, phone: normalizedPhone, team_id: formData.team_id || null };
+      if (!formData.password?.trim()) delete payload.password;
       await api.put(API_ROUTES.users.byId(editingMember._id), payload);
       setEditingMember(null);
       resetForm();
@@ -550,6 +551,15 @@ const Teams = () => {
                 placeholder="Select priority"
               />
             </div>
+            <Input
+              label="New Password"
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleFormChange}
+              placeholder="Leave blank to keep current password"
+              helperText="Only fill if you want to change the password"
+            />
             <div className="flex justify-end gap-2">
               <Button
                 type="button"

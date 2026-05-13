@@ -206,7 +206,11 @@ const Sidebar = () => {
           </nav>
 
           {!sidebarCollapsed && (
-            <div className="mx-3 mb-4 mt-4 rounded-xl border border-gray-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+            <div
+              className="mx-3 mb-4 mt-4 rounded-xl border border-gray-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
+              onClick={() => navigate('/profile')}
+              title="View profile"
+            >
               <div className="flex items-center">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900">
                   <span className="text-sm font-semibold text-primary-700 dark:text-primary-300">
@@ -223,8 +227,9 @@ const Sidebar = () => {
 
           {sidebarCollapsed && (
             <div className="mt-auto flex justify-center pb-4 pt-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900"
-                title={`${user?.name || 'User'} · ${user?.role?.replace('_', ' ') || ''}`}>
+              <div className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900 hover:ring-2 hover:ring-primary-400 transition-all"
+                title={`${user?.name || 'User'} — View profile`}
+                onClick={() => navigate('/profile')}>
                 <span className="text-sm font-semibold text-primary-700 dark:text-primary-300">
                   {user?.name?.charAt(0)?.toUpperCase()}
                 </span>

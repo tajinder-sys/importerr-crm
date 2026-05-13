@@ -83,6 +83,10 @@ const authSlice = createSlice({
     clearAuthError: (state) => {
       state.error = null;
     },
+    updateUser: (state, action) => {
+      state.user = { ...state.user, ...action.payload };
+      persistSession(state.user, state.token);
+    },
     sessionCleared: (state) => {
       state.user = null;
       state.token = null;
@@ -146,7 +150,7 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearAuthError, sessionCleared } = authSlice.actions;
+export const { clearAuthError, updateUser, sessionCleared } = authSlice.actions;
 
 export const logoutAccount = () => (dispatch) => {
   persistSession(null, null);
