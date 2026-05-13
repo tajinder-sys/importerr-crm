@@ -28,7 +28,7 @@ const unsetOtherDefaults = async (teamId, keepPipelineId) => {
   const tid = asObjectId(teamId);
   const keep = asObjectId(keepPipelineId);
   await Pipeline.updateMany(
-    { teamId: tid, _id: { $ne: keep } },
+    {  _id: { $ne: keep } },
     { $set: { isDefault: false } }
   );
 };
@@ -36,14 +36,14 @@ const unsetOtherDefaults = async (teamId, keepPipelineId) => {
 /** If multiple defaults exist (e.g. race), keep the most recently updated one. */
 const dedupeDefaultsForTeam = async (teamId) => {
   const tid = asObjectId(teamId);
-  const rows = await Pipeline.find({ teamId: tid, isDefault: true })
+  const rows = await Pipeline.find({isDefault: true })
     .sort({ updatedAt: -1 })
     .select('_id')
     .lean();
   if (rows.length <= 1) return;
   const keep = rows[0]._id;
   await Pipeline.updateMany(
-    { teamId: tid, _id: { $ne: keep } },
+    {_id: { $ne: keep } },
     { $set: { isDefault: false } }
   );
 };
@@ -89,7 +89,7 @@ const getPipelines = async (req, res) => {
 
     const pipelines = await Pipeline.find(query)
       .populate('teamId', 'name')
-      .sort({ createdAt: -1 })
+      .sort({ _id: -1 })
       .skip((page - 1) * limit)
       .limit(Number(limit));
 

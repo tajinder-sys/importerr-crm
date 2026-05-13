@@ -40,17 +40,17 @@ const useKanban = () => {
           params: { isActive: true, limit: 200 },
         });
         const list = res?.data?.pipelines || res?.data || [];
-        const sorted = [...list].sort((a, b) => {
-          if (a.isDefault && !b.isDefault) return -1;
-          if (!a.isDefault && b.isDefault) return 1;
-          return String(a.name || '').localeCompare(String(b.name || ''), undefined, {
-            sensitivity: 'base',
-          });
-        });
-        setPipelines(sorted);
+        // const sorted = [...list].sort((a, b) => {
+        //   if (a.isDefault && !b.isDefault) return -1;
+        //   if (!a.isDefault && b.isDefault) return 1;
+        //   return String(a.name || '').localeCompare(String(b.name || ''), undefined, {
+        //     sensitivity: 'base',
+        //   }); 
+        // });
+        setPipelines(list);
         setSelectedPipelineId((prev) => {
-          if (prev && sorted.some((p) => p._id === prev)) return prev;
-          return sorted[0]?._id || '';
+          if (prev && list.some((p) => p._id === prev)) return prev;
+          return list[0]?._id || '';
         });
       } catch (err) {
         console.error('Failed to load pipelines', err);

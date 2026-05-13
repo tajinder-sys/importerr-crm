@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { LEAD_SOURCES, LEAD_STATUSES } = require('../utils/constants');
+const { LEAD_SOURCES, LEAD_STATUSES, TASK_PRIORITY_LEVELS } = require('../utils/constants');
 const noteSchema = new mongoose.Schema({
   content: {
     type: String,
@@ -48,6 +48,11 @@ const leadSchema = new mongoose.Schema({
     type: String,
     enum: Object.values(LEAD_STATUSES),
     default: LEAD_STATUSES.NEW
+  },
+  priority: {
+    type: String,
+    enum: Object.values(TASK_PRIORITY_LEVELS),
+    default: TASK_PRIORITY_LEVELS.LOW
   },
   pipelineId: {
     type: mongoose.Schema.Types.ObjectId,

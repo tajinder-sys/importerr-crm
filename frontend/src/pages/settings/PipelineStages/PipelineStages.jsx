@@ -72,7 +72,7 @@ const PipelineStages = () => {
             sensitivity: 'base',
           });
         });
-        setPipelines(sorted);
+        setPipelines(raw);
       }
       else notify('Failed to load pipelines', 'error');
     } catch (e) {
@@ -81,7 +81,7 @@ const PipelineStages = () => {
       setLoading(false);
     }
   };
-
+  console.log(pipelines);
   const fetchTeams = async () => {
     try {
       const res = await api.get(API_ROUTES.teams.list);

@@ -9,6 +9,7 @@ import Input from '../common/ui/Input';
 import Alert from '../common/ui/Alert';
 import SearchableSelect from '../common/ui/SearchableSelect';
 import { formatLabel } from '../../utils/helpers';
+import { TASK_PRIORITY_OPTIONS, TASK_PRIORITY_LEVELS } from '../../utils/constants';
 
 /* ─── Static option lists ─────────────────────────────────────── */
 const SOURCE_OPTIONS = [
@@ -32,6 +33,7 @@ const STATUS_OPTIONS = [
   { value: 'converted',  label: 'Converted' },
   { value: 'lost',       label: 'Lost' },
 ];
+const LEAD_PRIORITY_OPTIONS = TASK_PRIORITY_OPTIONS.map((o) => ({ ...o }));
 
 /* ─── Validation rules ────────────────────────────────────────── */
 const VALIDATORS = {
@@ -53,6 +55,7 @@ const VALIDATORS = {
     return '';
   },
   source:   (v) => (!v ? 'Please select a lead source' : ''),
+  priority: (v) => (!v || !Object.values(TASK_PRIORITY_LEVELS).includes(v) ? 'Please select a valid priority' : ''),
   leadType: (v) => (!v ? 'Please select a lead type'   : ''),
   status:   (v) => (!v ? 'Please select a status'      : ''),
   message:  (v) => (!v?.trim() ? 'Message / enquiry details are required' : ''),
@@ -322,7 +325,7 @@ const LeadForm = ({
         {/* ── Lead details ── */}
         <SectionDivider title="Lead Details" />
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
 
           <FieldWrapper
             label="Source" icon={Tag} required
@@ -344,6 +347,18 @@ const LeadForm = ({
               name="leadType" value={values.leadType}
               onChange={handleChange}
               options={LEAD_TYPE_OPTIONS}
+              searchable={false}
+            />
+          </FieldWrapper>
+
+          <FieldWrapper
+            label="Priority" icon={Tag} required
+            touched={touched.priority} error={errors.priority} value={values.priority}
+          >
+            <SearchableSelect
+              name="priority" value={values.priority || TASK_PRIORITY_LEVELS.LOW}
+              onChange={handleChange}
+              options={LEAD_PRIORITY_OPTIONS}
               searchable={false}
             />
           </FieldWrapper>

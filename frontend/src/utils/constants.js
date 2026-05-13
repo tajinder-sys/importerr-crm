@@ -32,6 +32,21 @@ export const ACTIVITY_TYPES = {
   LEAD_CONVERTED: 'lead_converted'
 };
 
+/** Matches backend Task / User `priority` enum. */
+export const TASK_PRIORITY_LEVELS = {
+  LOW: 'low',
+  MEDIUM: 'medium',
+  HIGH: 'high',
+  URGENT: 'urgent',
+};
+
+export const TASK_PRIORITY_OPTIONS = [
+  { value: TASK_PRIORITY_LEVELS.LOW, label: 'Low' },
+  { value: TASK_PRIORITY_LEVELS.MEDIUM, label: 'Medium' },
+  { value: TASK_PRIORITY_LEVELS.HIGH, label: 'High' },
+  { value: TASK_PRIORITY_LEVELS.URGENT, label: 'Urgent' },
+];
+
 export const ROUTES = {
   LOGIN: '/login',
   DASHBOARD: '/dashboard',

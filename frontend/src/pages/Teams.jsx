@@ -17,6 +17,7 @@ import { useAuth } from '../hooks/useAuth';
 import { getChipVariant } from '../utils/chipConstants';
 import { API_ROUTES } from '../utils/apiRoutes';
 import TeamFilters from '../components/teams/TeamFilters';
+import { TASK_PRIORITY_OPTIONS, TASK_PRIORITY_LEVELS } from '../utils/constants';
 
 const Teams = () => {
   const { user } = useAuth();
@@ -27,8 +28,8 @@ const Teams = () => {
   const [editingMember, setEditingMember] = useState(null);
   const [deletingMember, setDeletingMember] = useState(null);
   const [formErrors, setFormErrors] = useState({});
-  const [draftFilters, setDraftFilters] = useState({ search: '', role: 'all', team_id: 'all' });
-  const [appliedFilters, setAppliedFilters] = useState({ search: '', role: 'all', team_id: 'all' });
+  const [draftFilters, setDraftFilters] = useState({ search: '', role: 'all', team_id: 'all', priority: 'all' });
+  const [appliedFilters, setAppliedFilters] = useState({ search: '', role: 'all', team_id: 'all', priority: 'all' });
   const [tableRefreshKey, setTableRefreshKey] = useState(0);
   const [isMembersLoading, setIsMembersLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -37,7 +38,8 @@ const Teams = () => {
     phone: '',
     password: '',
     role: 'team_member',
-    team_id: ''
+    team_id: '',
+    priority: TASK_PRIORITY_LEVELS.MEDIUM,
   });
   const [availableTeams, setAvailableTeams] = useState([]);
 
@@ -90,7 +92,8 @@ const Teams = () => {
       phone: '',
       password: '',
       role: 'team_member',
-      team_id: ''
+      team_id: '',
+      priority: TASK_PRIORITY_LEVELS.MEDIUM,
     });
     setFormErrors({});
   };
@@ -156,7 +159,8 @@ const Teams = () => {
       phone: formatIndianPhoneInput(member.phone || ''),
       password: '',
       role: member.role || 'team_member',
-      team_id: member.team_id?._id || member.team_id || ''
+      team_id: member.team_id?._id || member.team_id || '',
+      priority: member.priority || TASK_PRIORITY_LEVELS.MEDIUM,
     });
     setFormErrors({});
   };
@@ -184,7 +188,8 @@ const Teams = () => {
       setAppliedFilters({
         search: next.search.trim(),
         role: next.role,
-        team_id: next.team_id
+        team_id: next.team_id,
+        priority: next.priority,
       });
       return next;
     });
@@ -202,11 +207,11 @@ const Teams = () => {
   };
 
   const resetMemberFilters = () => {
-    setDraftFilters({ search: '', role: 'all', team_id: 'all' });
-    setAppliedFilters({ search: '', role: 'all', team_id: 'all' });
+    setDraftFilters({ search: '', role: 'all', team_id: 'all', priority: 'all' });
+    setAppliedFilters({ search: '', role: 'all', team_id: 'all', priority: 'all' });
   };
 
-  const fetchMembersTableData = useCallback(async ({ page, limit, sortKey, sortDirection, search, role, team_id }) => {
+  const fetchMembersTableData = useCallback(async ({ page, limit, sortKey, sortDirection, search, role, team_id, priority }) => {
     setIsMembersLoading(true);
     try {
       const response = await api.get(API_ROUTES.users.list, {
@@ -216,6 +221,7 @@ const Teams = () => {
           search,
           ...(role && role !== 'all' ? { role } : {}),
           ...(team_id && team_id !== 'all' ? { team_id } : {}),
+          ...(priority && priority !== 'all' ? { priority } : {}),
           sortKey,
           sortDirection
         }
@@ -233,8 +239,9 @@ const Teams = () => {
     refreshKey: tableRefreshKey,
     search: appliedFilters.search,
     role: appliedFilters.role,
-    team_id: appliedFilters.team_id
-  }), [tableRefreshKey, appliedFilters.search, appliedFilters.role, appliedFilters.team_id]);
+    team_id: appliedFilters.team_id,
+    priority: appliedFilters.priority,
+  }), [tableRefreshKey, appliedFilters.search, appliedFilters.role, appliedFilters.team_id, appliedFilters.priority]);
 
   const tableColumns = [
     {
@@ -260,6 +267,17 @@ const Teams = () => {
       render: (member) => (
         <Chip label={member.role} variant={getChipVariant('ROLE', member.role)} />
       )
+    },
+    {
+      key: 'priority',
+      sortable: false,
+      header: 'Priority',
+      render: (member) => (
+        <Chip
+          label={member.priority || TASK_PRIORITY_LEVELS.MEDIUM}
+          variant={getChipVariant('PRIORITY', member.priority || TASK_PRIORITY_LEVELS.MEDIUM)}
+        />
+      ),
     },
     {
       key: 'team',
@@ -425,6 +443,16 @@ const Teams = () => {
                 clearable
               />
             </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Priority</label>
+              <SearchableSelect
+                name="priority"
+                value={formData.priority}
+                onChange={handleFormChange}
+                options={TASK_PRIORITY_OPTIONS}
+                placeholder="Select priority"
+              />
+            </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setShowCreateForm(false)}>
                 Cancel
@@ -510,6 +538,16 @@ const Teams = () => {
                 }))}
                 placeholder="Select team (optional)"
                 clearable
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Priority</label>
+              <SearchableSelect
+                name="priority"
+                value={formData.priority}
+                onChange={handleFormChange}
+                options={TASK_PRIORITY_OPTIONS}
+                placeholder="Select priority"
               />
             </div>
             <div className="flex justify-end gap-2">

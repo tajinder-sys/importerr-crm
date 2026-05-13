@@ -5,6 +5,7 @@ import { formatLabel } from '../../utils/helpers';
 import { RotateCcw } from 'lucide-react';
 
 const ROLE_FILTER_OPTIONS = ['all', 'team_manager', 'team_member'];
+const PRIORITY_FILTER_OPTIONS = ['all', 'low', 'medium', 'high', 'urgent'];
 
 const TeamFilters = ({
   filters,
@@ -72,6 +73,29 @@ const TeamFilters = ({
                     } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
                   >
                     {team.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <p className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Priority</p>
+            <div className="flex gap-1 overflow-x-auto">
+              {PRIORITY_FILTER_OPTIONS.map((p) => {
+                const active = filters.priority === p;
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => onFilterChange('priority', p)}
+                    className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-medium transition ${
+                      active
+                        ? 'border-primary-200 bg-primary-50 text-primary-700'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900'
+                    } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
+                  >
+                    {p === 'all' ? 'All priorities' : formatLabel(p)}
                   </button>
                 );
               })}

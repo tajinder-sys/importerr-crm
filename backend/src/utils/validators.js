@@ -2,6 +2,8 @@
  * Common validation utilities
  */
 
+const { TASK_PRIORITY_LEVELS } = require('./constants');
+
 const validateEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
@@ -63,6 +65,12 @@ const validateLeadData = (data) => {
   if (data.leadType && !['guest', 'registered'].includes(data.leadType)) {
     errors.push('leadType must be guest or registered');
   }
+
+  if (data.priority != null && String(data.priority).trim() !== '') {
+    if (!Object.values(TASK_PRIORITY_LEVELS).includes(data.priority)) {
+      errors.push('Invalid priority');
+    }
+  }
   
   return errors;
 };
@@ -91,7 +99,13 @@ const validateUserData = (data) => {
   if (data.phone && !validatePhone(data.phone)) {
     errors.push('Phone must be a valid 10-digit number');
   }
-  
+
+  if (data.priority != null && String(data.priority).trim() !== '') {
+    if (!Object.values(TASK_PRIORITY_LEVELS).includes(data.priority)) {
+      errors.push('Invalid priority');
+    }
+  }
+
   return errors;
 };
 

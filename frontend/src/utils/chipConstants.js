@@ -23,7 +23,13 @@ export const CHIP_VARIANTS = {
     active: 'success',
     inactive: 'warning',
     archived: 'danger'
-  }
+  },
+  PRIORITY: {
+    low: 'neutral',
+    medium: 'warning',
+    high: 'orange',
+    urgent: 'danger',
+  },
 };
 
 export const getChipVariant = (group, value, fallback = 'neutral') => {

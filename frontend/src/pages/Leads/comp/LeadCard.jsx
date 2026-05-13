@@ -30,9 +30,21 @@ const STATUS_CLS = {
   lost:      'bg-rose-50 text-rose-700 border-rose-200',
   won:       'bg-green-50 text-green-700 border-green-200',
 };
+const PRIORITY_CLS = {
+  low:    'bg-slate-50 text-slate-700 border-slate-200',
+  medium: 'bg-amber-50 text-amber-700 border-amber-200',
+  high:   'bg-orange-50 text-orange-700 border-orange-200',
+  urgent: 'bg-rose-50 text-rose-700 border-rose-200',
+};
+const PRIORITY_BORDER_CLS = {
+  low: 'border-slate-200 hover:border-slate-300',
+  medium: 'border-amber-200 hover:border-amber-300',
+  high: 'border-orange-200 hover:border-orange-300',
+  urgent: 'border-rose-200 hover:border-rose-300',
+};
 
 const Pill = ({ label, cls }) => (
-  <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cls || 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+  <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border capitalize ${cls || 'bg-slate-50 text-slate-500 border-slate-200'}`}>
     {label?.replace(/_/g, ' ')}
   </span>
 );
@@ -64,7 +76,7 @@ const StageTargetChips = ({ stageMeta, dense }) => {
           className={`inline-flex items-center gap-0.5 rounded-md bg-violet-50 px-1.5 py-0.5 font-semibold text-violet-700 ring-1 ring-violet-100 ${text}`}
           title="Win probability for this pipeline stage"
         >
-          <Percent size={dense ? 9 : 10} className="opacity-80" />
+          {/* <Percent size={dense ? 9 : 10} className="opacity-80" /> */}
           {prob}%
         </span>
       )}
@@ -91,6 +103,8 @@ const LeadCard = ({
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const [editTask, setEditTask] = useState(null);
   const [expanded, setExpanded] = useState(false);
+  const leadPriority = lead.priority || 'low';
+  const cardBorderClass = PRIORITY_BORDER_CLS[leadPriority] || PRIORITY_BORDER_CLS.low;
 
   const stageMeta = mergeStageMeta(lead, columnStage);
 
@@ -135,7 +149,7 @@ const LeadCard = ({
         className={`bg-white border rounded-xl p-3.5 group select-none touch-none ${
           isDragging
             ? 'border-indigo-300 shadow-2xl shadow-indigo-200 rotate-[1.5deg] scale-[1.03] cursor-grabbing'
-            : 'border-slate-200 hover:border-indigo-200 hover:shadow-md cursor-grab active:cursor-grabbing'
+            : `${cardBorderClass} hover:shadow-md cursor-grab active:cursor-grabbing`
         }`}
       >
         {/* Header row */}
@@ -196,9 +210,9 @@ const LeadCard = ({
         {!expanded && (
           <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-2">
             <span className="truncate text-[10px] font-medium text-slate-600">{fmtPhone(lead.phone)}</span>
-            <Pill label={lead.source} cls={SOURCE_CLS[lead.source]} />
-            <Pill label={lead.status} cls={STATUS_CLS[lead.status]} />
-            <StageTargetChips stageMeta={stageMeta} dense />
+            <Pill label={lead.priority || 'low'} cls={PRIORITY_CLS[lead.priority || 'low']} />
+            <span className="truncate text-[10px] font-medium text-slate-600">{lead?.email || '-'}</span>
+            {/* <StageTargetChips stageMeta={stageMeta} dense /> */}
             {lead.tasks?.length > 0 && (
               <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">
                 {lead.tasks.length} task{lead.tasks.length !== 1 ? 's' : ''}
@@ -206,7 +220,6 @@ const LeadCard = ({
             )}
           </div>
         )}
-
         {expanded && (
           <>
         {/* Contact details */}
@@ -242,6 +255,7 @@ const LeadCard = ({
           <div className="flex flex-wrap gap-1">
             <Pill label={lead.source} cls={SOURCE_CLS[lead.source]} />
             <Pill label={lead.status} cls={STATUS_CLS[lead.status]} />
+            <Pill label={lead.priority || 'low'} cls={PRIORITY_CLS[lead.priority || 'low']} />
           </div>
           <StageTargetChips stageMeta={stageMeta} />
         </div>

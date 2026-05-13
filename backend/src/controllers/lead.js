@@ -7,7 +7,7 @@ const ActivityService = require('../services/ActivityService');
 const CommunicationService = require('../services/CommunicationService');
 const { sendSuccess, sendBadRequest, sendNotFound, sendForbidden } = require('../utils/responseHandler');
 const { validateLeadData } = require('../utils/validators');
-const { LEAD_STATUSES, ACTIVITY_TYPES, USER_ROLES, COMMUNICATION_SOURCES } = require('../utils/constants');
+const { LEAD_STATUSES, ACTIVITY_TYPES, USER_ROLES, COMMUNICATION_SOURCES, TASK_PRIORITY_LEVELS } = require('../utils/constants');
 const Pipeline = require('../models/Pipeline');
 const Stage = require('../models/Stage');
 const Task = require('../models/Task');
@@ -59,11 +59,12 @@ const getLeads = async (req, res) => {
       status,
       source,
       assignedTo,
+      priority,
       stageId,
       pipelineId,
       search,
       accountId,
-      sortBy = 'createdAt',
+      sortBy = 'priority',
       sortOrder = 'desc'
     } = req.query;
 
@@ -72,6 +73,7 @@ const getLeads = async (req, res) => {
     if (status) query.status = status;
     if (source) query.source = source;
     if (assignedTo) query.assignedTo = assignedTo;
+    if (priority) query.priority = priority;
     if (stageId) query.stageId = mongoose.Types.ObjectId.isValid(stageId) ? new mongoose.Types.ObjectId(stageId) : stageId;
     if (pipelineId) query.pipelineId = mongoose.Types.ObjectId.isValid(pipelineId) ? new mongoose.Types.ObjectId(pipelineId) : pipelineId;
     if (accountId) query.accountId = accountId;
@@ -97,11 +99,9 @@ const getLeads = async (req, res) => {
       query.stageId = { $exists: true, $ne: null };
     }
 
-    const allowedSort = new Set(['name', 'email', 'phone', 'createdAt', 'updatedAt', 'status', 'source']);
+    const allowedSort = new Set(['name', 'email', 'phone', 'createdAt', 'updatedAt', 'status', 'source', 'priority']);
     const sortField = allowedSort.has(String(sortBy)) ? String(sortBy) : 'createdAt';
-    const sort = {};
-    sort[sortField] = sortOrder === 'desc' ? -1 : 1;
-    // sort._id = sortOrder === 'desc' ? -1 : 1;
+    const sortDir = sortOrder === 'desc' ? -1 : 1;
 
     const limitNum = Math.min(200, Math.max(1, parseInt(String(limit), 10) || 10));
     let skipVal;
@@ -114,14 +114,51 @@ const getLeads = async (req, res) => {
     }
     const pageNum = Math.floor(skipVal / limitNum) + 1;
 
-    const leads = await Lead.find(query)
-      .populate('assignedTo', 'name email')
-      .populate('pipelineId', 'name')
-      .populate('stageId', 'name order color followUpDays probabilityPercent')
-      .sort(sort)
-      .limit(limitNum)
-      .skip(skipVal)
-      .lean();
+    let leads;
+    if (sortField === 'priority') {
+      const ranked = await Lead.aggregate([
+        { $match: query },
+        {
+          $addFields: {
+            _priorityRank: {
+              $switch: {
+                branches: [
+                  { case: { $eq: ['$priority', TASK_PRIORITY_LEVELS.LOW] }, then: 1 },
+                  { case: { $eq: ['$priority', TASK_PRIORITY_LEVELS.MEDIUM] }, then: 2 },
+                  { case: { $eq: ['$priority', TASK_PRIORITY_LEVELS.HIGH] }, then: 3 },
+                  { case: { $eq: ['$priority', TASK_PRIORITY_LEVELS.URGENT] }, then: 4 },
+                ],
+                default: 1,
+              },
+            },
+          },
+        },
+        { $sort: { _priorityRank: sortDir, _id: sortDir } },
+        { $skip: skipVal },
+        { $limit: limitNum },
+        { $project: { _id: 1 } },
+      ]);
+
+      const orderedIds = ranked.map((r) => String(r._id));
+      const docs = await Lead.find({ _id: { $in: orderedIds } })
+        .populate('assignedTo', 'name email')
+        .populate('pipelineId', 'name')
+        .populate('stageId', 'name order color followUpDays probabilityPercent')
+        .lean();
+
+      const byId = new Map(docs.map((d) => [String(d._id), d]));
+      leads = orderedIds.map((id) => byId.get(id)).filter(Boolean);
+    } else {
+      const sort = { [sortField]: sortDir, _id: sortDir };
+      leads = await Lead.find(query)
+        .populate('assignedTo', 'name email')
+        .populate('pipelineId', 'name')
+        .populate('stageId', 'name order color followUpDays probabilityPercent')
+        .sort(sort)
+        .limit(limitNum)
+        .skip(skipVal)
+        .lean();
+    }
 
     const leadIds = leads.map((lead) => lead._id);
 
@@ -226,6 +263,7 @@ const createOrUpdateLead = async (req, res) => {
       source,
       message,
       status,
+      priority,
       assignedTo,
       leadType       = 'guest',
       userId         = null,
@@ -303,6 +341,7 @@ const createOrUpdateLead = async (req, res) => {
       source:         lead.source,
       message:        lead.message,
       status:         lead.status,
+      priority:       lead.priority ?? TASK_PRIORITY_LEVELS.LOW,
       assignedTo:     lead.assignedTo?.toString()      || null,
       dealValue:      lead.dealValue,
       leadType:       lead.leadType,
@@ -318,6 +357,9 @@ const createOrUpdateLead = async (req, res) => {
     if (source          !== undefined) lead.source           = source;
     if (message         !== undefined) lead.message          = message;
     if (status          !== undefined) lead.status           = status;
+    if (priority        !== undefined && Object.values(TASK_PRIORITY_LEVELS).includes(priority)) {
+      lead.priority = priority;
+    }
     if (leadType        !== undefined) lead.leadType         = leadType;
     if (userId          !== undefined) lead.userId           = userId          || null;
 
@@ -387,6 +429,7 @@ const createOrUpdateLead = async (req, res) => {
 
       const TRACKED_FIELDS = [
         'name', 'phone', 'email', 'source', 'message',
+        'priority',
         'leadType',
         'userId',
         'pipelineId', 'stageId',

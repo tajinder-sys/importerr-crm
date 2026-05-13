@@ -19,6 +19,7 @@ import { Eye, Pencil } from 'lucide-react';
 import LeadsHeader from './LeadsHeader';
 import KanbanBoard from './comp/KanbanBoard';
 import useKanban from './hooks/useKanban';
+import { TASK_PRIORITY_LEVELS } from '../../utils/constants';
 
 const DEFAULT_LEAD_FORM = {
   name: '',
@@ -26,6 +27,7 @@ const DEFAULT_LEAD_FORM = {
   phone: '',
   source: 'importerr_inquiry',
   assignedTo: '',
+  priority: TASK_PRIORITY_LEVELS.LOW,
   leadType: 'guest',
   status: 'new',
   pipelineId: '',
@@ -111,6 +113,7 @@ const Leads = () => {
       phone:      formatIndianPhoneInput(lead?.phone || ''),
       source:     lead?.source || 'importerr_inquiry',
       assignedTo: lead?.assignedTo?._id ? String(lead.assignedTo._id) : '',
+      priority:   lead?.priority || TASK_PRIORITY_LEVELS.LOW,
       leadType:   lead?.leadType || 'guest',
       status:     lead?.status || 'new',
       pipelineId: lead.pipelineId?._id || '',
@@ -227,7 +230,7 @@ const Leads = () => {
       const res = await api.get(API_ROUTES.leads.list, {
         params: {
           page, limit,
-          sortBy: sortKey || 'createdAt',
+          sortBy: sortKey || 'priority',
           sortOrder: sortDirection || 'desc',
           ...(selectedPipelineId ? { pipelineId: selectedPipelineId } : {}),
         },
@@ -259,6 +262,8 @@ const Leads = () => {
       ) : '-' },
     { key: 'source', header: 'Source',
       render: (l) => <Chip label={l.source} variant={getChipVariant('SOURCE', l.source)} /> },
+    { key: 'priority', sortKey: 'priority', sortable: true, header: 'Priority',
+      render: (l) => <Chip label={l.priority || TASK_PRIORITY_LEVELS.LOW} variant={getChipVariant('PRIORITY', l.priority || TASK_PRIORITY_LEVELS.LOW)} /> },
     { key: 'status', header: 'Status',
       render: (l) => <Chip label={l.status} variant={getChipVariant('STATUS', l.status)} /> },
     { key: 'action', header: '',

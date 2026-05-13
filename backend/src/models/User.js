@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-const { USER_ROLES } = require('../utils/constants');
+const { USER_ROLES, TASK_PRIORITY_LEVELS } = require('../utils/constants');
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -39,6 +39,11 @@ const userSchema = new mongoose.Schema({
   team_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Team'
+  },
+  priority: {
+    type: String,
+    enum: Object.values(TASK_PRIORITY_LEVELS),
+    default: TASK_PRIORITY_LEVELS.MEDIUM
   }
 }, {
   timestamps: true
@@ -60,6 +65,9 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
 userSchema.methods.toJSON = function() {
   const user = this.toObject();
   delete user.password;
+  if (user.priority == null || user.priority === '') {
+    user.priority = TASK_PRIORITY_LEVELS.MEDIUM;
+  }
   return user;
 };
 

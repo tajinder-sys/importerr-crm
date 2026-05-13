@@ -19,6 +19,14 @@ const TEAM_STATUS = {
   ARCHIVED: 'archived'
 };
 
+/** Same values as Task model `priority` (lead routing / workload). */
+const TASK_PRIORITY_LEVELS = {
+  LOW: 'low',
+  MEDIUM: 'medium',
+  HIGH: 'high',
+  URGENT: 'urgent'
+};
+
 const LEAD_SOURCES = {
   EMAIL: 'email',
   WHATSAPP: 'whatsapp',
@@ -94,6 +102,7 @@ module.exports = {
   USER_ROLES,
   TEAM_ROLES,
   TEAM_STATUS,
+  TASK_PRIORITY_LEVELS,
   LEAD_SOURCES,
   LEAD_STATUSES,
   ASSIGNMENT_TYPES,

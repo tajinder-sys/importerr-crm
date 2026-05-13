@@ -4,7 +4,7 @@ const {
   sendBadRequest,
   sendNotFound
 } = require('../utils/responseHandler');
-const { USER_ROLES } = require('../utils/constants');
+const { USER_ROLES, TASK_PRIORITY_LEVELS } = require('../utils/constants');
 
 const {
   validateUserData,
@@ -25,12 +25,22 @@ const getUsers = async (req, res) => {
       includeAdmin = 'false',
       page = 1,
       limit = 10,
-      team_id
+      team_id,
+      sortKey,
+      sortDirection = 'desc',
+      priority
     } = req.query;
 
     const query = {
       isActive: true
     };
+
+    if (priority && priority !== 'all') {
+      if (!Object.values(TASK_PRIORITY_LEVELS).includes(priority)) {
+        return sendBadRequest(res, 'Invalid priority filter');
+      }
+      query.priority = priority;
+    }
 
     const roleList = roles
       ? String(roles)
@@ -63,6 +73,11 @@ const getUsers = async (req, res) => {
       ];
     }
 
+    const allowedSort = new Set(['name', 'email', 'phone', 'role', 'createdAt', 'priority']);
+    const sk = allowedSort.has(String(sortKey || '')) ? sortKey : 'createdAt';
+    const order = String(sortDirection).toLowerCase() === 'asc' ? 1 : -1;
+    const sortSpec = { [sk]: order };
+
     const users = await User.find(query)
       .select('-password')
       .populate({
@@ -70,7 +85,7 @@ const getUsers = async (req, res) => {
         select: 'name status',
         match: { status: 'active' }
       })
-      .sort({ createdAt: -1 })
+      .sort(sortSpec)
       .skip((page - 1) * limit)
       .limit(Number(limit));
 
@@ -132,7 +147,8 @@ const createUser = async (req, res) => {
       password,
       role,
       phone,
-      team_id
+      team_id,
+      priority
     } = req.body;
 
     // Prevent admin creation from UI
@@ -152,6 +168,11 @@ const createUser = async (req, res) => {
       );
     }
 
+    const priorityVal =
+      priority && Object.values(TASK_PRIORITY_LEVELS).includes(priority)
+        ? priority
+        : TASK_PRIORITY_LEVELS.MEDIUM;
+
     const user = new User({
       name,
       email,
@@ -160,7 +181,8 @@ const createUser = async (req, res) => {
       phone: phone
         ? normalizeIndianPhone(phone)
         : '',
-      team_id: team_id || null
+      team_id: team_id || null,
+      priority: priorityVal
     });
 
     await user.save();
@@ -189,7 +211,8 @@ const updateUser = async (req, res) => {
       role,
       phone,
       isActive,
-      team_id
+      team_id,
+      priority
     } = req.body;
 
     // User can update own profile
@@ -258,6 +281,13 @@ const updateUser = async (req, res) => {
         }
       }
       user.team_id = team_id || null;
+    }
+
+    if (priority !== undefined && req.user.role === 'admin') {
+      if (!Object.values(TASK_PRIORITY_LEVELS).includes(priority)) {
+        return sendBadRequest(res, 'Invalid priority');
+      }
+      user.priority = priority;
     }
 
     await user.save();
