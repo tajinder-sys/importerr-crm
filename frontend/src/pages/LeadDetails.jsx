@@ -371,7 +371,7 @@ const LeadDetails = () => {
   // ─── Shared pricing props (avoids repeating the same object twice) ──────
 
   return (
-    <div className="px-4 py-6 sm:px-6 md:px-8">
+    <div className="px-4 py-6 sm:px-6 md:px-8 min-h-screen dark:bg-slate-900">
       <div className="mx-auto max-w-7xl space-y-6">
 
         {/* Header */}
@@ -403,7 +403,7 @@ const LeadDetails = () => {
         {!loading && lead && (
           <div className="rounded-2xl !mt-8">
             {/* Tab bar */}
-            <div className="bg-gray-50/80">
+            <div className="bg-gray-50/80 dark:bg-slate-800/80">
               <div className="flex flex-wrap items-end gap-2">
                 {visibleTabs.map((tab) => (
                   <button
@@ -412,8 +412,8 @@ const LeadDetails = () => {
                     onClick={() => setActiveTab(tab.key)}
                     className={`relative rounded-t-xl border border-b-0 px-4 py-2.5 text-sm font-semibold transition ${
                       activeTab === tab.key
-                        ? 'z-10 -mb-px bg-white text-primary-700'
-                        : 'border-transparent bg-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        ? 'z-10 -mb-px bg-white text-primary-700 dark:bg-slate-800 dark:text-primary-400'
+                        : 'border-transparent bg-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200'
                     }`}
                   >
                     {tab.label}

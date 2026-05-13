@@ -31,9 +31,9 @@ const getQty = (row) => Number(row?.quantity ?? row?.qty ?? row?.totalQuantity ?
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 const LeadInfoRow = ({ label, value, right = false }) => (
-  <div className="flex items-start justify-between gap-4 border-b border-dashed border-gray-100 py-1.5 last:border-b-0">
-    <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">{label}</span>
-    <span className={`text-xs text-gray-800 ${right ? 'max-w-[70%] text-right' : ''}`}>
+  <div className="flex items-start justify-between gap-4 border-b border-dashed border-gray-100 py-1.5 last:border-b-0 dark:border-slate-700">
+    <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-slate-500">{label}</span>
+    <span className={`text-xs text-gray-800 dark:text-slate-200 ${right ? 'max-w-[70%] text-right' : ''}`}>
       {value || '-'}
     </span>
   </div>
@@ -51,8 +51,8 @@ const ProductSkeleton = () => (
 );
 
 const EmptyProduct = ({ hasLeadSku, children }) => (
-  <div className="flex min-h-40 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-gray-300 bg-gray-50/70 p-6 text-center">
-    <p className="text-sm text-gray-600">
+  <div className="flex min-h-40 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-gray-300 bg-gray-50/70 p-6 text-center dark:border-slate-600 dark:bg-slate-800/50">
+    <p className="text-sm text-gray-600 dark:text-slate-400">
       {hasLeadSku
         ? 'Product auto-loading from lead SKU.'
         : <>No product linked yet. Search by SKU to attach one from Importerr.</>}
@@ -112,27 +112,26 @@ const DetailsTab = ({
   };
 
   const content = (
-    <div className={embedded ? 'space-y-4' : 'space-y-4 bg-slate-50/60'}>
+    <div className={embedded ? 'space-y-4' : 'space-y-4 bg-slate-50/60 dark:bg-slate-900/40'}>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
 
         {/* Lead */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
-          <LeadInfoRow label="Name" value={lead?.name} />
+        <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
           <LeadInfoRow label="Email" value={lead?.email} />
           <LeadInfoRow label="Phone" value={lead?.phone ? formatPhone(lead.phone) : '-'} />
           <LeadInfoRow label="Submitted" value={lead?.createdAt ? formatDateIndian(lead.createdAt) : '-'} />
         </div>
 
         {/* Product */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
           {isFetchingProduct ? (
             <ProductSkeleton />
           ) : selectedProduct ? (
             <div className="space-y-3">
 
-              <div className="flex justify-between items-center border-b pb-2">
-                <p className="text-sm font-semibold text-gray-900">Product Details</p>
+              <div className="flex justify-between items-center border-b pb-2 dark:border-slate-700">
+                <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">Product Details</p>
 
                 <div className="flex flex-wrap items-center justify-end gap-2">
                   {hasLeadSku ? (
@@ -211,14 +210,14 @@ const DetailsTab = ({
 
       {/* ─── Variants Accordion ─── */}
       {leadVariantRows.length > 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden dark:border-slate-700 dark:bg-slate-800">
 
           {/* Header */}
           <button
             onClick={() => setVariantsOpen(v => !v)}
-            className="w-full flex justify-between items-center px-3.5 py-3 bg-gray-50"
+            className="w-full flex justify-between items-center px-3.5 py-3 bg-gray-50 dark:bg-slate-700"
           >
-            <span className="text-xs font-semibold text-gray-600">
+            <span className="text-xs font-semibold text-gray-600 dark:text-slate-300">
               Variants Requirement ({leadVariantRows.length})
             </span>
 
@@ -235,11 +234,11 @@ const DetailsTab = ({
 
           {/* Body */}
           {variantsOpen && (
-            <div className="divide-y max-h-64 overflow-y-auto">
+            <div className="divide-y max-h-64 overflow-y-auto dark:divide-slate-700">
               {leadVariantRows.map((variant, idx) => (
                 <div
                   key={getVariantKey(variant, idx)}
-                  className="flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-50"
+                  className="flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-50 dark:hover:bg-slate-700"
                 >
                     <div className="flex items-center gap-3 min-w-0">
                         {/* Image */}

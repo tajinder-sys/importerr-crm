@@ -32,15 +32,15 @@ const Modal = ({
     >
       <div
         className={cn(
-          'flex max-h-[90vh] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-xl',
+          'flex max-h-[90vh] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-slate-800',
           sizeClasses[size] || sizeClasses.md,
           panelClassName
         )}
       >
-        <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4">
+        <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-700">
           <div className="flex-1">
             {typeof title === 'string' ? (
-              <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">{title}</h2>
             ) : (
               title
             )}
@@ -49,13 +49,13 @@ const Modal = ({
           <button
             type="button"
             onClick={onClose}
-            className="ml-4 rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-gray-700"
+            className="ml-4 rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-gray-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
         <div className="overflow-y-auto px-5 py-4">{children}</div>
-        {footer ? <div className="border-t border-gray-100 px-5 py-4">{footer}</div> : null}
+        {footer ? <div className="border-t border-gray-100 px-5 py-4 dark:border-slate-700">{footer}</div> : null}
       </div>
     </div>
   );

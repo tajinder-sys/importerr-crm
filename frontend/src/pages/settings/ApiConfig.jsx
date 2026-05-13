@@ -60,7 +60,7 @@ const ApiConfig = () => {
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   return (
-    <div className="px-4 py-6 sm:px-6 md:px-8">
+    <div className="px-4 py-6 sm:px-6 md:px-8 min-h-screen dark:bg-slate-900">
       <div className="mx-auto max-w-7xl space-y-6">
         <PageHeader
           title="Integrations"
@@ -73,7 +73,7 @@ const ApiConfig = () => {
             return (
               <Card
                 key={source.key}
-                className={`rounded-2xl border-gray-200 shadow-sm transition ${source.available ? 'cursor-pointer hover:border-primary-300 hover:shadow-md' : 'opacity-60'}`}
+                className={`rounded-2xl border-gray-200 shadow-sm transition ${source.available ? 'cursor-pointer hover:border-primary-300 hover:shadow-md dark:hover:border-primary-600' : 'opacity-60'}`}
                 onClick={() => source.available && navigate(`/settings/integrations/${source.key}`)}
               >
                 <CardContent className="p-5">
@@ -82,14 +82,14 @@ const ApiConfig = () => {
                       <Icon className={`h-6 w-6 ${source.iconColor}`} />
                     </div>
                     {source.available ? (
-                      <ChevronRight className="h-5 w-5 text-gray-400" />
+                      <ChevronRight className="h-5 w-5 text-gray-400 dark:text-slate-500" />
                     ) : (
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">Coming Soon</span>
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-slate-700 dark:text-slate-400">Coming Soon</span>
                     )}
                   </div>
                   <div className="mt-4">
                     <UiCardTitle>{source.name}</UiCardTitle>
-                    <p className="mt-1 text-xs text-gray-500">{source.description}</p>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">{source.description}</p>
                   </div>
                 </CardContent>
               </Card>

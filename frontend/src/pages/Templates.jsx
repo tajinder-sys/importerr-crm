@@ -128,14 +128,14 @@ function EmailBuilderModal({ isOpen, onClose, editingTemplate, normalizedType, o
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white">
+    <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-slate-900">
       {/* Top bar */}
-      <div className="flex shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-4 py-3 shadow-sm">
-        <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100">
+      <div className="flex shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-4 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-700">
           <X className="h-5 w-5" />
         </button>
         <div className="flex-1 min-w-0">
-          <h1 className="truncate text-sm font-bold text-gray-900">
+          <h1 className="truncate text-sm font-bold text-gray-900 dark:text-slate-100">
             {editingTemplate ? 'Edit' : 'Create'} Email Template
           </h1>
         </div>
@@ -147,16 +147,16 @@ function EmailBuilderModal({ isOpen, onClose, editingTemplate, normalizedType, o
       {/* Body: builder + preview split */}
       <div className="flex flex-1 min-h-0">
         {/* ── Left panel: editor ── */}
-        <div className="flex w-full flex-col overflow-y-auto border-r border-gray-200 lg:w-[480px] xl:w-[520px]">
+        <div className="flex w-full flex-col overflow-y-auto border-r border-gray-200 lg:w-[480px] xl:w-[520px] dark:border-slate-700">
           <form id="email-builder-form" onSubmit={handleSubmit} className="flex flex-col gap-0">
             {/* Meta fields */}
-            <div className="space-y-3 border-b border-gray-100 bg-gray-50/50 p-4">
+            <div className="space-y-3 border-b border-gray-100 bg-gray-50/50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Template Info</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">Template Info</p>
                 <button
                   type="button"
                   onClick={() => setShowPresets((s) => !s)}
-                  className="flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 transition hover:bg-indigo-100"
+                  className="flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 transition hover:bg-indigo-100 dark:border-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400"
                 >
                   <Sparkles className="h-3 w-3" />
                   {showPresets ? 'Hide Presets' : 'Use Preset'}
@@ -171,7 +171,7 @@ function EmailBuilderModal({ isOpen, onClose, editingTemplate, normalizedType, o
                       key={preset.id}
                       type="button"
                       onClick={() => applyPreset(preset)}
-                      className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-3 text-left transition hover:border-indigo-400 hover:bg-indigo-50"
+                      className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-3 text-left transition hover:border-indigo-400 hover:bg-indigo-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-indigo-600 dark:hover:bg-indigo-900/20"
                     >
                       <div>
                         <p className="text-sm font-semibold text-gray-900">{preset.label}</p>
@@ -215,9 +215,9 @@ function EmailBuilderModal({ isOpen, onClose, editingTemplate, normalizedType, o
 
             {/* Block list */}
             <div className="flex-1 space-y-2 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Content Blocks</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">Content Blocks</p>
               {blocks.length === 0 && (
-                <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 py-10 text-center">
+                <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 py-10 text-center dark:border-slate-700 dark:bg-slate-800/50">
                   <p className="text-sm text-gray-400">No blocks yet. Add your first block below.</p>
                 </div>
               )}
@@ -240,7 +240,7 @@ function EmailBuilderModal({ isOpen, onClose, editingTemplate, normalizedType, o
         </div>
 
         {/* ── Right panel: live preview ── */}
-        <div className="hidden flex-1 flex-col lg:flex">
+        <div className="hidden flex-1 flex-col lg:flex dark:bg-slate-900">
           <EmailPreview blocks={blocks} />
         </div>
       </div>
@@ -258,7 +258,7 @@ function WaPlaceholderBar({ onInsert }) {
           key={p}
           type="button"
           onClick={() => onInsert(p)}
-          className="rounded-full border border-dashed border-gray-300 bg-white px-2.5 py-1 text-[11px] font-mono text-gray-600 transition hover:border-gray-400 hover:text-gray-900"
+          className="rounded-full border border-dashed border-gray-300 bg-white px-2.5 py-1 text-[11px] font-mono text-gray-600 transition hover:border-gray-400 hover:text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:text-slate-200"
         >
           {p}
         </button>
@@ -418,13 +418,13 @@ const Templates = () => {
         />
       )}
 
-      <div className="px-4 py-6 sm:px-6 md:px-8">
+      <div className="px-4 py-6 sm:px-6 md:px-8 min-h-screen dark:bg-slate-900">
         <div className="mx-auto max-w-7xl space-y-6">
 
           {/* Header */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Templates</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Templates</h1>
               <p className="mt-1 text-sm text-gray-500">
                 {isEmail
                   ? 'Build beautiful email templates with a visual block editor.'
@@ -455,8 +455,8 @@ const Templates = () => {
                   onClick={() => navigate(`/templates/${item}`)}
                   className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
                     active
-                      ? 'border-primary-200 bg-primary-50 text-primary-700'
-                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900'
+                      ? 'border-primary-200 bg-primary-50 text-primary-700 dark:border-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:border-slate-500 dark:hover:text-slate-200'
                   }`}
                 >
                   {TYPE_LABELS[item]}
@@ -468,7 +468,7 @@ const Templates = () => {
           {/* Template list */}
           <Card className="rounded-2xl border-gray-200 shadow-sm">
             <CardHeader className="border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900">{TYPE_LABELS[normalizedType]} Templates</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">{TYPE_LABELS[normalizedType]} Templates</h2>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -485,16 +485,16 @@ const Templates = () => {
                   {templates.map((item) => (
                     <div
                       key={item._id}
-                      className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 transition hover:border-gray-300 md:flex-row md:items-start md:justify-between"
+                      className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 transition hover:border-gray-300 md:flex-row md:items-start md:justify-between dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600"
                     >
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm font-semibold text-gray-900">{item.name}</p>
-                          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600">
+                          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-slate-700 dark:text-slate-400">
                             {item.slug}
                           </span>
                           {isEmail && (
-                            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
+                            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
                               ✉️ Email
                             </span>
                           )}
@@ -590,7 +590,7 @@ const Templates = () => {
               value={waForm.body}
               onChange={(e) => setWaForm((prev) => ({ ...prev, body: e.target.value }))}
               placeholder="Type your template content with placeholders like {{name}}"
-              className="w-full rounded-md border border-gray-300 p-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+              className="w-full rounded-md border border-gray-300 p-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500"
               required
             />
           </div>
@@ -613,7 +613,7 @@ const Templates = () => {
             <p className="text-sm text-gray-700">
               <span className="font-semibold">Subject:</span> {previewTemplate.subject || '—'}
             </p>
-            <div className="max-h-[55vh] overflow-auto rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <div className="max-h-[55vh] overflow-auto rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-slate-700 dark:bg-slate-800">
               <div dangerouslySetInnerHTML={{ __html: previewTemplate.body || '' }} />
             </div>
           </div>

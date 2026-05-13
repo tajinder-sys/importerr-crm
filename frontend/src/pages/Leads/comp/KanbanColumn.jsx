@@ -96,7 +96,7 @@ const KanbanColumn = ({
     <div className="flex flex-col w-72 flex-shrink-0">
       <div
         ref={panelRef}
-        className="relative flex flex-col gap-1 px-3 py-2.5 rounded-t-xl border-t-[3px] border-x border-slate-200 bg-white shadow-sm"
+        className="relative flex flex-col gap-1 px-3 py-2.5 rounded-t-xl border-t-[3px] border-x border-slate-200 bg-white shadow-sm dark:bg-slate-800 dark:border-slate-700"
         style={{ borderTopColor: stage.color || '#6366f1' }}
       >
         <div className="flex items-center justify-between gap-2 min-w-0">
@@ -248,8 +248,8 @@ const KanbanColumn = ({
 
       <div
         ref={mergedScrollRef}
-        className={`flex-1 min-h-[60vh] max-h-[75vh] overflow-y-auto px-2 py-2 border-x border-b border-slate-200 rounded-b-xl space-y-2 transition-colors duration-150 scrollbar-thin ${
-          isOver ? 'bg-indigo-50/70 border-indigo-300' : 'bg-slate-50/60'
+        className={`flex-1 min-h-[60vh] max-h-[75vh] overflow-y-auto px-2 py-2 border-x border-b border-slate-200 rounded-b-xl space-y-2 transition-colors duration-150 scrollbar-thin dark:border-slate-700 ${
+          isOver ? 'bg-indigo-50/70 border-indigo-300 dark:bg-indigo-900/20' : 'bg-slate-50/60 dark:bg-slate-900/60'
         }`}
       >
         {isLoading && (

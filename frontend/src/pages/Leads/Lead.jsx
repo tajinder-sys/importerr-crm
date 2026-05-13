@@ -279,7 +279,7 @@ const Leads = () => {
 
   /* ── Render ─────────────────────────────────────────── */
   return (
-    <div className="px-4 py-6 sm:px-6 md:px-8 min-h-screen bg-slate-50">
+    <div className="px-4 py-6 sm:px-6 md:px-8 min-h-screen bg-slate-50 dark:bg-slate-900">
       <div className="mx-auto max-w-full space-y-4">
 
         {/* Page header */}

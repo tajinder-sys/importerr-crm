@@ -199,7 +199,7 @@ const KanbanBoard = ({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4 overflow-x-auto min-h-[80vh] items-start pb-2">
+      <div className="flex gap-4 overflow-x-auto min-h-[80vh] items-start pb-2" style={{backgroundColor: 'var(--bg-primary)'}}>
         {stages.map((stage) => {
           const meta = stageKanbanMeta?.[stage._id] || {
             total: 0,

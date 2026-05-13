@@ -19,16 +19,16 @@ const TYPE_ICONS = {
   whatsapp: MessageSquare, visit: MapPin, follow_up: RotateCcw, custom: Zap,
 };
 const PRIORITY_CLS = {
-  low:    'bg-slate-100 text-slate-600 border-slate-200',
-  medium: 'bg-amber-50  text-amber-700  border-amber-200',
-  high:   'bg-orange-50 text-orange-700 border-orange-200',
-  urgent: 'bg-rose-50   text-rose-700   border-rose-200',
+  low:    'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600',
+  medium: 'bg-amber-50  text-amber-700  border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700',
+  high:   'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-700',
+  urgent: 'bg-rose-50   text-rose-700   border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-700',
 };
 const STATUS_CLS = {
-  pending:     'bg-amber-50   text-amber-700   border-amber-200',
-  in_progress: 'bg-blue-50    text-blue-700    border-blue-200',
-  completed:   'bg-emerald-50 text-emerald-700 border-emerald-200',
-  cancelled:   'bg-rose-50    text-rose-700    border-rose-200',
+  pending:     'bg-amber-50   text-amber-700   border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700',
+  in_progress: 'bg-blue-50    text-blue-700    border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700',
+  completed:   'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700',
+  cancelled:   'bg-rose-50    text-rose-700    border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-700',
 };
 
 /* ── helpers ─────────────────────────────────────────────────── */
@@ -131,7 +131,7 @@ export default function TaskCalendarPanel() {
         onClick={() => setOpen((o) => !o)}
         title="Task calendar"
         aria-label="Open task calendar"
-        className="relative flex h-9 w-9 items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-100 md:h-auto md:w-auto md:gap-1.5 md:px-1.5 md:py-1.5 md:text-sm md:font-medium md:hover:bg-slate-50"
+        className="relative flex h-9 w-9 items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-100 md:h-auto md:w-auto md:gap-1.5 md:px-1.5 md:py-1.5 md:text-sm md:font-medium md:hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-700"
       >
         <Calendar className="h-5 w-5 md:h-[20px] md:w-[20px]" />
         {todayTasksCount > 0 && (
@@ -151,7 +151,7 @@ export default function TaskCalendarPanel() {
         <div
           ref={panelRef}
           className="fixed top-0 right-0 h-screen w-[340px] z-50 flex flex-col
-            bg-white border-l border-slate-200 shadow-2xl"
+            bg-white border-l border-slate-200 shadow-2xl dark:bg-slate-800 dark:border-slate-700"
           style={{ boxShadow: '-8px 0 32px rgba(0,0,0,0.12)' }}
         >
           {/* Panel header */}
@@ -178,31 +178,31 @@ export default function TaskCalendarPanel() {
           </div>
 
           {/* Month nav */}
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 flex-shrink-0">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 flex-shrink-0 dark:border-slate-700">
             <button onClick={prevMonth}
-              className="w-6 h-6 flex items-center justify-center rounded-md border border-slate-200 hover:bg-slate-50 transition-colors">
+              className="w-6 h-6 flex items-center justify-center rounded-md border border-slate-200 hover:bg-slate-50 transition-colors dark:border-slate-600 dark:hover:bg-slate-700">
               <ChevronLeft size={12} className="text-slate-500" />
             </button>
-            <span className="text-sm font-semibold text-slate-800">
+            <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
               {MONTHS[curMonth]} {curYear}
             </span>
             <button onClick={nextMonth}
-              className="w-6 h-6 flex items-center justify-center rounded-md border border-slate-200 hover:bg-slate-50 transition-colors">
+              className="w-6 h-6 flex items-center justify-center rounded-md border border-slate-200 hover:bg-slate-50 transition-colors dark:border-slate-600 dark:hover:bg-slate-700">
               <ChevronRight size={12} className="text-slate-500" />
             </button>
           </div>
 
           {/* Calendar grid */}
-          <div className="px-3 py-2 border-b border-slate-100 flex-shrink-0">
+          <div className="px-3 py-2 border-b border-slate-100 flex-shrink-0 dark:border-slate-700">
             <div className="grid grid-cols-7 mb-1">
               {['Su','Mo','Tu','We','Th','Fr','Sa'].map((d) => (
-                <div key={d} className="text-center text-[10px] font-semibold text-slate-400 py-1">{d}</div>
+                <div key={d} className="text-center text-[10px] font-semibold text-slate-400 py-1 dark:text-slate-500">{d}</div>
               ))}
             </div>
             <div className="grid grid-cols-7 gap-0.5">
               {cells.map((cell, i) => {
                 if (!cell.current) return (
-                  <div key={i} className="aspect-square flex items-center justify-center text-[11px] text-slate-300">
+                  <div key={i} className="aspect-square flex items-center justify-center text-[11px] text-slate-300 dark:text-slate-600">
                     {cell.day}
                   </div>
                 );
@@ -220,8 +220,8 @@ export default function TaskCalendarPanel() {
                       ${isSel
                         ? 'bg-indigo-600 text-white font-semibold'
                         : isToday
-                          ? 'border border-indigo-400 text-indigo-600 font-semibold hover:bg-indigo-50'
-                          : 'hover:bg-slate-100 text-slate-700'
+                          ? 'border border-indigo-400 text-indigo-600 font-semibold hover:bg-indigo-50 dark:text-indigo-400 dark:border-indigo-600 dark:hover:bg-indigo-900/30'
+                          : 'hover:bg-slate-100 text-slate-700 dark:text-slate-300 dark:hover:bg-slate-700'
                       }`}
                   >
                     {cell.day}
@@ -238,10 +238,10 @@ export default function TaskCalendarPanel() {
 
           {/* Tasks list — scrollable, fills remaining height */}
           <div className="flex-1 overflow-y-auto min-h-0">
-            <div className="flex items-center justify-between px-4 py-2.5 sticky top-0 bg-white border-b border-slate-100 z-10">
-              <span className="text-xs font-semibold text-slate-700">{fmtLabel(selectedKey)}</span>
+            <div className="flex items-center justify-between px-4 py-2.5 sticky top-0 bg-white border-b border-slate-100 z-10 dark:bg-slate-800 dark:border-slate-700">
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{fmtLabel(selectedKey)}</span>
               {selectedTasks.length > 0 && (
-                <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 dark:bg-slate-700 dark:text-slate-400 dark:border-slate-600">
                   {selectedTasks.length} task{selectedTasks.length > 1 ? 's' : ''}
                 </span>
               )}
@@ -266,16 +266,16 @@ export default function TaskCalendarPanel() {
                   return (
                     <div
                       key={task._id}
-                      className={`rounded-lg border bg-white p-2.5 transition-all hover:shadow-sm
+                      className={`rounded-lg border bg-white p-2.5 transition-all hover:shadow-sm dark:bg-slate-800
                         ${task.isOverdue
-                          ? 'border-l-2 border-rose-300 bg-rose-50/30'
-                          : 'border-slate-200 hover:border-slate-300'
+                          ? 'border-l-2 border-rose-300 bg-rose-50/30 dark:bg-rose-900/10 dark:border-rose-700'
+                          : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600'
                         }
                         ${task.status === 'completed' ? 'opacity-60' : ''}`}
                     >
                       {/* Title row */}
                       <div className="flex items-start justify-between gap-2 mb-1.5">
-                        <p className="text-[11px] font-semibold text-slate-800 leading-snug">{task.title}</p>
+                        <p className="text-[11px] font-semibold text-slate-800 leading-snug dark:text-slate-200">{task.title}</p>
                         {task.isOverdue && (
                           <span className="text-[9px] font-bold text-rose-600 whitespace-nowrap">Overdue</span>
                         )}
@@ -296,7 +296,7 @@ export default function TaskCalendarPanel() {
                       </div>
 
                       {/* Meta */}
-                      <div className="flex items-center gap-3 text-[10px] text-slate-400 mb-2">
+                      <div className="flex items-center gap-3 text-[10px] text-slate-400 mb-2 dark:text-slate-500">
                         <span className="flex items-center gap-1"><Clock size={9} />Due {fmtTime(task.due_date)}</span>
                         {task.reminder_at && (
                           <span className="flex items-center gap-1"><Bell size={9} />{fmtTime(task.reminder_at)}</span>
@@ -305,12 +305,12 @@ export default function TaskCalendarPanel() {
                       </div>
 
                       {task.description && (
-                        <p className="text-[10px] text-slate-500 mb-2 leading-relaxed">{task.description}</p>
+                        <p className="text-[10px] text-slate-500 mb-2 leading-relaxed dark:text-slate-400">{task.description}</p>
                       )}
 
                       {/* Footer */}
-                      <div className="flex items-center justify-between pt-1.5 border-t border-slate-100">
-                        <div className="flex items-center gap-1 text-[10px] text-slate-500 min-w-0">
+                      <div className="flex items-center justify-between pt-1.5 border-t border-slate-100 dark:border-slate-700">
+                        <div className="flex items-center gap-1 text-[10px] text-slate-500 min-w-0 dark:text-slate-400">
                           <span className="font-medium truncate">{leadName}</span>
                           {leadPhone && (
                             <span className="text-slate-400 hidden sm:inline truncate">· {leadPhone}</span>
@@ -333,11 +333,11 @@ export default function TaskCalendarPanel() {
           </div>
 
           {/* Footer actions — always visible at bottom */}
-          <div className="flex items-center gap-2 px-3 py-2.5 border-t border-slate-200 bg-white flex-shrink-0">
+          <div className="flex items-center gap-2 px-3 py-2.5 border-t border-slate-200 bg-white flex-shrink-0 dark:border-slate-700 dark:bg-slate-800">
             <button
               onClick={() => window.open('/tasks', '_blank', 'noopener,noreferrer')}
               className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium
-                text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200
+                text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 dark:text-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600 dark:border-slate-600
                 rounded-lg transition-colors"
             >
               <ListCheck size={13} />All tasks

@@ -32,12 +32,12 @@ const TASK_TYPES = {
 };
 
 const STAT_CARDS = [
-  { key: 'totalTasks',      label: 'Total',       Icon: ListTodo,   color: 'from-slate-600 to-slate-700' },
-  { key: 'pendingTasks',    label: 'Pending',     Icon: Circle,     color: 'from-amber-500 to-orange-500' },
-  { key: 'inProgressTasks', label: 'In Progress', Icon: TrendingUp, color: 'from-blue-500 to-indigo-600' },
-  { key: 'completedTasks',  label: 'Completed',   Icon: CheckCheck, color: 'from-emerald-500 to-teal-600' },
-  { key: 'overdueTasks',    label: 'Overdue',     Icon: AlertCircle,color: 'from-rose-500 to-pink-600' },
-  { key: 'todayTasks',      label: 'Due Today',   Icon: CalendarDays,color:'from-violet-500 to-purple-600' },
+  { key: 'totalTasks',      label: 'Total',       Icon: ListTodo,    color: 'from-slate-400 to-slate-500' },
+  { key: 'pendingTasks',    label: 'Pending',     Icon: Circle,      color: 'from-amber-400 to-orange-400' },
+  { key: 'inProgressTasks', label: 'In Progress', Icon: TrendingUp,  color: 'from-blue-400 to-indigo-500' },
+  { key: 'completedTasks',  label: 'Completed',   Icon: CheckCheck,  color: 'from-emerald-400 to-teal-500' },
+  { key: 'overdueTasks',    label: 'Overdue',     Icon: AlertCircle, color: 'from-rose-400 to-pink-500' },
+  { key: 'todayTasks',      label: 'Due Today',   Icon: CalendarDays,color: 'from-violet-400 to-purple-500' },
 ];
 
 const STATUSES = {
@@ -64,7 +64,7 @@ const formatDate = (dateString) => {
   });
 };
 const StatCard = ({ Icon, label, value, color, loading }) => (
-  <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${color} p-4 text-white shadow-lg`}>
+  <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${color} p-4 text-white shadow-lg dark:opacity-75`}>
     <div className="flex items-start justify-between">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-widest opacity-75 mb-1">{label}</p>
@@ -161,7 +161,6 @@ const TasksPage = () => {
       header: 'Type',
       render: (task) => {
         const type = TASK_TYPES[task.task_type] || TASK_TYPES.custom;
-        const Icon = type.Icon;
         return (
           <Chip 
             label={type.label}
@@ -257,14 +256,14 @@ const TasksPage = () => {
     }
   ];
 
-  const statCards = [
-    { label: 'Total', value: stats.totalTasks || 0, color: 'bg-blue-500' },
-    { label: 'Pending', value: stats.pendingTasks || 0, color: 'bg-yellow-500' },
-    { label: 'In Progress', value: stats.inProgressTasks || 0, color: 'bg-blue-500' },
-    { label: 'Completed', value: stats.completedTasks || 0, color: 'bg-green-500' },
-    { label: 'Overdue', value: stats.overdueTasks || 0, color: 'bg-orange-500' },
-    { label: 'Due Today', value: stats.todayTasks || 0, color: 'bg-purple-500' }
-  ];
+  // const statCards = [
+  //   { label: 'Total', value: stats.totalTasks || 0, color: 'bg-blue-500' },
+  //   { label: 'Pending', value: stats.pendingTasks || 0, color: 'bg-yellow-500' },
+  //   { label: 'In Progress', value: stats.inProgressTasks || 0, color: 'bg-blue-500' },
+  //   { label: 'Completed', value: stats.completedTasks || 0, color: 'bg-green-500' },
+  //   { label: 'Overdue', value: stats.overdueTasks || 0, color: 'bg-orange-500' },
+  //   { label: 'Due Today', value: stats.todayTasks || 0, color: 'bg-purple-500' }
+  // ];
 
   return (
     <div className="px-4 py-6 sm:px-6 md:px-8">

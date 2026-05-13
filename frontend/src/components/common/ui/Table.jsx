@@ -125,15 +125,15 @@ const Table = ({
 
   return (
     <div className="space-y-3 overflow-y-auto">
-      <div className={cn('overflow-x-auto min-h-[300px] overflow-y-auto', framed && 'rounded-xl border border-gray-200')}>
+      <div className={cn('overflow-x-auto min-h-[300px] overflow-y-auto', framed && 'rounded-xl border border-gray-200 dark:border-slate-700')}>
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 dark:bg-slate-900">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.key}
                   className={cn(
-                    'px-3 py-6 text-left text-xs font-semibold uppercase tracking-wide text-gray-500',
+                    'px-3 py-6 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400',
                     column.headerClassName
                   )}
                 >
@@ -142,7 +142,7 @@ const Table = ({
                     onClick={() => handleSort(column)}
                     className={cn(
                       'inline-flex items-center gap-1.5',
-                      sortable && column.sortable === true ? 'hover:text-gray-700' : 'cursor-default'
+                      sortable && column.sortable === true ? 'hover:text-gray-700 dark:hover:text-slate-200' : 'cursor-default'
                     )}
                   >
                     <span>{column.header}</span>
@@ -152,7 +152,7 @@ const Table = ({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 bg-white">
+          <tbody className="divide-y divide-gray-100 bg-white dark:divide-slate-700 dark:bg-slate-800">
             {loading ? (
               Array.from({ length: Math.max(4, Math.min(pageSize, 8)) }).map((_, rowIndex) => (
                 <tr key={`table-skeleton-row-${rowIndex}`}>
@@ -185,7 +185,7 @@ const Table = ({
               ))
             ) : rows.length === 0 ? (
               <tr>
-                <td className="px-3 py-4 text-sm text-gray-500" colSpan={columns.length}>
+                <td className="px-3 py-4 text-sm text-gray-500 dark:text-slate-400" colSpan={columns.length}>
                   {emptyMessage}
                 </td>
               </tr>
@@ -193,7 +193,7 @@ const Table = ({
               rows.map((row, rowIndex) => (
                 <tr key={row[rowKey] || rowIndex}>
                   {columns.map((column) => (
-                    <td key={column.key} className={cn('px-3 py-2 text-xs text-gray-700', column.cellClassName)}>
+                    <td key={column.key} className={cn('px-3 py-2 text-xs text-gray-700 dark:text-slate-300', column.cellClassName)}>
                       {column.render ? column.render(row, rowIndex) : row[column.key] || '-'}
                     </td>
                   ))}
@@ -207,13 +207,13 @@ const Table = ({
       {pagination && (
         <div
           className={cn(
-            'flex flex-col gap-2 bg-white px-3 py-2 text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between',
-            framed ? 'rounded-lg border border-gray-200' : 'px-0'
+            'flex flex-col gap-2 bg-white px-3 py-2 text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between dark:bg-slate-800 dark:text-slate-400',
+            framed ? 'rounded-lg border border-gray-200 dark:border-slate-700' : 'px-0'
           )}
         >
           <div>
-            Showing <span className="font-medium text-gray-800">{rows.length}</span> of{' '}
-            <span className="font-medium text-gray-800">{totalRows}</span>
+            Showing <span className="font-medium text-gray-800 dark:text-slate-200">{rows.length}</span> of{' '}
+            <span className="font-medium text-gray-800 dark:text-slate-200">{totalRows}</span>
           </div>
           <div className="flex items-center gap-2">
             <SearchableSelect
@@ -235,18 +235,18 @@ const Table = ({
               type="button"
               onClick={() => goToPage(page - 1)}
               disabled={page <= 1}
-              className="rounded-md border border-gray-300 p-1 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md border border-gray-300 p-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:text-slate-400"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="min-w-16 text-center font-medium text-gray-800">
+            <span className="min-w-16 text-center font-medium text-gray-800 dark:text-slate-200">
               {page} / {totalPages}
             </span>
             <button
               type="button"
               onClick={() => goToPage(page + 1)}
               disabled={page >= totalPages}
-              className="rounded-md border border-gray-300 p-1 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md border border-gray-300 p-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:text-slate-400"
             >
               <ChevronRight className="h-4 w-4" />
             </button>

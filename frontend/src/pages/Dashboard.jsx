@@ -77,7 +77,7 @@ const ChartTooltip = ({ active, payload, label, valueSuffix = '' }) => {
   if (!active || !payload?.length) return null;
   const row = payload[0];
   return (
-    <div className="rounded-lg border border-slate-200/80 bg-white/95 px-3 py-2 text-xs shadow-lg backdrop-blur-sm">
+    <div className="rounded-lg border border-slate-200/80 bg-white/95 px-3 py-2 text-xs shadow-lg backdrop-blur-sm dark:border-slate-700 dark:bg-slate-800">
       <p className="mb-1 font-semibold text-slate-900">{label ?? row.name}</p>
       {payload.map((p) => (
         <p key={p.dataKey} className="text-slate-600">
@@ -272,7 +272,7 @@ const Dashboard = () => {
         title: 'Total leads',
         value: totalLeads.toLocaleString('en-IN'),
         icon: Users,
-        accent: 'from-sky-500/15 to-blue-600/5',
+        accent: 'bg-sky-50 dark:bg-sky-900/20',
         iconWrap: 'bg-sky-100 text-sky-700 ring-sky-200/60',
         trend: { current: totalLeads, previous: prevCounts.total }
       },
@@ -281,7 +281,7 @@ const Dashboard = () => {
         title: 'New',
         value: newLeads.toLocaleString('en-IN'),
         icon: Phone,
-        accent: 'from-emerald-500/15 to-teal-600/5',
+        accent: 'bg-emerald-50 dark:bg-emerald-900/20',
         iconWrap: 'bg-emerald-100 text-emerald-700 ring-emerald-200/60',
         trend: { current: newLeads, previous: prevCounts.fresh }
       },
@@ -290,7 +290,7 @@ const Dashboard = () => {
         title: 'Converted',
         value: convertedLeads.toLocaleString('en-IN'),
         icon: CheckCircle,
-        accent: 'from-violet-500/15 to-purple-600/5',
+        accent: 'bg-violet-50 dark:bg-violet-900/20',
         iconWrap: 'bg-violet-100 text-violet-700 ring-violet-200/60',
         trend: { current: convertedLeads, previous: prevCounts.won }
       },
@@ -299,7 +299,7 @@ const Dashboard = () => {
         title: 'Revenue (won)',
         value: formatCurrency(revenue),
         icon: IndianRupee,
-        accent: 'from-amber-500/15 to-orange-600/5',
+        accent: 'bg-amber-50 dark:bg-amber-900/20',
         iconWrap: 'bg-amber-100 text-amber-800 ring-amber-200/60',
         trend: { current: revenue, previous: prevCounts.rev }
       },
@@ -309,7 +309,7 @@ const Dashboard = () => {
         value: activePipeline.toLocaleString('en-IN'),
         subtitle: 'Excluding won & lost',
         icon: Activity,
-        accent: 'from-slate-500/10 to-slate-600/5',
+        accent: 'bg-slate-100 dark:bg-slate-700/30',
         iconWrap: 'bg-slate-100 text-slate-700 ring-slate-200/60',
         trend: null
       },
@@ -319,7 +319,7 @@ const Dashboard = () => {
         value: `${winRate}%`,
         subtitle: 'Converted ÷ total in view',
         icon: Percent,
-        accent: 'from-primary-500/15 to-primary-700/5',
+        accent: 'bg-primary-50 dark:bg-primary-900/20',
         iconWrap: 'bg-primary-100 text-primary-800 ring-primary-200/60',
         trend: null
       }
@@ -446,16 +446,16 @@ const Dashboard = () => {
     });
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-white">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       <div className="px-4 py-6 sm:px-6 md:px-8">
         <div className="mx-auto max-w-7xl space-y-6">
           <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/5">
             <div
-              className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-gradient-to-br from-primary-400/25 via-sky-300/20 to-transparent blur-2xl"
+              className=""
               aria-hidden
             />
             <div
-              className="pointer-events-none absolute -bottom-16 left-1/4 h-48 w-96 rounded-full bg-gradient-to-tr from-violet-400/15 to-transparent blur-2xl"
+              className=""
               aria-hidden
             />
 
@@ -595,7 +595,7 @@ const Dashboard = () => {
                     >
                       <div
                         className={cn(
-                          'pointer-events-none absolute inset-0 bg-gradient-to-br opacity-100',
+                          'pointer-events-none absolute inset-0 opacity-100',
                           stat.accent
                         )}
                         aria-hidden
@@ -637,7 +637,7 @@ const Dashboard = () => {
               </div>
 
               <Card className="overflow-hidden rounded-3xl border-slate-200/90 shadow-md ring-1 ring-slate-900/5">
-                <CardHeader className="border-slate-100 bg-gradient-to-r from-white to-slate-50/80 py-5">
+                <CardHeader className="border-slate-100 bg-white dark:bg-slate-800 py-5">
                   <div>
                     <UiSectionTitle>New leads over time</UiSectionTitle>
                     <p className="mt-1 font-sans text-xs text-slate-500">
@@ -677,7 +677,7 @@ const Dashboard = () => {
 
               <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                 <Card className="rounded-3xl border-slate-200/90 shadow-md ring-1 ring-slate-900/5">
-                  <CardHeader className="border-slate-100 bg-gradient-to-r from-white to-slate-50/80">
+                  <CardHeader className="border-slate-100 bg-white dark:bg-slate-800">
                     <div>
                       <UiSectionTitle>Lead source mix</UiSectionTitle>
                       <p className="mt-1 font-sans text-xs text-slate-500">Share of volume by acquisition source.</p>
@@ -734,7 +734,7 @@ const Dashboard = () => {
                 </Card>
 
                 <Card className="rounded-3xl border-slate-200/90 shadow-md ring-1 ring-slate-900/5">
-                  <CardHeader className="border-slate-100 bg-gradient-to-r from-white to-slate-50/80">
+                  <CardHeader className="border-slate-100 bg-white dark:bg-slate-800">
                     <div>
                       <UiSectionTitle>Pipeline by status</UiSectionTitle>
                       <p className="mt-1 font-sans text-xs text-slate-500">Where leads sit in the funnel today.</p>
@@ -783,7 +783,7 @@ const Dashboard = () => {
                     admin ? 'lg:col-span-2' : ''
                   )}
                 >
-                  <CardHeader className="flex flex-row items-center justify-between border-slate-100 bg-gradient-to-r from-white to-slate-50/80">
+                  <CardHeader className="flex flex-row items-center justify-between border-slate-100 bg-white dark:bg-slate-800">
                     <div>
                       <UiSectionTitle>Recent leads</UiSectionTitle>
                       <p className="mt-1 font-sans text-xs text-slate-500">Latest in your current view.</p>
@@ -805,9 +805,9 @@ const Dashboard = () => {
                           <li key={lead._id}>
                             <Link
                               to={`/leads/${lead._id}`}
-                              className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-slate-50/80"
+                              className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-700"
                             >
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-slate-100 to-slate-200/80 font-sans text-xs font-bold text-slate-600">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 font-sans text-xs font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                                 {(lead.name || '?').charAt(0).toUpperCase()}
                               </div>
                               <div className="min-w-0 flex-1">
@@ -828,7 +828,7 @@ const Dashboard = () => {
 
                 {admin ? (
                   <Card className="rounded-3xl border-slate-200/90 shadow-md ring-1 ring-slate-900/5 lg:col-span-3">
-                    <CardHeader className="border-slate-100 bg-gradient-to-r from-white to-slate-50/80">
+                    <CardHeader className="border-slate-100 bg-white dark:bg-slate-800">
                       <UiSectionTitle>Team conversion</UiSectionTitle>
                       <p className="mt-1 font-sans text-xs text-slate-500">
                         Win rate by assignee for the filtered pipeline.
@@ -861,7 +861,7 @@ const Dashboard = () => {
                         <div className="overflow-hidden rounded-2xl border border-slate-200/80">
                           <table className="w-full font-sans text-sm">
                             <thead>
-                              <tr className="border-b border-slate-200 bg-slate-50/90 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                              <tr className="border-b border-slate-200 bg-slate-50/90 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400">
                                 <th className="px-4 py-2.5">Member</th>
                                 <th className="px-4 py-2.5">Role</th>
                                 <th className="px-4 py-2.5 text-right">Leads</th>
@@ -871,7 +871,7 @@ const Dashboard = () => {
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                               {teamPerformance.slice(0, 8).map((row) => (
-                                <tr key={row.name} className="bg-white hover:bg-slate-50/60">
+                                <tr key={row.name} className="bg-white hover:bg-slate-50/60 dark:bg-slate-800 dark:hover:bg-slate-700">
                                   <td className="px-4 py-2.5 font-medium text-slate-900">{row.name}</td>
                                   <td className="px-4 py-2.5 text-slate-600">{formatLabel(row.role)}</td>
                                   <td className="px-4 py-2.5 text-right tabular-nums text-slate-700">{row.leads}</td>

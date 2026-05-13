@@ -146,7 +146,7 @@ const LeadCard = ({
         }}
         {...listeners}
         {...attributes}
-        className={`bg-white border rounded-xl p-3.5 group select-none touch-none ${
+        className={`bg-white border rounded-xl p-3.5 group select-none touch-none dark:bg-slate-800 ${
           isDragging
             ? 'border-indigo-300 shadow-2xl shadow-indigo-200 rotate-[1.5deg] scale-[1.03] cursor-grabbing'
             : `${cardBorderClass} hover:shadow-md cursor-grab active:cursor-grabbing`
@@ -159,8 +159,8 @@ const LeadCard = ({
               {initials}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold leading-tight text-slate-900">{lead.name}</p>
-              <p className="text-[11px] capitalize text-slate-400">{lead.leadType || 'lead'}</p>
+              <p className="truncate text-sm font-semibold leading-tight text-slate-900 dark:text-slate-100">{lead.name}</p>
+              <p className="text-[11px] capitalize text-slate-400 dark:text-slate-500">{lead.leadType || 'lead'}</p>
             </div>
           </div>
 
@@ -200,7 +200,7 @@ const LeadCard = ({
                 e.stopPropagation();
                 setExpanded((v) => !v);
               }}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
             >
               <ChevronDown size={16} className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
             </button>
@@ -208,13 +208,13 @@ const LeadCard = ({
         </div>
 
         {!expanded && (
-          <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-2">
-            <span className="truncate text-[10px] font-medium text-slate-600">{fmtPhone(lead.phone)}</span>
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-2 dark:border-slate-700">
+            <span className="truncate text-[10px] font-medium text-slate-600 dark:text-slate-400">{fmtPhone(lead.phone)}</span>
             <Pill label={lead.priority || 'low'} cls={PRIORITY_CLS[lead.priority || 'low']} />
-            <span className="truncate text-[10px] font-medium text-slate-600">{lead?.email || '-'}</span>
+            <span className="truncate text-[10px] font-medium text-slate-600 dark:text-slate-400">{lead?.email || '-'}</span>
             {/* <StageTargetChips stageMeta={stageMeta} dense /> */}
             {lead.tasks?.length > 0 && (
-              <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">
+              <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500 dark:bg-slate-700 dark:text-slate-400">
                 {lead.tasks.length} task{lead.tasks.length !== 1 ? 's' : ''}
               </span>
             )}
@@ -244,7 +244,7 @@ const LeadCard = ({
 
         {/* Message */}
         {lead.message && (
-          <div className="flex items-start gap-2 mb-3 bg-slate-50 rounded-lg px-2.5 py-2">
+          <div className="flex items-start gap-2 mb-3 bg-slate-50 rounded-lg px-2.5 py-2 dark:bg-slate-700/50">
             <MessageSquare size={10} className="text-slate-400 flex-shrink-0 mt-0.5" />
             <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2">{lead.message}</p>
           </div>
@@ -261,7 +261,7 @@ const LeadCard = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center pt-2 border-t border-slate-100">
+        <div className="flex items-center pt-2 border-t border-slate-100 dark:border-slate-700">
           <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
             <Calendar size={10} />
             {formatDateIndian(lead.createdAt)}
@@ -311,7 +311,7 @@ const LeadCard = ({
                     onClick={() => setEditTask(task)}
                     className="group/task flex items-start gap-2 p-2.5 rounded-lg border border-slate-100
                       bg-slate-50 hover:bg-white hover:border-indigo-200 hover:shadow-sm
-                      transition-all cursor-pointer"
+                      transition-all cursor-pointer dark:bg-slate-700/50 dark:border-slate-700 dark:hover:bg-slate-700 dark:hover:border-indigo-500"
                   >
                     {/* Status dot */}
                     <span className={`mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot}`} />

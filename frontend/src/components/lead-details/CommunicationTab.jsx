@@ -32,7 +32,9 @@ const CommunicationTab = ({
               <div key={communication._id} className={`flex ${inbound ? 'justify-start' : 'justify-end'}`}>
                 <div
                   className={`w-full max-w-3xl rounded-xl border p-3 ${
-                    inbound ? 'border-blue-100 bg-blue-50' : 'border-emerald-100 bg-emerald-50'
+                    inbound
+                      ? 'border-blue-100 bg-blue-50 dark:border-blue-900 dark:bg-blue-900/20'
+                      : 'border-emerald-100 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-900/20'
                   }`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -50,11 +52,11 @@ const CommunicationTab = ({
       )}
 
       {canReplyCommunication ? (
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-          <h3 className="text-sm font-semibold text-gray-900">Reply to Lead</h3>
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-slate-700 dark:bg-slate-800">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-slate-100">Reply to Lead</h3>
           {lead?.source === 'importerr_inquiry' ? (
             <div className="mt-3">
-              <label className="mb-1 block text-sm font-medium text-gray-700">Communication Source</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">Communication Source</label>
               <SearchableSelect
                 name="replySource"
                 value={replySource}
@@ -68,13 +70,13 @@ const CommunicationTab = ({
             </p>
           )}
           <div className="mt-3">
-            <label className="mb-1 block text-sm font-medium text-gray-700">Message</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">Message</label>
             <textarea
               value={replyMessage}
               onChange={(event) => setReplyMessage(event.target.value)}
               placeholder="Type your reply..."
               rows={3}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:placeholder:text-slate-500"
             />
           </div>
           <div className="mt-3 flex justify-end">

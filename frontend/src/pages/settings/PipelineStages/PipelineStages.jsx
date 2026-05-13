@@ -273,7 +273,7 @@ const PipelineStages = () => {
 
   /* ─── Render ──────────────────────────────────────────────── */
   return (
-    <div className="px-4 py-6 sm:px-6 md:px-8">
+    <div className="px-4 py-6 sm:px-6 md:px-8 min-h-screen dark:bg-slate-900">
       <div className="mx-auto max-w-7xl space-y-6">
 
         <PipelineHeader
@@ -293,12 +293,12 @@ const PipelineStages = () => {
 
         {/* Empty */}
         {!loading && pipelines.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-24 bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm">
-            <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-400 mb-4">
+          <div className="flex flex-col items-center justify-center py-24 bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm dark:bg-slate-800 dark:border-slate-700">
+            <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-400 mb-4 dark:bg-indigo-900/30">
               <GitBranch size={26} />
             </div>
-            <h3 className="text-base font-bold text-slate-700 mb-1">No Pipelines Yet</h3>
-            <p className="text-sm text-slate-400 text-center max-w-sm mb-6">
+            <h3 className="text-base font-bold text-slate-700 mb-1 dark:text-slate-200">No Pipelines Yet</h3>
+            <p className="text-sm text-slate-400 text-center max-w-sm mb-6 dark:text-slate-500">
               Create your first pipeline to structure your sales process.
             </p>
             <button

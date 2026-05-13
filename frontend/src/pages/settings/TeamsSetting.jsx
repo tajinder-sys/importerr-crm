@@ -172,14 +172,14 @@ const TeamsSetting = () => {
       sortKey: 'name',
       sortable: true,
       header: 'Team Name',
-      render: (team) => <span className="font-medium text-gray-900">{team.name}</span>
+      render: (team) => <span className="font-medium text-gray-900 dark:text-slate-200">{team.name}</span>
     },
     {
       key: 'description',
       sortable: false,
       header: 'Description',
       render: (team) => (
-        <span className="text-xs text-gray-600">
+        <span className="text-xs text-gray-600 dark:text-slate-400">
           {team.description || '-'}
         </span>
       )
@@ -202,7 +202,7 @@ const TeamsSetting = () => {
           <button
             type="button"
             onClick={() => openEditTeam(team)}
-            className="rounded-md p-1.5 text-gray-600 transition hover:bg-gray-100 hover:text-primary-600"
+            className="rounded-md p-1.5 text-gray-600 transition hover:bg-gray-100 hover:text-primary-600 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-primary-400"
             title="Edit team"
           >
             <Pencil className="h-4 w-4" />
@@ -210,7 +210,7 @@ const TeamsSetting = () => {
           <button
             type="button"
             onClick={() => setDeletingTeam(team)}
-            className="rounded-md p-1.5 text-gray-600 transition hover:bg-red-50 hover:text-red-600"
+            className="rounded-md p-1.5 text-gray-600 transition hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-900/30 dark:hover:text-red-400"
             title="Delete team"
           >
             <Trash2 className="h-4 w-4" />
@@ -225,7 +225,7 @@ const TeamsSetting = () => {
   }), [tableRefreshKey]);
 
   return (
-    <div className="px-4 py-6 sm:px-6 md:px-8">
+    <div className="px-4 py-6 sm:px-6 md:px-8 min-h-screen dark:bg-slate-900">
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -297,7 +297,7 @@ const TeamsSetting = () => {
               rows={3}
             />
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">Status</label>
               <SearchableSelect
                 name="status"
                 value={formData.status}
@@ -355,7 +355,7 @@ const TeamsSetting = () => {
               rows={3}
             />
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">Status</label>
               <SearchableSelect
                 name="status"
                 value={formData.status}

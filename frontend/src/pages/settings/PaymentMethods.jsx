@@ -195,7 +195,7 @@ const PaymentMethods = () => {
   }
 
   return (
-    <div className="px-4 py-6 sm:px-6 md:px-8">
+    <div className="px-4 py-6 sm:px-6 md:px-8 min-h-screen dark:bg-slate-900">
       <div className="mx-auto max-w-7xl space-y-6">
         <PageHeader
           title="Payment Methods"
@@ -220,21 +220,21 @@ const PaymentMethods = () => {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {paymentMethods.map((method) => (
-              <div key={method._id} className="group bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-all duration-200 hover:border-primary-200">
+              <div key={method._id} className="group bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-all duration-200 hover:border-primary-200 dark:bg-slate-800 dark:border-slate-700 dark:hover:border-primary-600">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center space-x-3">
-                    <div className="rounded-xl bg-gradient-to-br from-primary-50 to-primary-100 p-3 group-hover:scale-105 transition-transform duration-200">
+                    <div className="rounded-xl bg-gradient-to-br from-primary-50 to-primary-100 p-3 group-hover:scale-105 transition-transform duration-200 dark:from-primary-900/30 dark:to-primary-800/30">
                       <CreditCard className="h-5 w-5 text-primary-600" />
                     </div>
                     <div>
                       <UiCardTitle>{method.name}</UiCardTitle>
-                      <p className="text-xs text-gray-500 font-mono bg-gray-50 px-2 py-0.5 rounded-md inline-block mt-1">{method.key}</p>
+                      <p className="text-xs text-gray-500 font-mono bg-gray-50 px-2 py-0.5 rounded-md inline-block mt-1 dark:bg-slate-700 dark:text-slate-400">{method.key}</p>
                     </div>
                   </div>
                   <div className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium transition-colors ${
-                    method.isActive 
-                      ? 'bg-green-100 text-green-700 group-hover:bg-green-200' 
-                      : 'bg-gray-100 text-gray-600 group-hover:bg-gray-200'
+                    method.isActive
+                      ? 'bg-green-100 text-green-700 group-hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-gray-100 text-gray-600 group-hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-400'
                   }`}>
                     <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
                       method.isActive ? 'bg-green-500' : 'bg-gray-400'
@@ -243,9 +243,9 @@ const PaymentMethods = () => {
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-slate-700">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">Status</span>
+                    <span className="text-xs text-gray-500 dark:text-slate-400">Status</span>
                     <ToggleSwitch
                       checked={method.isActive}
                       onChange={() => handleToggleStatus(method._id)}
@@ -253,26 +253,12 @@ const PaymentMethods = () => {
                     />
                   </div>
                   <div className="flex items-center gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      iconOnly
-                      className="text-gray-400 hover:text-primary-600 hover:bg-primary-50"
-                      startIcon={<Edit2 className="h-4 w-4" />}
-                      onClick={() => openEditModal(method)}
-                      title="Edit"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      iconOnly
-                      className="text-gray-400 hover:text-red-600 hover:bg-red-50"
-                      startIcon={<Trash2 className="h-4 w-4" />}
-                      onClick={() => handleDelete(method._id)}
-                      title="Delete"
-                    />
+                    <Button type="button" variant="ghost" size="sm" iconOnly
+                      className="text-gray-400 hover:text-primary-600 hover:bg-primary-50 dark:text-slate-500 dark:hover:text-primary-400 dark:hover:bg-primary-900/30"
+                      startIcon={<Edit2 className="h-4 w-4" />} onClick={() => openEditModal(method)} title="Edit" />
+                    <Button type="button" variant="ghost" size="sm" iconOnly
+                      className="text-gray-400 hover:text-red-600 hover:bg-red-50 dark:text-slate-500 dark:hover:text-red-400 dark:hover:bg-red-900/30"
+                      startIcon={<Trash2 className="h-4 w-4" />} onClick={() => handleDelete(method._id)} title="Delete" />
                   </div>
                 </div>
               </div>

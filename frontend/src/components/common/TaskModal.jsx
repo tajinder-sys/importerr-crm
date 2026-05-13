@@ -21,17 +21,17 @@ const TASK_TYPES = [
 ];
 
 const PRIORITIES = [
-  { value: 'low',    label: 'Low',    color: 'text-slate-500 bg-slate-100 border-slate-200' },
-  { value: 'medium', label: 'Medium', color: 'text-amber-600 bg-amber-50 border-amber-200' },
-  { value: 'high',   label: 'High',   color: 'text-orange-600 bg-orange-50 border-orange-200' },
-  { value: 'urgent', label: 'Urgent', color: 'text-rose-600 bg-rose-50 border-rose-200' },
+  { value: 'low',    label: 'Low',    color: 'text-slate-500 bg-slate-100 border-slate-200 dark:text-slate-300 dark:bg-slate-700 dark:border-slate-600' },
+  { value: 'medium', label: 'Medium', color: 'text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-900/30 dark:border-amber-700' },
+  { value: 'high',   label: 'High',   color: 'text-orange-600 bg-orange-50 border-orange-200 dark:text-orange-400 dark:bg-orange-900/30 dark:border-orange-700' },
+  { value: 'urgent', label: 'Urgent', color: 'text-rose-600 bg-rose-50 border-rose-200 dark:text-rose-400 dark:bg-rose-900/30 dark:border-rose-700' },
 ];
 
 const STATUSES = [
-  { value: 'pending',     label: 'Pending',     color: 'text-slate-600 bg-slate-100 border-slate-300' },
-  { value: 'in_progress', label: 'In Progress', color: 'text-blue-600 bg-blue-50 border-blue-300' },
-  { value: 'completed',   label: 'Completed',   color: 'text-emerald-600 bg-emerald-50 border-emerald-300' },
-  { value: 'cancelled',   label: 'Cancelled',   color: 'text-rose-600 bg-rose-50 border-rose-300' },
+  { value: 'pending',     label: 'Pending',     color: 'text-slate-600 bg-slate-100 border-slate-300 dark:text-slate-300 dark:bg-slate-700 dark:border-slate-600' },
+  { value: 'in_progress', label: 'In Progress', color: 'text-blue-600 bg-blue-50 border-blue-300 dark:text-blue-400 dark:bg-blue-900/30 dark:border-blue-700' },
+  { value: 'completed',   label: 'Completed',   color: 'text-emerald-600 bg-emerald-50 border-emerald-300 dark:text-emerald-400 dark:bg-emerald-900/30 dark:border-emerald-700' },
+  { value: 'cancelled',   label: 'Cancelled',   color: 'text-rose-600 bg-rose-50 border-rose-300 dark:text-rose-400 dark:bg-rose-900/30 dark:border-rose-700' },
 ];
 
 const REPEAT_TYPES = ['daily', 'weekly', 'monthly', 'yearly', 'custom'];
@@ -96,14 +96,14 @@ const taskToForm = (task) => ({
 
 /* ─── Sub-components ─────────────────────────────────────────── */
 const Label = ({ children, required }) => (
-  <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+  <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 dark:text-slate-400">
     {children}{required && <span className="text-rose-400 ml-0.5">*</span>}
   </label>
 );
 
 const Input = ({ className = '', ...props }) => (
   <input
-    className={`w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-800
+    className={`w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500
       placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400
       transition-all ${className}`}
     {...props}
@@ -112,7 +112,7 @@ const Input = ({ className = '', ...props }) => (
 
 const Textarea = ({ className = '', ...props }) => (
   <textarea
-    className={`w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-800
+    className={`w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500
       placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400
       transition-all resize-none ${className}`}
     {...props}
@@ -122,7 +122,7 @@ const Textarea = ({ className = '', ...props }) => (
 const Select = ({ children, className = '', ...props }) => (
   <div className="relative">
     <select
-      className={`w-full appearance-none px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white
+      className={`w-full appearance-none px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200
         text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400
         transition-all pr-8 ${className}`}
       {...props}
@@ -246,8 +246,8 @@ const TaskModal = ({ isOpen, onClose, onCreated, onUpdated, leadId, leadName, ta
       <button
         type="button"
         onClick={handleClose}
-        className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700
-          hover:bg-slate-100 rounded-lg transition-all"
+        className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200
+          hover:bg-slate-100 rounded-lg transition-all dark:hover:bg-slate-700"
       >
         Cancel
       </button>
@@ -311,7 +311,7 @@ const TaskModal = ({ isOpen, onClose, onCreated, onUpdated, leadId, leadName, ta
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-all
                       ${active
                         ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm shadow-indigo-200'
-                        : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-200 hover:text-indigo-500'
+                        : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-200 hover:text-indigo-500 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600 dark:hover:border-indigo-600 dark:hover:text-indigo-400'
                       }`}
                   >
                     <Icon size={11} />
@@ -336,7 +336,7 @@ const TaskModal = ({ isOpen, onClose, onCreated, onUpdated, leadId, leadName, ta
                     className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold border transition-all
                       ${active
                         ? `${color} ring-2 ring-offset-1 ring-current/30`
-                        : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
+                        : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-600 dark:hover:border-slate-500'
                       }`}
                   >
                     <Flag size={10} className="inline mr-1" />
@@ -362,7 +362,7 @@ const TaskModal = ({ isOpen, onClose, onCreated, onUpdated, leadId, leadName, ta
                       className={`flex-1 min-w-[5rem] py-1.5 rounded-lg text-[11px] font-bold border transition-all
                         ${active
                           ? `${color} ring-2 ring-offset-1 ring-current/30`
-                          : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
+                          : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-600 dark:hover:border-slate-500'
                         }`}
                     >
                       {label}
@@ -425,11 +425,11 @@ const TaskModal = ({ isOpen, onClose, onCreated, onUpdated, leadId, leadName, ta
           </div>
 
           {/* Recurring toggle */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 dark:border-slate-700 dark:bg-slate-800/60">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <RotateCcw size={13} className="text-slate-400" />
-                <span className="text-sm font-semibold text-slate-700">Recurring task</span>
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Recurring task</span>
               </div>
               <Toggle
                 checked={form.is_recurring}
@@ -438,7 +438,7 @@ const TaskModal = ({ isOpen, onClose, onCreated, onUpdated, leadId, leadName, ta
             </div>
 
             {form.is_recurring && (
-              <div className="mt-3 grid grid-cols-2 gap-3 pt-3 border-t border-slate-200">
+              <div className="mt-3 grid grid-cols-2 gap-3 pt-3 border-t border-slate-200 dark:border-slate-700">
                 <div>
                   <Label>Repeat</Label>
                   <Select value={form.repeat_type} onChange={set('repeat_type')}>
@@ -478,7 +478,7 @@ const TaskModal = ({ isOpen, onClose, onCreated, onUpdated, leadId, leadName, ta
 
           {/* Error */}
           {error && (
-            <div className="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-[12px] text-rose-600 font-medium">
+            <div className="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-[12px] text-rose-600 font-medium dark:bg-rose-900/20 dark:border-rose-800 dark:text-rose-400">
               {error}
             </div>
           )}

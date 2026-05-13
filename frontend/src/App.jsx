@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { initializeAuth } from './store/authSlice';
 import { useAuth } from './hooks/useAuth';
 import { LayoutProvider, useLayout } from './contexts/LayoutContext.jsx';
+import { ThemeProvider } from './contexts/ThemeContext.jsx';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 import Login from './pages/Login';
@@ -35,7 +36,7 @@ const AuthenticatedShell = () => {
   const { sidebarCollapsed } = useLayout();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
+    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-900" style={{backgroundColor: 'var(--bg-primary)'}}>
       <Sidebar />
       <div
         className={cn(
@@ -123,6 +124,7 @@ function App() {
   }, [dispatch]);
 
   return (
+    <ThemeProvider>
     <Router>
       <div className={cn(surfaces.appShell)}>
           <Routes>
@@ -140,6 +142,7 @@ function App() {
           </Routes>
         </div>
     </Router>
+    </ThemeProvider>
   );
 }
 

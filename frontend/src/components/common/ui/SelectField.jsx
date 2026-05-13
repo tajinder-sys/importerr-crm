@@ -23,7 +23,7 @@ const SelectField = React.forwardRef(
     };
 
     const selectClasses = cn(
-      'block w-full rounded-lg border shadow-sm bg-white text-gray-900',
+      'block w-full rounded-lg border shadow-sm bg-white text-gray-900 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600',
       'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500',
       sizes[size] || sizes.md,
       error ? 'border-red-300' : 'border-gray-300',

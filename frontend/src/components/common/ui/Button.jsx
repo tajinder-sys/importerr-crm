@@ -27,36 +27,44 @@ const Button = React.forwardRef(({
     primary: [
       'bg-primary-600 text-white',
       'hover:bg-primary-700',
+      'dark:bg-primary-700 dark:hover:bg-primary-600',
       'focus-visible:ring-primary-500',
     ].join(' '),
 
     secondary: [
       'bg-gray-100 text-gray-800 border border-gray-200/80',
       'hover:bg-gray-200 hover:border-gray-300',
+      'dark:bg-slate-700 dark:text-slate-200 dark:border-slate-600',
+      'dark:hover:bg-slate-600 dark:hover:border-slate-500',
       'focus-visible:ring-gray-400',
     ].join(' '),
 
     outline: [
       'bg-transparent text-primary-600 border border-primary-300',
       'hover:bg-primary-50 hover:border-primary-400',
+      'dark:text-primary-400 dark:border-primary-700',
+      'dark:hover:bg-primary-900/30 dark:hover:border-primary-600',
       'focus-visible:ring-primary-400',
     ].join(' '),
 
     danger: [
       'bg-red-500 text-white',
       'hover:bg-red-600',
+      'dark:bg-red-700 dark:hover:bg-red-600',
       'focus-visible:ring-red-400',
     ].join(' '),
 
     ghost: [
       'bg-transparent text-gray-600 border border-transparent',
       'hover:bg-gray-100 hover:text-gray-800',
+      'dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200',
       'focus-visible:ring-gray-400',
     ].join(' '),
 
     success: [
       'bg-green-600 text-white',
       'hover:bg-green-700',
+      'dark:bg-green-700 dark:hover:bg-green-600',
       'focus-visible:ring-green-500',
     ].join(' '),
   };
