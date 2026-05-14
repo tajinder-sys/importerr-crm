@@ -7,7 +7,8 @@ const {
   createUser,
   updateUser,
   updateUserPassword,
-  deactivateUser
+  deactivateUser,
+  toggleUserActive
 } = require('../controllers/userController');
 
 const router = express.Router();
@@ -18,6 +19,7 @@ router.get('/:id', auth, getUserById);
 router.post('/', auth, adminOnly, createUser);
 router.put('/:id', auth, updateUser);
 router.put('/:id/password', auth, updateUserPassword);
+router.patch('/:id/toggle', auth, adminOnly, toggleUserActive);
 router.delete('/:id', auth, adminOnly, deactivateUser);
 
 module.exports = router;

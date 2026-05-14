@@ -24,6 +24,7 @@ const getUsers = async (req, res) => {
       roles,
       search,
       includeAdmin = 'false',
+      showAll = 'false',
       page = 1,
       limit = 10,
       team_id,
@@ -32,9 +33,10 @@ const getUsers = async (req, res) => {
       priority
     } = req.query;
 
-    const query = {
-      isActive: true
-    };
+    const query = {};
+    if (showAll !== 'true') {
+      query.isActive = true;
+    }
 
     if (priority && priority !== 'all') {
       if (!Object.values(TASK_PRIORITY_LEVELS).includes(priority)) {
@@ -383,28 +385,16 @@ const updateUserPassword = async (req, res) => {
 const deactivateUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
-
-    if (!user) {
-      return sendNotFound(res, 'User not found');
-    }
-
+    if (!user) return sendNotFound(res, 'User not found');
     user.isActive = false;
-
     await user.save();
-
-    sendSuccess(
-      res,
-      'User deactivated successfully'
-    );
+    sendSuccess(res, 'User deactivated successfully');
   } catch (error) {
     console.error('Deactivate user error:', error);
     sendBadRequest(res, 'Failed to deactivate user');
   }
 };
 
-// =========================
-// Team roster for filters / pickers (active team_member + team_manager, id + name only)
-// =========================
 const getTeamAssignableRoster = async (req, res) => {
   try {
     const requestedTeamId = req.query.team_id ? String(req.query.team_id).trim() : '';
@@ -465,6 +455,19 @@ const getTeamAssignableRoster = async (req, res) => {
   }
 };
 
+const toggleUserActive = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return sendNotFound(res, 'User not found');
+    user.isActive = !user.isActive;
+    await user.save();
+    sendSuccess(res, `User ${user.isActive ? 'activated' : 'deactivated'} successfully`, { isActive: user.isActive });
+  } catch (error) {
+    console.error('Toggle user error:', error);
+    sendBadRequest(res, 'Failed to toggle user status');
+  }
+};
+
 module.exports = {
   getUsers,
   getUserById,
@@ -472,5 +475,6 @@ module.exports = {
   createUser,
   updateUser,
   updateUserPassword,
-  deactivateUser
+  deactivateUser,
+  toggleUserActive,
 };
