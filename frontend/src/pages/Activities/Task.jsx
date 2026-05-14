@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Card, CardContent, CardHeader } from '../../components/common/ui/Card';
 import Table from '../../components/common/ui/Table';
@@ -6,14 +6,14 @@ import Button from '../../components/common/ui/Button';
 import Chip from '../../components/common/ui/Chip';
 import TaskModal from '../../components/common/TaskModal';
 import Input from '../../components/common/ui/Input';
-import SelectField from '../../components/common/ui/SelectField';
+import SearchableSelect from '../../components/common/ui/SearchableSelect';
 import api from '../../utils/api';
 import { API_ROUTES } from '../../utils/apiRoutes';
 import { fetchTasks, fetchCalendarTasks } from '../../store/tasksSlice';
 import { useAuth } from '../../hooks/useAuth';
 import { USER_ROLES } from '../../utils/constants';
 import { fetchTeamAssignableUsers } from '../../utils/fetchTeamAssignableUsers';
-import { UiPageTitle, UiSectionTitle, UiPageDescription } from '../../components/common/ui/Typography';
+import { UiPageTitle, UiSectionTitle, UiPageDescription, UiFieldLabel } from '../../components/common/ui/Typography';
 import {
   Plus,
   Phone, Mail, Video, Users, MessageSquare, MapPin, Zap, RotateCcw,
@@ -57,6 +57,34 @@ const PRIORITIES = {
   high: { label: 'High', color: 'text-orange-600' },
   urgent: { label: 'Urgent', color: 'text-red-600' }
 };
+
+const TASK_STATUS_FILTER_OPTIONS = [
+  { value: '', label: 'All Statuses' },
+  ...Object.entries(STATUSES).map(([key, s]) => ({ value: key, label: s.label })),
+];
+
+const PRIORITY_FILTER_OPTIONS = [
+  { value: '', label: 'All Priorities' },
+  ...Object.entries(PRIORITIES).map(([key, p]) => ({ value: key, label: p.label })),
+];
+
+const TASK_TYPE_FILTER_OPTIONS = [
+  { value: '', label: 'All Types' },
+  ...Object.entries(TASK_TYPES).map(([key, t]) => ({ value: key, label: t.label })),
+];
+
+const DUE_DATE_FILTER_OPTIONS = [
+  { value: '', label: 'All Time' },
+  { value: 'today', label: 'Today' },
+  { value: 'overdue', label: 'Overdue' },
+  { value: 'upcoming', label: 'Upcoming' },
+];
+
+const SCOPE_FILTER_OPTIONS = [
+  { value: '', label: 'All (my work + team)' },
+  { value: 'mine', label: 'Assigned / created by me' },
+  { value: 'team', label: 'My team only' },
+];
 
 const formatDate = (dateString) => {
   if (!dateString) return '-';
@@ -104,6 +132,22 @@ const TasksPage = () => {
   });
   const [assigneeOptions, setAssigneeOptions] = useState([]);
   const [teamOptions, setTeamOptions] = useState([]);
+
+  const assigneeFilterOptions = useMemo(
+    () => [
+      { value: '', label: 'All assignees' },
+      ...assigneeOptions.map((u) => ({ value: String(u._id), label: u.name || String(u._id) })),
+    ],
+    [assigneeOptions]
+  );
+
+  const teamFilterOptions = useMemo(
+    () => [
+      { value: '', label: 'All teams' },
+      ...teamOptions.map((t) => ({ value: String(t._id), label: t.name || 'Team' })),
+    ],
+    [teamOptions]
+  );
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -366,86 +410,111 @@ const TasksPage = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
-              <SelectField
-                label="Status"
-                value={filters.status}
-                onChange={(e) => handleFilterChange('status', e.target.value)}
-              >
-                <option value="">All Statuses</option>
-                {Object.entries(STATUSES).map(([key, status]) => (
-                  <option key={key} value={key}>{status.label}</option>
-                ))}
-              </SelectField>
-              <SelectField
-                label="Priority"
-                value={filters.priority}
-                onChange={(e) => handleFilterChange('priority', e.target.value)}
-              >
-                <option value="">All Priorities</option>
-                {Object.entries(PRIORITIES).map(([key, priority]) => (
-                  <option key={key} value={key}>{priority.label}</option>
-                ))}
-              </SelectField>
-              <SelectField
-                label="Type"
-                value={filters.task_type}
-                onChange={(e) => handleFilterChange('task_type', e.target.value)}
-              >
-                <option value="">All Types</option>
-                {Object.entries(TASK_TYPES).map(([key, type]) => (
-                  <option key={key} value={key}>{type.label}</option>
-                ))}
-              </SelectField>
-              <SelectField
-                label="Due Date"
-                value={filters.due_date}
-                onChange={(e) => handleFilterChange('due_date', e.target.value)}
-              >
-                <option value="">All Time</option>
-                <option value="today">Today</option>
-                <option value="overdue">Overdue</option>
-                <option value="upcoming">Upcoming</option>
-              </SelectField>
+              <div className="w-full">
+                <label className="mb-1 block">
+                  <UiFieldLabel className="normal-case tracking-normal text-gray-700 dark:text-slate-300">
+                    Status
+                  </UiFieldLabel>
+                </label>
+                <SearchableSelect
+                  name="status"
+                  value={filters.status}
+                  onChange={(e) => handleFilterChange(e.target.name, e.target.value)}
+                  options={TASK_STATUS_FILTER_OPTIONS}
+                  className="w-full"
+                />
+              </div>
+              <div className="w-full">
+                <label className="mb-1 block">
+                  <UiFieldLabel className="normal-case tracking-normal text-gray-700 dark:text-slate-300">
+                    Priority
+                  </UiFieldLabel>
+                </label>
+                <SearchableSelect
+                  name="priority"
+                  value={filters.priority}
+                  onChange={(e) => handleFilterChange(e.target.name, e.target.value)}
+                  options={PRIORITY_FILTER_OPTIONS}
+                  className="w-full"
+                />
+              </div>
+              <div className="w-full">
+                <label className="mb-1 block">
+                  <UiFieldLabel className="normal-case tracking-normal text-gray-700 dark:text-slate-300">
+                    Type
+                  </UiFieldLabel>
+                </label>
+                <SearchableSelect
+                  name="task_type"
+                  value={filters.task_type}
+                  onChange={(e) => handleFilterChange(e.target.name, e.target.value)}
+                  options={TASK_TYPE_FILTER_OPTIONS}
+                  className="w-full"
+                />
+              </div>
+              <div className="w-full">
+                <label className="mb-1 block">
+                  <UiFieldLabel className="normal-case tracking-normal text-gray-700 dark:text-slate-300">
+                    Due Date
+                  </UiFieldLabel>
+                </label>
+                <SearchableSelect
+                  name="due_date"
+                  value={filters.due_date}
+                  onChange={(e) => handleFilterChange(e.target.name, e.target.value)}
+                  options={DUE_DATE_FILTER_OPTIONS}
+                  className="w-full"
+                />
+              </div>
             </div>
 
             {(isAdmin || isTeamManager) && (
               <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
                 {isTeamManager && (
-                  <SelectField
-                    label="View"
-                    value={filters.scope}
-                    onChange={(e) => handleFilterChange('scope', e.target.value)}
-                  >
-                    <option value="">All (my work + team)</option>
-                    <option value="mine">Assigned / created by me</option>
-                    <option value="team">My team only</option>
-                  </SelectField>
+                  <div className="w-full">
+                    <label className="mb-1 block">
+                      <UiFieldLabel className="normal-case tracking-normal text-gray-700 dark:text-slate-300">
+                        View
+                      </UiFieldLabel>
+                    </label>
+                    <SearchableSelect
+                      name="scope"
+                      value={filters.scope}
+                      onChange={(e) => handleFilterChange(e.target.name, e.target.value)}
+                      options={SCOPE_FILTER_OPTIONS}
+                      className="w-full"
+                    />
+                  </div>
                 )}
-                <SelectField
-                  label="Assignee"
-                  value={filters.assigned_to}
-                  onChange={(e) => handleFilterChange('assigned_to', e.target.value)}
-                >
-                  <option value="">All assignees</option>
-                  {assigneeOptions.map((u) => (
-                    <option key={String(u._id)} value={String(u._id)}>
-                      {u.name || String(u._id)}
-                    </option>
-                  ))}
-                </SelectField>
+                <div className="w-full">
+                  <label className="mb-1 block">
+                    <UiFieldLabel className="normal-case tracking-normal text-gray-700 dark:text-slate-300">
+                      Assignee
+                    </UiFieldLabel>
+                  </label>
+                  <SearchableSelect
+                    name="assigned_to"
+                    value={filters.assigned_to}
+                    onChange={(e) => handleFilterChange(e.target.name, e.target.value)}
+                    options={assigneeFilterOptions}
+                    className="w-full"
+                  />
+                </div>
                 {isAdmin && (
-                  <SelectField
-                    label="Team"
-                    value={filters.team_id}
-                    onChange={(e) => handleFilterChange('team_id', e.target.value)}
-                  >
-                    <option value="">All teams</option>
-                    {teamOptions.map((t) => (
-                      <option key={t._id} value={String(t._id)}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </SelectField>
+                  <div className="w-full">
+                    <label className="mb-1 block">
+                      <UiFieldLabel className="normal-case tracking-normal text-gray-700 dark:text-slate-300">
+                        Team
+                      </UiFieldLabel>
+                    </label>
+                    <SearchableSelect
+                      name="team_id"
+                      value={filters.team_id}
+                      onChange={(e) => handleFilterChange(e.target.name, e.target.value)}
+                      options={teamFilterOptions}
+                      className="w-full"
+                    />
+                  </div>
                 )}
               </div>
             )}

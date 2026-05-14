@@ -10,6 +10,7 @@ import { fetchTeamAssignableUsers } from '../../utils/fetchTeamAssignableUsers';
 import { USER_ROLES } from '../../utils/constants';
 import { useAuth } from '../../hooks/useAuth';
 import Modal from './ui/Modal';
+import { SearchableSelect } from './ui';
 
 /* ─── Constants ──────────────────────────────────────────────── */
 const TASK_TYPES = [
@@ -519,14 +520,12 @@ const TaskModal = ({ isOpen, onClose, onCreated, onUpdated, leadId, leadName, ta
           {canPickAssignee ? (
             <div>
               <Label>Assign to</Label>
-              <Select value={form.assigned_to} onChange={set('assigned_to')}>
-                <option value="">Unassigned</option>
-                {assigneeOptions.map((u) => (
-                  <option key={String(u._id)} value={String(u._id)}>
-                    {u.name || String(u._id)}
-                  </option>
-                ))}
-              </Select>
+              <SearchableSelect
+                name="assigned_to"
+                value={form.assigned_to}
+                onChange={set('assigned_to')}
+                options={assigneeOptions.map((u) => ({ value: String(u._id), label: u.name || String(u._id) }))}
+              />
               <p className="mt-1 text-[10px] text-slate-400">
                 Choose any active team member or manager, or leave unassigned.
               </p>
@@ -562,14 +561,12 @@ const TaskModal = ({ isOpen, onClose, onCreated, onUpdated, leadId, leadName, ta
               <div className="mt-3 grid grid-cols-2 gap-3 pt-3 border-t border-slate-200 dark:border-slate-700">
                 <div>
                   <Label>Repeat</Label>
-                  <Select value={form.repeat_type} onChange={set('repeat_type')}>
-                    <option value="">Select…</option>
-                    {REPEAT_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {t.charAt(0).toUpperCase() + t.slice(1)}
-                      </option>
-                    ))}
-                  </Select>
+                  <SearchableSelect
+                    name="repeat_type"
+                    value={form.repeat_type}
+                    onChange={set('repeat_type')}
+                    options={REPEAT_TYPES.map((t) => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) }))}
+                  />
                 </div>
                 <div>
                   <Label>Every</Label>

@@ -60,7 +60,15 @@ const SearchableSelect = ({
   };
 
   return (
-    <div ref={containerRef} className={cn('relative', className)}>
+    <div
+      ref={containerRef}
+      className={cn(
+        'relative min-w-0',
+        /* Stack above dense layouts / sibling cards when open */
+        open && 'z-[9990]',
+        className
+      )}
+    >
       <button
         type="button"
         disabled={disabled}
@@ -83,13 +91,13 @@ const SearchableSelect = ({
 
       {open && (
         <div className={cn(
-          'absolute z-20 mt-1 w-full overflow-hidden rounded-md border shadow-lg',
-          'border-gray-200 bg-white shadow-gray-100/80 dark:border-slate-600 dark:bg-slate-800 dark:shadow-black/40',
+          'absolute left-0 right-0 z-[9990] mt-1 max-h-[min(22rem,70vh)] min-w-[min(100%,18rem)] overflow-hidden rounded-lg border shadow-xl',
+          'border-gray-200 bg-white shadow-gray-200/50 dark:border-slate-600 dark:bg-slate-800 dark:shadow-black/50',
           'animate-in fade-in-0 zoom-in-95 duration-100',
           dropdownClassName
         )}>
           {searchable && (
-            <div className="border-b border-gray-100 p-1.5 dark:border-slate-700">
+            <div className="border-b border-gray-100 p-2 dark:border-slate-700">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                 <input
@@ -108,7 +116,7 @@ const SearchableSelect = ({
             </div>
           )}
 
-          <div className="max-h-48 overflow-y-auto p-1 scrollbar-thin">
+          <div className="max-h-[min(18rem,55vh)] overflow-y-auto p-1.5 scrollbar-thin">
             {filteredOptions.length === 0 ? (
               <p className="px-2 py-3 text-center text-xs text-gray-400 dark:text-slate-500">No results found</p>
             ) : (

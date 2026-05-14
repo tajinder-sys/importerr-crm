@@ -1,6 +1,7 @@
 import { UserPlus, LayoutGrid, GitBranch, Layers, CheckCircle2, KanbanSquare, Table2, User } from 'lucide-react';
-import { UiToolbarTitle } from '../../components/common/ui';
-import SelectField from '../../components/common/ui/SelectField';
+import { SearchableSelect, UiToolbarTitle } from '../../components/common/ui';
+const selectBtn =
+  'h-9 w-full rounded-lg border-slate-200/90 bg-white px-2.5 text-xs font-medium dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-100';
 
 const LeadsHeader = ({
   pipelines,
@@ -138,20 +139,17 @@ const LeadsHeader = ({
             <User size={14} className="flex-shrink-0 opacity-80" />
             <span className="text-xs font-semibold whitespace-nowrap">Assigned to</span>
           </div>
-          <SelectField
-            size="sm"
-            wrapperClassName="w-full min-w-[200px] max-w-xs sm:w-64"
+          <SearchableSelect
+            name="assignee"
             value={assigneeFilter}
             onChange={(e) => onAssigneeFilterChange?.(e.target.value)}
-            aria-label="Filter leads by assignee"
-          >
-            <option value="">All assignees</option>
-            {assignableMembers.map((m) => (
-              <option key={m._id} value={String(m._id)}>
-                {m.name || m.email || m._id}
-              </option>
-            ))}
-          </SelectField>
+            size="sm"
+            buttonClassName={selectBtn}
+            dropdownClassName="!min-w-[min(100vw-2rem,18rem)]"
+            options={[{value: '', label: 'All assignees'}, ...assignableMembers.map((m) => (
+              {value: String(m._id), label: m.name || m.email || m._id}
+            ))]}
+          />
         </div>
       )}
     </div>

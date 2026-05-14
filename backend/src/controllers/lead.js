@@ -117,7 +117,7 @@ const getLeads = async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
-    const query = {};
+    const query = { duplicateOf: { $in: [null, undefined] }  };
 
     if (status) query.status = status;
     if (source) query.source = source;
@@ -167,9 +167,10 @@ const getLeads = async (req, res) => {
         }
       }
     } else if (req.user.role === USER_ROLES.TEAM_MEMBER) {
-      query.assignedTo = req.user.id;
+      const memberId = req.user.id || req.user._id;
+      query.assignedTo = memberId;
+      const mt = req.user.teamId || req.user.team_id;
       if (pipelineId) {
-        const mt = req.user.teamId || req.user.team_id;
         const allowed = mt && (await pipelineBelongsToTeam(pipelineId, mt));
         if (!allowed) {
           return sendForbidden(res, 'You can only view leads in your team\'s pipelines');
@@ -177,6 +178,13 @@ const getLeads = async (req, res) => {
         query.pipelineId = mongoose.Types.ObjectId.isValid(pipelineId)
           ? new mongoose.Types.ObjectId(pipelineId)
           : pipelineId;
+      } else if (mt) {
+        const pipelineIds = await getActivePipelineIdsForTeam(mt);
+        if (pipelineIds.length) {
+          query.pipelineId = { $in: pipelineIds };
+        } else {
+          query._id = { $in: [] };
+        }
       }
     } else {
       query._id = { $in: [] };
@@ -314,7 +322,8 @@ const getLeadById = async (req, res) => {
         ? lead.assignedTo.toString()
         : null;
 
-    if (req.user.role === USER_ROLES.TEAM_MEMBER && assignedUserId !== req.user.id) {
+    const myUserId = req.user.id || req.user._id;
+    if (req.user.role === USER_ROLES.TEAM_MEMBER && assignedUserId !== String(myUserId)) {
       return sendForbidden(res, 'You can only view your assigned leads');
     }
 
@@ -616,7 +625,7 @@ const addLeadCommunication = async (req, res) => {
       return sendNotFound(res, 'Lead not found');
     }
 
-    if (req.user.role === USER_ROLES.TEAM_MEMBER && lead?.assignedTo?.toString() !== req.user.id) {
+    if (req.user.role === USER_ROLES.TEAM_MEMBER && lead?.assignedTo?.toString() !== String(req.user.id || req.user._id)) {
       return sendForbidden(res, 'You can only communicate for your assigned leads');
     }
 
@@ -704,9 +713,9 @@ const deleteLead = async (req, res) => {
 
 const getLeadStatsOverview = async (req, res) => {
   try {
-    const baseMatch = {};
+    const baseMatch = { duplicateOf: { $exists: false } };
     if (req.user.role === USER_ROLES.TEAM_MEMBER) {
-      baseMatch.assignedTo = req.user.id;
+      baseMatch.assignedTo = req.user.id || req.user._id;
     } else if (isTeamManagerUser(req.user)) {
       const mt = req.user.teamId || req.user.team_id;
       const pipelineIds = await getActivePipelineIdsForTeam(mt);

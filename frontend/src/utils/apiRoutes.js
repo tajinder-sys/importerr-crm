@@ -91,6 +91,17 @@ export const API_ROUTES = {
     delete: (id) => `/stages/${encodeURIComponent(id)}`,
     toggle: (id) => `/stages/${encodeURIComponent(id)}/toggle`
   },
+  dashboard: {
+    filters: '/dashboard/filters',
+    kpis: '/dashboard/kpis',
+    stages: '/dashboard/stages',
+    sources: '/dashboard/sources',
+    userPerformance: '/dashboard/user-performance',
+    tasksSummary: '/dashboard/tasks-summary',
+    recentLeads: '/dashboard/recent-leads',
+    leadTimeline: '/dashboard/lead-timeline',
+    pipelineWinRates: '/dashboard/pipeline-win-rates'
+  },
   tasks: {
     list: '/tasks',
     create: '/tasks',

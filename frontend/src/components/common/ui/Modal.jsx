@@ -26,7 +26,7 @@ const Modal = ({
   return (
     <div
       className={cn(
-        'fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 !mt-0',
+        'fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 p-4 !mt-0',
         className
       )}
     >

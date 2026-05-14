@@ -29,7 +29,7 @@ const Snackbar = ({
   };
 
   return (
-    <div className="fixed right-4 top-4 z-[60] w-full max-w-sm">
+    <div className="fixed right-4 top-4 z-[10050] w-full max-w-sm">
       <div className={cn('flex items-start gap-3 rounded-xl border px-4 py-3 shadow-lg', variants[type].wrapper)}>
         <span className="mt-0.5">{variants[type].icon}</span>
         <p className="flex-1 text-sm font-medium">{message}</p>

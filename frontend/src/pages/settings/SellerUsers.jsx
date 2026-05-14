@@ -8,7 +8,6 @@ import { UiPageTitle, UiPageDescription, UiSectionTitle } from '../../components
 import { Card, CardContent, CardHeader } from '../../components/common/ui/Card';
 import Button from '../../components/common/ui/Button';
 import Input from '../../components/common/ui/Input';
-import SelectField from '../../components/common/ui/SelectField';
 import SearchableSelect from '../../components/common/ui/SearchableSelect';
 import Snackbar from '../../components/common/ui/Snackbar';
 import Table from '../../components/common/ui/Table';
@@ -162,15 +161,17 @@ const SellerUsers = () => {
         const sid = String(row._id);
         const draft = draftBySeller[sid] || emptyDraft();
         return (
-          <SelectField
-            size="sm"
-            wrapperClassName="min-w-[120px]"
+          <SearchableSelect
+            name={`status-${sid}`}
             value={draft.status}
             onChange={(e) => dispatch(updateDraft({ sellerId: sid, patch: { status: e.target.value } }))}
-          >
-            <option value="active">Active</option>
-            <option value="paused">Paused</option>
-          </SelectField>
+            options={[
+              { value: 'active', label: 'Active' },
+              { value: 'paused', label: 'Paused' },
+            ]}
+            className="min-w-[120px]"
+            buttonClassName="h-8 text-xs"
+          />
         );
       },
     },

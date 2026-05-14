@@ -25,7 +25,6 @@ export { default as Alert } from './Alert.jsx';
 export { default as Skeleton } from './Skeleton.jsx';
 export { default as Snackbar } from './Snackbar.jsx';
 export { default as SearchableSelect } from './SearchableSelect.jsx';
-export { default as SelectField } from './SelectField.jsx';
 export { default as ToggleSwitch } from './ToggleSwitch.jsx';
 export { default as Loading } from './Loading.jsx';
 export { default as ConfirmDialog } from './ConfirmDialog.jsx';
