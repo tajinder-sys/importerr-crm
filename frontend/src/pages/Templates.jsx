@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, startTransition } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { Eye, Plus, Pencil, Trash2, Sparkles, X } from 'lucide-react';
+import { Eye, Plus, Pencil, Trash2, Sparkles, X, Wand2 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/common/ui/Card';
 import Button from '../components/common/ui/Button';
 import Input from '../components/common/ui/Input';
@@ -9,6 +9,7 @@ import Snackbar from '../components/common/ui/Snackbar';
 import api from '../utils/api';
 import { API_ROUTES } from '../utils/apiRoutes';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../contexts/ThemeContext';
 
 import { BlockEditor, AddBlockPanel } from './emailBuilder/BlockEditor';
 import { EmailPreview } from './emailBuilder/EmailPreview';
@@ -32,12 +33,29 @@ function toSlug(str) {
 // ─── Email Builder Modal ──────────────────────────────────────────────────────
 
 function EmailBuilderModal({ isOpen, onClose, editingTemplate, onSave, isSaving }) {
+  const { theme } = useTheme();
   const [name, setName]       = useState('');
   const [slug, setSlug]       = useState('');
   const [subject, setSubject] = useState('');
   const [blocks, setBlocks]   = useState([]);
   const [activeBlockId, setActiveBlockId] = useState(null);
   const [showPresets, setShowPresets]     = useState(false);
+  const [aiModalOpen, setAiModalOpen]     = useState(false);
+  const [aiDesc, setAiDesc]               = useState('');
+  const [isAiLoading, setIsAiLoading]     = useState(false);
+
+  // Remove dark class from html when builder is open, restore on close
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isOpen) {
+      root.classList.remove('dark');
+    } else if (theme === 'dark') {
+      root.classList.add('dark');
+    }
+    return () => {
+      if (theme === 'dark') root.classList.add('dark');
+    };
+  }, [isOpen, theme]);
 
   // Populate form when opening/editing
   useEffect(() => {
@@ -102,6 +120,32 @@ function EmailBuilderModal({ isOpen, onClose, editingTemplate, onSave, isSaving 
     });
   };
 
+  const handleAiGenerate = async () => {
+    if (!aiDesc.trim()) return;
+    setIsAiLoading(true);
+    try {
+      const res = await api.post(API_ROUTES.templates.aiGenerate, { description: aiDesc.trim() });
+      const generated = res?.data;
+      setAiModalOpen(false);
+      setAiDesc('');
+      const raw = generated?.bodyJson;
+      let parsedBlocks = [];
+      try {
+        const p = typeof raw === 'string' ? JSON.parse(raw) : (Array.isArray(raw) && typeof raw[0] === 'string' ? JSON.parse(raw[0]) : raw);
+        parsedBlocks = Array.isArray(p) ? p.map((b) => ({ ...b, id: b.id || uid() })) : [];
+      } catch { parsedBlocks = []; }
+      setName(generated?.name || '');
+      setSlug(generated?.slug || '');
+      setSubject(generated?.subject || '');
+      setBlocks(parsedBlocks);
+    } catch (err) {
+      console.log('AI generation error:', err);
+      // silently ignore — parent snackbar will show
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
   const applyPreset = (preset) => {
     setName(preset.name);
     setSlug(toSlug(preset.name));
@@ -126,39 +170,51 @@ function EmailBuilderModal({ isOpen, onClose, editingTemplate, onSave, isSaving 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-slate-900">
-      {/* Top bar */}
-      <div className="flex shrink-0 items-center gap-3 border-b border-gray-200 bg-white px-4 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-        <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-700">
-          <X className="h-5 w-5" />
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, height: 64, borderBottom: '1px solid #e5e7eb', background: '#ffffff', padding: '0 16px', flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+        <button type="button" onClick={onClose} style={{ padding: 8, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', color: '#6b7280', display: 'flex', alignItems: 'center' }}>
+          <X size={18} />
         </button>
-        <div className="flex-1 min-w-0">
-          <h1 className="truncate text-sm font-bold text-gray-900 dark:text-slate-100">
-            {editingTemplate ? 'Edit' : 'Create'} Email Template
-          </h1>
+        <div style={{ width: 36, height: 36, borderRadius: 8, background: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#4f46e5', flexShrink: 0 }}>I</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#111827', fontFamily: 'system-ui, sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {editingTemplate ? `Editing — ${editingTemplate.name}` : 'New Email Template'}
+          </p>
+          <p style={{ margin: 0, fontSize: 11, color: '#9ca3af', fontFamily: 'system-ui, sans-serif' }}>Email Builder</p>
         </div>
         <Button type="submit" form="email-builder-form" size="sm" disabled={isSaving}>
-          {isSaving ? 'Saving…' : editingTemplate ? 'Update' : 'Create'}
+          {isSaving ? 'Saving…' : editingTemplate ? 'Update Template' : 'Create Template'}
         </Button>
       </div>
 
       {/* Body: builder + preview split */}
-      <div className="flex flex-1 min-h-0">
+      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
         {/* ── Left panel: editor ── */}
-        <div className="flex w-full flex-col overflow-y-auto border-r border-gray-200 lg:w-[480px] xl:w-[520px] dark:border-slate-700">
+        <div style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', borderRight: '1px solid #e5e7eb', width: '100%', maxWidth: 520, background: '#ffffff' }}>
           <form id="email-builder-form" onSubmit={handleSubmit} className="flex flex-col gap-0">
             {/* Meta fields */}
-            <div className="space-y-3 border-b border-gray-100 bg-gray-50/50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-              <div className="flex items-center justify-between">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">Template Info</p>
-                <button
-                  type="button"
-                  onClick={() => setShowPresets((s) => !s)}
-                  className="flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 transition hover:bg-indigo-100 dark:border-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400"
-                >
-                  <Sparkles className="h-3 w-3" />
-                  {showPresets ? 'Hide Presets' : 'Use Preset'}
-                </button>
+            <div style={{ padding: 16, borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'system-ui, sans-serif' }}>Template Info</p>
+                <div className="flex items-center gap-2">
+                  {/* AI Generate button — next to preset */}
+                  <button
+                    type="button"
+                    onClick={() => setAiModalOpen(true)}
+                    className="flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700 transition hover:bg-violet-100"
+                  >
+                    <Wand2 className="h-3 w-3" />
+                    AI Generate
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowPresets((s) => !s)}
+                    className="flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 transition hover:bg-indigo-100"
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    {showPresets ? 'Hide Presets' : 'Use Preset'}
+                  </button>
+                </div>
               </div>
 
               {/* Presets picker */}
@@ -169,7 +225,7 @@ function EmailBuilderModal({ isOpen, onClose, editingTemplate, onSave, isSaving 
                       key={preset.id}
                       type="button"
                       onClick={() => applyPreset(preset)}
-                      className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-3 text-left transition hover:border-indigo-400 hover:bg-indigo-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-indigo-600 dark:hover:bg-indigo-900/20"
+                      className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-3 text-left transition hover:border-indigo-400 hover:bg-indigo-50"
                     >
                       <div>
                         <p className="text-sm font-semibold text-gray-900">{preset.label}</p>
@@ -212,11 +268,11 @@ function EmailBuilderModal({ isOpen, onClose, editingTemplate, onSave, isSaving 
             </div>
 
             {/* Block list */}
-            <div className="flex-1 space-y-2 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">Content Blocks</p>
+            <div style={{ flex: 1, padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'system-ui, sans-serif' }}>Content Blocks</p>
               {blocks.length === 0 && (
-                <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 py-10 text-center dark:border-slate-700 dark:bg-slate-800/50">
-                  <p className="text-sm text-gray-400">No blocks yet. Add your first block below.</p>
+                <div style={{ borderRadius: 12, border: '2px dashed #e5e7eb', background: '#f9fafb', padding: '40px 20px', textAlign: 'center' }}>
+                  <p style={{ margin: 0, fontSize: 13, color: '#9ca3af', fontFamily: 'system-ui, sans-serif' }}>No blocks yet. Add your first block below.</p>
                 </div>
               )}
               {blocks.map((block, index) => (
@@ -238,10 +294,54 @@ function EmailBuilderModal({ isOpen, onClose, editingTemplate, onSave, isSaving 
         </div>
 
         {/* ── Right panel: live preview ── */}
-        <div className="hidden flex-1 flex-col lg:flex dark:bg-slate-900">
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
           <EmailPreview blocks={blocks} />
         </div>
       </div>
+
+      {/* ── AI Modal inside builder (z-60 so it's above builder) ── */}
+      {aiModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)' }}>
+          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 480, margin: '0 16px', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 18 }}>✨</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#1e293b', fontFamily: 'system-ui, sans-serif' }}>AI Template Generator</span>
+              </div>
+              <button type="button" onClick={() => { setAiModalOpen(false); setAiDesc(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 4 }}>
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <p style={{ margin: 0, fontSize: 13, color: '#64748b', fontFamily: 'system-ui, sans-serif', lineHeight: 1.6 }}>
+                Describe the email you need — AI will generate blocks instantly. Same description returns cached result.
+              </p>
+              <textarea
+                rows={4}
+                value={aiDesc}
+                onChange={(e) => setAiDesc(e.target.value)}
+                placeholder="e.g. Follow-up email for bulk order customers who haven't responded in 3 days"
+                disabled={isAiLoading}
+                style={{ width: '100%', borderRadius: 8, border: '1px solid #e2e8f0', padding: '10px 12px', fontSize: 13, fontFamily: 'system-ui, sans-serif', resize: 'vertical', outline: 'none', color: '#1e293b', boxSizing: 'border-box' }}
+              />
+              {isAiLoading && (
+                <p style={{ margin: 0, fontSize: 12, color: '#6366f1', fontFamily: 'system-ui, sans-serif' }}>✨ AI is crafting your template…</p>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '12px 20px', borderTop: '1px solid #f1f5f9' }}>
+              <button type="button" onClick={() => { setAiModalOpen(false); setAiDesc(''); }} disabled={isAiLoading}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', fontSize: 13, fontWeight: 600, color: '#64748b', cursor: 'pointer', fontFamily: 'system-ui, sans-serif' }}>
+                Cancel
+              </button>
+              <button type="button" onClick={handleAiGenerate} disabled={isAiLoading || !aiDesc.trim()}
+                style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: isAiLoading || !aiDesc.trim() ? '#c7d2fe' : '#6366f1', fontSize: 13, fontWeight: 600, color: '#fff', cursor: isAiLoading || !aiDesc.trim() ? 'not-allowed' : 'pointer', fontFamily: 'system-ui, sans-serif', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Wand2 size={13} />
+                {isAiLoading ? 'Generating…' : 'Generate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -410,7 +510,6 @@ const Templates = () => {
           isOpen={builderOpen}
           onClose={() => { setBuilderOpen(false); setEditingTemplate(null); }}
           editingTemplate={editingTemplate}
-          normalizedType={normalizedType}
           onSave={saveEmailTemplate}
           isSaving={isSaving}
         />
@@ -429,17 +528,19 @@ const Templates = () => {
                   : 'Create message templates with dynamic placeholders.'}
               </p>
             </div>
-            <Button
-              type="button"
-              size="md"
-              startIcon={isEmail ? <Sparkles className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-              onClick={() => {
-                if (isEmail) { setEditingTemplate(null); setBuilderOpen(true); }
-                else { openWaCreate(); }
-              }}
-            >
-              {isEmail ? 'Open Email Builder' : 'Create Template'}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="md"
+                startIcon={isEmail ? <Sparkles className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                onClick={() => {
+                  if (isEmail) { setEditingTemplate(null); setBuilderOpen(true); }
+                  else { openWaCreate(); }
+                }}
+              >
+                {isEmail ? 'Open Email Builder' : 'Create Template'}
+              </Button>
+            </div>
           </div>
 
           {/* Type tabs */}
@@ -600,23 +701,32 @@ const Templates = () => {
       </Modal>
 
       {/* ── Email preview modal ─────────────────────────────────────────────── */}
-      <Modal
-        isOpen={Boolean(previewTemplate)}
-        onClose={() => setPreviewTemplate(null)}
-        title={previewTemplate?.name ? `Preview: ${previewTemplate.name}` : 'Email Preview'}
-        size="lg"
-      >
-        {previewTemplate && (
-          <div className="space-y-3">
-            <p className="text-sm text-gray-700">
-              <span className="font-semibold">Subject:</span> {previewTemplate.subject || '—'}
-            </p>
-            <div className="max-h-[55vh] overflow-auto rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-slate-700 dark:bg-slate-800">
-              <div dangerouslySetInnerHTML={{ __html: previewTemplate.body || '' }} />
+      {Boolean(previewTemplate) && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.55)', padding: 16 }}>
+          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 700, maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+            {/* header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
+              <div>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#111827', fontFamily: 'system-ui, sans-serif' }}>{previewTemplate.name}</p>
+                <p style={{ margin: '3px 0 0', fontSize: 12, color: '#6b7280', fontFamily: 'system-ui, sans-serif' }}>
+                  <span style={{ fontWeight: 600 }}>Subject:</span> {previewTemplate.subject || '—'}
+                </p>
+              </div>
+              <button type="button" onClick={() => setPreviewTemplate(null)}
+                style={{ padding: 8, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', color: '#6b7280', display: 'flex', alignItems: 'center' }}>
+                <X size={16} />
+              </button>
             </div>
+            {/* iframe — isolated from dark mode, renders full HTML correctly */}
+            <iframe
+              srcDoc={previewTemplate.body || '<p style="padding:32px;color:#9ca3af;font-family:system-ui,sans-serif">No content</p>'}
+              style={{ flex: 1, border: 'none', width: '100%', minHeight: 500 }}
+              title="Email Preview"
+              sandbox="allow-same-origin"
+            />
           </div>
-        )}
-      </Modal>
+        </div>
+      )}
 
       {/* ── Delete confirm modal ────────────────────────────────────────────── */}
       <Modal

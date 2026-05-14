@@ -60,6 +60,7 @@ export const API_ROUTES = {
   templates: {
     list: '/templates',
     create: '/templates',
+    aiGenerate: '/templates/ai-generate',
     update: (id) => `/templates/${encodeURIComponent(id)}`,
     delete: (id) => `/templates/${encodeURIComponent(id)}`
   },

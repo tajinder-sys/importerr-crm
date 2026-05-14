@@ -49,6 +49,11 @@ const templateSchema = new mongoose.Schema(
     bodyJson: {
       type: [Object],
       default: []
+    },
+    aiDescription: {
+      type: String,
+      default: null,
+      trim: true,
     }
   },
   { timestamps: true }
