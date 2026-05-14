@@ -114,7 +114,12 @@ const SellerUsers = () => {
     });
     const roleLabel = (r) => String(r || '').replace('_', ' ') || 'user';
     const rows = [...byId.values()]
-      .map((u) => ({ value: String(u._id), label: `${u.name || u.email || u._id} (${roleLabel(u.role)})` }))
+      .map((u) => ({
+        value: String(u._id),
+        label: u.role
+          ? `${u.name || u.email || u._id} (${roleLabel(u.role)})`
+          : `${u.name || u.email || u._id}`,
+      }))
       .sort((a, b) => a.label.localeCompare(b.label));
     return [{ value: '', label: 'Unassigned' }, ...rows];
   }, [crmUsers, assignments]);

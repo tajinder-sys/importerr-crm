@@ -14,7 +14,10 @@ import LeadDetailsOverviewCard from '../components/lead-details/LeadDetailsOverv
 import CommunicationTab from '../components/lead-details/CommunicationTab';
 import ActivityTab from '../components/lead-details/ActivityTab';
 import { API_ROUTES } from '../utils/apiRoutes';
+import { enrichPipelinesWithStages } from '../utils/enrichPipelinesWithStages';
+import { fetchTeamAssignableUsers } from '../utils/fetchTeamAssignableUsers';
 import { getChipVariant } from '../utils/chipConstants';
+import { TASK_PRIORITY_LEVELS } from '../utils/constants';
 import QuotesTab from '../components/lead-details/Quote/index';
 import LeadNotes from '../components/common/LeadNotes';
 import LeadTasksTab from '../components/lead-details/LeadTasksTab';
@@ -39,6 +42,10 @@ const DEFAULT_LEAD_FORM = {
   assignedTo: '',
   leadType: 'guest',
   status: 'new',
+  pipelineId: '',
+  stageId: '',
+  message: '',
+  priority: 'low',
 };
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
@@ -140,6 +147,7 @@ const LeadDetails = () => {
   const [updatingLead, setUpdatingLead] = useState(false);
   const [updateLeadError, setUpdateLeadError] = useState('');
   const [assignableMembers, setAssignableMembers] = useState([]);
+  const [pipelinesForLeadForm, setPipelinesForLeadForm] = useState([]);
   // ─── Snackbar helpers ──────────────────────────────────────────────────────
   const showSuccess = useCallback((msg) => setSnackbar({ open: true, message: msg, type: 'success' }), []);
   const showError = useCallback((msg) => setSnackbar({ open: true, message: msg, type: 'error' }), []);
@@ -217,11 +225,72 @@ const LeadDetails = () => {
     }
   }, [showError, showSuccess]);
 
-  const loadAssignableMembers = useCallback(async () => {
-    if (!canManageLeadAssignment) return;
-    const { data } = await api.get(API_ROUTES.users.list, { params: { role: 'team_member', page: 1, limit: 200 } });
-    setAssignableMembers(data?.users || []);
+  const loadAssignableForPipeline = useCallback(
+    async (pipelineId, ensureUser = null) => {
+      if (!canManageLeadAssignment || !pipelineId) {
+        setAssignableMembers([]);
+        return;
+      }
+      try {
+        const list = await fetchTeamAssignableUsers({ pipelineId: String(pipelineId) });
+        const base = (list || []).map((u) => ({
+          _id: u._id,
+          name: u.name || '',
+          email: '',
+        }));
+        if (ensureUser?._id && !base.some((m) => String(m._id) === String(ensureUser._id))) {
+          base.push({
+            _id: ensureUser._id,
+            name: ensureUser.name || '',
+            email: ensureUser.email || '',
+          });
+        }
+        setAssignableMembers(base);
+      } catch {
+        setAssignableMembers([]);
+      }
+    },
+    [canManageLeadAssignment],
+  );
+
+  useEffect(() => {
+    if (!canManageLeadAssignment) {
+      setPipelinesForLeadForm([]);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get(API_ROUTES.pipelines.list, { params: { isActive: true, limit: 200 } });
+        const list = res?.data?.pipelines || res?.data || [];
+        const enriched = await enrichPipelinesWithStages(list);
+        if (!cancelled) setPipelinesForLeadForm(enriched);
+      } catch {
+        if (!cancelled) setPipelinesForLeadForm([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [canManageLeadAssignment]);
+
+  useEffect(() => {
+    if (!showEditLeadModal || !canManageLeadAssignment) return undefined;
+    if (!leadForm.pipelineId) {
+      setAssignableMembers([]);
+      return undefined;
+    }
+    const ensureUser = lead?.assignedTo || null;
+    loadAssignableForPipeline(leadForm.pipelineId, ensureUser);
+    return undefined;
+  }, [
+    showEditLeadModal,
+    canManageLeadAssignment,
+    leadForm.pipelineId,
+    loadAssignableForPipeline,
+    lead?._id,
+    lead?.assignedTo?._id,
+  ]);
 
   // ─── Effects ──────────────────────────────────────────────────────────────
 
@@ -267,7 +336,7 @@ const LeadDetails = () => {
     }));
   }, []);
 
-  const openEditLeadModal = useCallback(async () => {
+  const openEditLeadModal = useCallback(() => {
     if (!lead) return;
     setUpdateLeadError('');
     const assignedUserId = lead?.assignedTo?._id ? String(lead.assignedTo._id) : '';
@@ -280,22 +349,14 @@ const LeadDetails = () => {
       assignedTo: assignedUserId,
       leadType: lead?.leadType || 'guest',
       status: lead?.status || 'new',
+      pipelineId: lead?.pipelineId?._id || lead?.pipelineId || '',
+      stageId: lead?.stageId?._id || lead?.stageId || '',
+      message: lead?.message || '',
+      priority: lead?.priority || TASK_PRIORITY_LEVELS.LOW,
     });
 
-    if (assignedUserId) {
-      setAssignableMembers((prev) => {
-        if (prev.some((m) => String(m?._id) === assignedUserId)) return prev;
-        return [...prev, { _id: assignedUserId, name: lead?.assignedTo?.name || 'Assigned User', email: lead?.assignedTo?.email || '' }];
-      });
-    }
-
     setShowEditLeadModal(true);
-
-    if (canManageLeadAssignment && assignableMembers.length === 0) {
-      try { await loadAssignableMembers(); }
-      catch (err) { setUpdateLeadError(err?.message || 'Failed to load users'); }
-    }
-  }, [lead, canManageLeadAssignment, assignableMembers.length, loadAssignableMembers]);
+  }, [lead]);
 
   const closeEditLeadModal = useCallback(() => {
     setShowEditLeadModal(false);
@@ -322,7 +383,15 @@ const LeadDetails = () => {
         source: leadForm.source,
         leadType: leadForm.leadType,
         status: leadForm.status,
-        ...(canManageLeadAssignment ? { assignedTo: leadForm.assignedTo || null } : {}),
+        message: (leadForm.message ?? '').trim(),
+        priority: leadForm.priority || TASK_PRIORITY_LEVELS.LOW,
+        ...(canManageLeadAssignment
+          ? {
+              assignedTo: leadForm.assignedTo || null,
+              pipelineId: leadForm.pipelineId || null,
+              stageId: leadForm.stageId || null,
+            }
+          : {}),
       });
       closeEditLeadModal();
       showSuccess('Lead updated successfully');
@@ -510,6 +579,7 @@ const LeadDetails = () => {
           onCancel={closeEditLeadModal}
           loading={updatingLead}
           submitLabel="Update Lead"
+          pipelines={pipelinesForLeadForm}
         />
       </Modal>
     </div>

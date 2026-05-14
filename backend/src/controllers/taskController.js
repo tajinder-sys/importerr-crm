@@ -1,8 +1,12 @@
 const Lead = require('../models/lead');
+const Pipeline = require('../models/Pipeline');
 const Task = require('../models/Task');
 const User = require('../models/User');
 const { sendSuccess, sendBadRequest, sendNotFound, sendForbidden } = require('../utils/responseHandler');
 const { validateTaskData } = require('../utils/validators');
+const { USER_ROLES, ACTIVITY_TYPES } = require('../utils/constants');
+const { taskVisibilityMatch } = require('../services/taskQueryVisibility');
+const ActivityService = require('../services/ActivityService');
 
 const TASK_TYPES = {
   CALL: 'call',
@@ -32,11 +36,26 @@ const TASK_PRIORITY = {
 
 const isAdminUser = (user) => user?.role === 'admin';
 const isTeamUser = (user) => user?.role === 'team_member' || user?.role === 'team_manager';
+/** Admins and team managers may assign tasks to any active user (or leave unassigned). */
+const canPickTaskAssignee = (user) =>
+  user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.TEAM_MANAGER;
+
+/** Team id (string) for the lead's pipeline, or null if unknown / no pipeline. */
+const resolvePipelineTeamIdFromLead = async (lead) => {
+  if (!lead?.pipelineId) return null;
+  const pid = lead.pipelineId._id ?? lead.pipelineId;
+  const pipeline = await Pipeline.findById(pid).select('teamId').lean();
+  if (!pipeline?.teamId) return null;
+  return String(pipeline.teamId);
+};
+
 const canViewTask = (task, user) => {
   if (isAdminUser(user)) return true;
-  if (task.assigned_to?.toString() === user.id) return true;
-  if (task.created_by?.toString() === user.id) return true;
-  if (task.team_id && user.team_id?.toString() === task.team_id.toString()) return true;
+  const uid = user.id || user._id;
+  if (task.assigned_to?.toString() === String(uid)) return true;
+  if (task.created_by?.toString() === String(uid)) return true;
+  const myTeam = user.teamId || user.team_id;
+  if (task.team_id && myTeam && task.team_id.toString() === String(myTeam)) return true;
   return false;
 };
 
@@ -56,7 +75,8 @@ const getTasks = async (req, res) => {
       start_date,
       end_date,
       sortBy = 'created_at',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
+      scope,
     } = req.query;
 
     const query = {};
@@ -73,12 +93,35 @@ const getTasks = async (req, res) => {
     // Lead filter
     if (lead_id) query.lead_id = lead_id;
 
-    // Team filter
-    if (team_id) query.team_id = team_id;
+    const myTeamId = req.user.teamId || req.user.team_id;
 
-    // Admins see all tasks; everyone else only tasks they created
-    if (!isAdminUser(req.user)) {
-      query.created_by = req.user.id;
+    if (team_id) {
+      if (!isAdminUser(req.user)) {
+        if (req.user.role === USER_ROLES.TEAM_MANAGER) {
+          if (String(team_id) !== String(myTeamId)) {
+            return sendForbidden(res, 'You can only filter tasks for your own team');
+          }
+        } else {
+          return sendForbidden(res, 'Team filter not allowed');
+        }
+      }
+      query.team_id = team_id;
+    }
+
+    const vis = taskVisibilityMatch(req.user, { ...req.query, scope });
+    if (vis) {
+      query.$and = [...(query.$and || []), vis];
+    }
+
+    if (isAdminUser(req.user)) {
+      if (assigned_to) query.assigned_to = assigned_to;
+    } else if (req.user.role === USER_ROLES.TEAM_MANAGER) {
+      if (assigned_to) query.assigned_to = assigned_to;
+    } else if (assigned_to) {
+      if (String(assigned_to) !== String(req.user.id)) {
+        return sendForbidden(res, 'Invalid assignee filter');
+      }
+      query.assigned_to = assigned_to;
     }
 
     // Date range filters
@@ -106,17 +149,17 @@ const getTasks = async (req, res) => {
       if (end_date) query.due_date.$lte = new Date(end_date);
     }
 
-    // Search filter
+    // Search filter (use $and so it does not overwrite visibility $or)
     if (search) {
-      query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
+      query.$and = [
+        ...(query.$and || []),
+        {
+          $or: [
+            { title: { $regex: search, $options: 'i' } },
+            { description: { $regex: search, $options: 'i' } },
+          ],
+        },
       ];
-    }
-
-    // Assigned to filter (admins may filter by any assignee)
-    if (assigned_to) {
-      query.assigned_to = assigned_to;
     }
 
     const sort = {};
@@ -208,25 +251,41 @@ const createTask = async (req, res) => {
       return sendBadRequest(res, 'Lead not found');
     }
 
-    // Verify assigned user exists (if provided)
-    if (assigned_to) {
-      const assignedUser = await User.findById(assigned_to);
-      if (!assignedUser) {
-        return sendBadRequest(res, 'Assigned user not found');
+    const pipelineTeamId = await resolvePipelineTeamIdFromLead(lead);
+
+    let resolvedAssignedTo = null;
+    if (req.user.role === USER_ROLES.TEAM_MEMBER) {
+      resolvedAssignedTo = req.user.id;
+    } else if (canPickTaskAssignee(req.user)) {
+      if (assigned_to) {
+        const assignedUser = await User.findById(assigned_to).select('isActive team_id');
+        if (!assignedUser || !assignedUser.isActive) {
+          return sendBadRequest(res, 'Assigned user not found or inactive');
+        }
+        if (req.user.role === USER_ROLES.TEAM_MANAGER) {
+          const mt = req.user.teamId || req.user.team_id;
+          if (!mt || String(assignedUser.team_id) !== String(mt)) {
+            return sendBadRequest(res, 'You can only assign tasks to users on your team');
+          }
+        }
+        if (pipelineTeamId && String(assignedUser.team_id) !== pipelineTeamId) {
+          return sendBadRequest(res, 'Assignee must belong to the team for this lead\'s pipeline');
+        }
+        resolvedAssignedTo = assigned_to;
       }
     }
 
     // Set team_id if not provided
     let resolvedTeamId = team_id;
-    if (!resolvedTeamId && req.user.team_id) {
-      resolvedTeamId = req.user.team_id;
+    if (!resolvedTeamId) {
+      resolvedTeamId = req.user.teamId || req.user.team_id;
     }
 
     const task = new Task({
       title: title.trim(),
       description,
       lead_id,
-      assigned_to: assigned_to || null,
+      assigned_to: resolvedAssignedTo,
       created_by: req.user.id,
       team_id: resolvedTeamId,
       task_type: task_type || TASK_TYPES.FOLLOW_UP,
@@ -248,6 +307,21 @@ const createTask = async (req, res) => {
       .populate('assigned_to', 'name email')
       .populate('created_by', 'name email')
       .populate('team_id', 'name');
+
+    try {
+      await ActivityService.createActivity({
+        leadId: lead_id,
+        type: ACTIVITY_TYPES.TASK_CREATED,
+        description: `Task created: ${task.title.trim()}`,
+        performedBy: req.user.id,
+        metadata: {
+          taskId: String(task._id),
+          assigned_to: resolvedAssignedTo ? String(resolvedAssignedTo) : null,
+        },
+      });
+    } catch (actErr) {
+      console.error('Task activity log failed', actErr);
+    }
 
     sendSuccess(res, 'Task created successfully', populatedTask);
   } catch (error) {
@@ -306,15 +380,34 @@ const updateTask = async (req, res) => {
     if (repeat_days !== undefined) task.repeat_days = repeat_days;
     if (repeat_end_date !== undefined) task.repeat_end_date = repeat_end_date ? new Date(repeat_end_date) : null;
 
-    // Verify assigned user exists (if provided)
-    if (assigned_to !== undefined && assigned_to !== task.assigned_to?.toString()) {
-      if (assigned_to) {
-        const assignedUser = await User.findById(assigned_to);
-        if (!assignedUser) {
-          return sendBadRequest(res, 'Assigned user not found');
+    if (assigned_to !== undefined) {
+      if (req.user.role === USER_ROLES.TEAM_MEMBER) {
+        // Team members cannot change assignee; keep existing value.
+      } else {
+        if (assigned_to) {
+          const assignedUser = await User.findById(assigned_to).select('isActive team_id');
+          if (!assignedUser || !assignedUser.isActive) {
+            return sendBadRequest(res, 'Assigned user not found or inactive');
+          }
+          if (req.user.role === USER_ROLES.TEAM_MANAGER) {
+            const mt = req.user.teamId || req.user.team_id;
+            if (!mt || String(assignedUser.team_id) !== String(mt)) {
+              return sendBadRequest(res, 'You can only assign tasks to users on your team');
+            }
+          }
+          const leadRef = task.lead_id;
+          const leadIdForPipeline = leadRef?._id ?? leadRef;
+          let pipelineTeamId = null;
+          if (leadIdForPipeline) {
+            const l = await Lead.findById(leadIdForPipeline).select('pipelineId').lean();
+            pipelineTeamId = await resolvePipelineTeamIdFromLead(l);
+          }
+          if (pipelineTeamId && String(assignedUser.team_id) !== pipelineTeamId) {
+            return sendBadRequest(res, 'Assignee must belong to the team for this lead\'s pipeline');
+          }
         }
+        task.assigned_to = assigned_to || null;
       }
-      task.assigned_to = assigned_to || null;
     }
 
     await task.save();
@@ -325,6 +418,22 @@ const updateTask = async (req, res) => {
       .populate('created_by', 'name email')
       .populate('team_id', 'name')
       .populate('notes.created_by', 'name email');
+
+    const leadRefAfterSave = task.lead_id;
+    const leadIdForActivity = leadRefAfterSave?._id ?? leadRefAfterSave;
+    if (leadIdForActivity) {
+      try {
+        await ActivityService.createActivity({
+          leadId: leadIdForActivity,
+          type: ACTIVITY_TYPES.TASK_UPDATED,
+          description: `Task updated: ${task.title || 'Task'}`,
+          performedBy: req.user.id,
+          metadata: { taskId: String(task._id) },
+        });
+      } catch (actErr) {
+        console.error('Task activity log failed', actErr);
+      }
+    }
 
     sendSuccess(res, 'Task updated successfully', populatedTask);
   } catch (error) {
@@ -346,9 +455,28 @@ const deleteTask = async (req, res) => {
       return sendForbidden(res, 'You do not have permission to delete this task');
     }
 
+    const leadRef = task.lead_id;
+    const leadIdForActivity = leadRef?._id ?? leadRef;
+    const taskTitle = task.title || 'Task';
+    const taskIdStr = String(task._id);
+
     // Soft delete
     task.deletedAt = new Date();
     await task.save();
+
+    if (leadIdForActivity) {
+      try {
+        await ActivityService.createActivity({
+          leadId: leadIdForActivity,
+          type: ACTIVITY_TYPES.TASK_DELETED,
+          description: `Task deleted: ${taskTitle}`,
+          performedBy: req.user.id,
+          metadata: { taskId: taskIdStr },
+        });
+      } catch (actErr) {
+        console.error('Task activity log failed', actErr);
+      }
+    }
 
     sendSuccess(res, 'Task deleted successfully');
   } catch (error) {
@@ -423,11 +551,8 @@ const markTaskComplete = async (req, res) => {
 
 const getTaskStats = async (req, res) => {
   try {
-    const isAdmin = isAdminUser(req.user);
-
-    const baseQuery = isAdmin
-      ? {}
-      : { created_by: req.user.id };
+    const vis = taskVisibilityMatch(req.user, req.query);
+    const baseQuery = vis ? { $and: [vis] } : {};
 
     const activeStatuses = [
       TASK_STATUS.PENDING,

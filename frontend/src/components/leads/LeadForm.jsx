@@ -189,25 +189,11 @@ const LeadForm = ({
 
   const memberOptions = [
     { value: '', label: 'Unassigned' },
-    ...assignableMembers
-      .filter((m) => {
-        if (!values.pipelineId) return true;
-
-        const selectedPipeline = pipelines.find(
-          (p) => p._id === values.pipelineId
-        );
-        console.log(selectedPipeline, assignableMembers);
-        return (
-          m?.team_id?._id === selectedPipeline?.teamId?._id
-        );
-      })
-      .map((m) => ({
-        value: m._id,
-        label: `${m.name} (${m.email})`,
-      })),
+    ...assignableMembers.map((m) => ({
+      value: m._id,
+      label: m.email ? `${m.name} (${m.email})` : (m.name || String(m._id)),
+    })),
   ];
-
-  console.log("memberOptions",memberOptions);
 
   /* Touch field on blur */
   const touch = useCallback((name) => {
@@ -226,6 +212,7 @@ const LeadForm = ({
   const handlePipelineChange = useCallback((e) => {
     handleChange(e);
     onChange({ target: { name: 'stageId', value: '' } });
+    onChange({ target: { name: 'assignedTo', value: '' } });
     setTouched((p) => ({ ...p, stageId: false }));
     setErrors((p)  => ({ ...p, stageId: '' }));
   }, [handleChange, onChange]);

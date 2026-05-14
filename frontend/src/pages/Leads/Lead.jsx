@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import api from '../../utils/api';
 import { API_ROUTES } from '../../utils/apiRoutes';
+import { fetchTeamAssignableUsers } from '../../utils/fetchTeamAssignableUsers';
+import { enrichPipelinesWithStages } from '../../utils/enrichPipelinesWithStages';
 import { formatIndianPhoneInput, getPhonePayload, validatePhone } from '../../utils/helpers';
 import { getChipVariant } from '../../utils/chipConstants';
 
@@ -37,7 +39,12 @@ const DEFAULT_LEAD_FORM = {
 
 const Leads = () => {
   const { user } = useAuth();
-  const canManageAssignment = user?.role === 'admin' || user?.role === 'team_manager';
+  const isAdmin = user?.role === 'admin';
+  const isTeamManager = user?.role === 'team_manager';
+  const showAssigneeFilters = isAdmin || isTeamManager;
+  const canManageAssignment = isAdmin || isTeamManager;
+
+  const [assigneeFilter, setAssigneeFilter] = useState('');
 
   const {
     pipelines,
@@ -56,7 +63,7 @@ const Leads = () => {
     setStageKanbanMeta,
     goToStagePage,
     updateStageListQuery,
-  } = useKanban();
+  } = useKanban(showAssigneeFilters ? assigneeFilter : '');
   /* ── View toggle (kanban / table) ───────────────────── */
   const [view, setView] = useState('kanban');
 
@@ -67,40 +74,101 @@ const Leads = () => {
   const [createError, setCreateError]     = useState('');
   const [saving, setSaving]               = useState(false);
   const [assignableMembers, setAssignableMembers] = useState([]);
+  const [pipelinesForLeadForm, setPipelinesForLeadForm] = useState([]);
+  /** Admin header assignee filter — id + name from GET /users/team-assignable */
+  const [teamRosterForFilters, setTeamRosterForFilters] = useState([]);
   // stageId to pre-fill when adding from a column's + button
   const [defaultStageId, setDefaultStageId] = useState('');
 
   /* ── Table state (for table view) ───────────────────── */
   const [tableRefreshKey, setTableRefreshKey] = useState(0);
 
-  /* ── Load team members for assignment ───────────────── */
-  const loadMembers = useCallback(async () => {
-    if (!canManageAssignment) return;
-    const res = await api.get(API_ROUTES.users.list, {
-      params: { role: 'team_member', page: 1, limit: 200 },
-    });
-    setAssignableMembers(res?.data?.users || []);
-  }, [canManageAssignment]);
+  const loadMembersForPipeline = useCallback(
+    async (pipelineId, ensureUser = null) => {
+      if (!canManageAssignment || !pipelineId) {
+        setAssignableMembers([]);
+        return;
+      }
+      try {
+        const list = await fetchTeamAssignableUsers({ pipelineId: String(pipelineId) });
+        const base = (list || []).map((u) => ({
+          _id: u._id,
+          name: u.name || '',
+          email: '',
+        }));
+        if (ensureUser?._id && !base.some((m) => String(m._id) === String(ensureUser._id))) {
+          base.push({
+            _id: ensureUser._id,
+            name: ensureUser.name || '',
+            email: ensureUser.email || '',
+          });
+        }
+        setAssignableMembers(base);
+      } catch {
+        setAssignableMembers([]);
+      }
+    },
+    [canManageAssignment],
+  );
 
   useEffect(() => {
-    if (view === 'kanban' && canManageAssignment) {
-      loadMembers().catch(() => {});
+    if (!showLeadModal || !pipelines?.length) {
+      setPipelinesForLeadForm([]);
+      return undefined;
     }
-  }, [view, canManageAssignment, loadMembers]);
+    let cancelled = false;
+    enrichPipelinesWithStages(pipelines).then((list) => {
+      if (!cancelled) setPipelinesForLeadForm(list);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showLeadModal, pipelines]);
+
+  useEffect(() => {
+    if (!showAssigneeFilters) {
+      setTeamRosterForFilters([]);
+      return undefined;
+    }
+    fetchTeamAssignableUsers()
+      .then(setTeamRosterForFilters)
+      .catch(() => setTeamRosterForFilters([]));
+    return undefined;
+  }, [showAssigneeFilters]);
+
+  useEffect(() => {
+    if (!showLeadModal || !canManageAssignment) return undefined;
+    if (!leadForm.pipelineId) {
+      setAssignableMembers([]);
+      return undefined;
+    }
+    const ensureUser = editingLead?.assignedTo || null;
+    loadMembersForPipeline(leadForm.pipelineId, ensureUser);
+    return undefined;
+  }, [
+    showLeadModal,
+    canManageAssignment,
+    leadForm.pipelineId,
+    loadMembersForPipeline,
+    editingLead?._id,
+    editingLead?.assignedTo?._id,
+  ]);
 
   /* ── Open create lead modal ─────────────────────────── */
-  const openCreateLead = useCallback(async (pipelineId = '', stageId = '') => {
-    setEditingLead(null);
-    console.log("pipelineId",pipelineId)
-    console.log("stageId",stageId)
-    setCreateError('');
-    setDefaultStageId(stageId);
-    setLeadForm({ ...DEFAULT_LEAD_FORM, pipelineId, stageId });
-    setShowLeadModal(true);
-    if (canManageAssignment && assignableMembers.length === 0) {
-      try { await loadMembers(); } catch (e) { setCreateError(e?.message || 'Failed to load users'); }
-    }
-  }, [canManageAssignment, assignableMembers.length, loadMembers]);
+  const openCreateLead = useCallback(
+    async (pipelineId = '', stageId = '') => {
+      setEditingLead(null);
+      setCreateError('');
+      setDefaultStageId(stageId);
+      setLeadForm({
+        ...DEFAULT_LEAD_FORM,
+        pipelineId: pipelineId || selectedPipelineId || '',
+        stageId,
+      });
+      setShowLeadModal(true);
+    },
+    [selectedPipelineId],
+  );
 
   /* ── Open edit lead modal ───────────────────────────── */
   const openEditLead = useCallback(async (lead) => {
@@ -108,30 +176,20 @@ const Leads = () => {
     setEditingLead(lead);
     setDefaultStageId(lead?.stageId?._id || '');
     setLeadForm({
-      name:       lead?.name || '',
-      email:      lead?.email || '',
-      phone:      formatIndianPhoneInput(lead?.phone || ''),
-      source:     lead?.source || 'importerr_inquiry',
+      name: lead?.name || '',
+      email: lead?.email || '',
+      phone: formatIndianPhoneInput(lead?.phone || ''),
+      source: lead?.source || 'importerr_inquiry',
       assignedTo: lead?.assignedTo?._id ? String(lead.assignedTo._id) : '',
-      priority:   lead?.priority || TASK_PRIORITY_LEVELS.LOW,
-      leadType:   lead?.leadType || 'guest',
-      status:     lead?.status || 'new',
+      priority: lead?.priority || TASK_PRIORITY_LEVELS.LOW,
+      leadType: lead?.leadType || 'guest',
+      status: lead?.status || 'new',
       pipelineId: lead.pipelineId?._id || '',
       stageId: lead.stageId?._id || '',
       message: lead?.message || '',
     });
-    // Ensure assigned user appears in dropdown
-    if (lead?.assignedTo?._id) {
-      setAssignableMembers((prev) => {
-        if (prev.some((m) => String(m._id) === String(lead.assignedTo._id))) return prev;
-        return [...prev, { _id: lead.assignedTo._id, name: lead.assignedTo.name, email: lead.assignedTo.email }];
-      });
-    }
     setShowLeadModal(true);
-    if (canManageAssignment && assignableMembers.length === 0) {
-      try { await loadMembers(); } catch (e) { setCreateError(e?.message || 'Failed to load users'); }
-    }
-  }, [canManageAssignment, assignableMembers.length, loadMembers]);
+  }, []);
 
   /* ── Open view lead ─────────────────────────────────── */
   const openViewLead = useCallback((lead) => {
@@ -226,13 +284,14 @@ const Leads = () => {
 
   /* ── Table fetch function ───────────────────────────── */
   const fetchLeadsForTable = useCallback(
-    async ({ page, limit, sortKey, sortDirection }) => {
+    async ({ page, limit, sortKey, sortDirection, assignedTo }) => {
       const res = await api.get(API_ROUTES.leads.list, {
         params: {
           page, limit,
           sortBy: sortKey || 'priority',
           sortOrder: sortDirection || 'desc',
           ...(selectedPipelineId ? { pipelineId: selectedPipelineId } : {}),
+          ...(assignedTo ? { assignedTo } : {}),
         },
       });
       return {
@@ -290,6 +349,10 @@ const Leads = () => {
           pipelines={pipelines}
           selectedPipeline={selectedPipelineId}
           onSelect={setSelectedPipelineId}
+          showAssigneeFilter={showAssigneeFilters}
+          assignableMembers={teamRosterForFilters}
+          assigneeFilter={assigneeFilter}
+          onAssigneeFilterChange={setAssigneeFilter}
         />
 
         {/* ── Kanban view ── */}
@@ -307,8 +370,7 @@ const Leads = () => {
             onView={openViewLead}
             onEdit={openEditLead}
             onNotify={notify}
-            canFilterByAssignee={canManageAssignment}
-            assignableMembers={assignableMembers}
+            isAdmin={showAssigneeFilters}
           />
         )}
 
@@ -322,7 +384,11 @@ const Leads = () => {
               <Table
                 columns={tableColumns}
                 apiFunction={fetchLeadsForTable}
-                queryParams={{ refreshKey: tableRefreshKey, pipelineId: selectedPipelineId }}
+                queryParams={{
+                  refreshKey: tableRefreshKey,
+                  pipelineId: selectedPipelineId,
+                  ...(showAssigneeFilters && assigneeFilter ? { assignedTo: assigneeFilter } : {}),
+                }}
                 rowKey="_id"
                 emptyMessage="No leads found."
                 defaultPageSize={10}
@@ -351,7 +417,7 @@ const Leads = () => {
           onSubmit={editingLead ? handleUpdateLead : handleCreateLead}
           onCancel={closeModal}
           loading={saving}
-          pipelines={pipelines}
+          pipelines={pipelinesForLeadForm.length ? pipelinesForLeadForm : pipelines}
           submitLabel={editingLead ? 'Update Lead' : 'Create Lead'}
         />
       </Modal>

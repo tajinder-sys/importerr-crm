@@ -6,6 +6,7 @@ export const API_ROUTES = {
   },
   users: {
     list: '/users',
+    teamAssignable: '/users/team-assignable',
     create: '/users',
     byId: (userId) => `/users/${encodeURIComponent(userId)}`,
     update: (userId) => `/users/${encodeURIComponent(userId)}`,

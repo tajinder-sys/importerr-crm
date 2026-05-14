@@ -2,6 +2,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../utils/api';
 import { API_ROUTES } from '../utils/apiRoutes';
+import { fetchTeamAssignableUsers } from '../utils/fetchTeamAssignableUsers';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -151,12 +152,11 @@ export const updateLead = createAsyncThunk(
 
 export const fetchAssignableMembers = createAsyncThunk(
   'leadDetails/fetchAssignableMembers',
-  async (_, { rejectWithValue }) => {
+  async (pipelineId, { rejectWithValue }) => {
     try {
-      const { data } = await api.get(API_ROUTES.users.list, {
-        params: { role: 'team_member', page: 1, limit: 200 },
-      });
-      return data?.users || [];
+      const pid = pipelineId ? String(pipelineId).trim() : '';
+      if (!pid) return [];
+      return await fetchTeamAssignableUsers({ pipelineId: pid });
     } catch (err) {
       return rejectWithValue(err?.message || 'Failed to load members');
     }

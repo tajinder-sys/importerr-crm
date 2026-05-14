@@ -31,7 +31,12 @@ export const ACTIVITY_TYPES = {
   NOTE_ADDED: 'note_added',
   FILE_ATTACHED: 'file_attached',
   COMMUNICATION_SENT: 'communication_sent',
-  LEAD_CONVERTED: 'lead_converted'
+  LEAD_CONVERTED: 'lead_converted',
+  LEAD_UPDATED: 'lead_updated',
+  STAGE_CHANGED: 'stage_changed',
+  TASK_CREATED: 'task_created',
+  TASK_UPDATED: 'task_updated',
+  TASK_DELETED: 'task_deleted',
 };
 
 /** Matches backend Task / User `priority` enum. */

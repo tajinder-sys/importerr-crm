@@ -98,6 +98,7 @@ const LeadCard = ({
   columnStage = null,
   onEdit = () => {},
   onNotify = () => {},
+  showAssigneeOnCollapsed = false,
 }) => {
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
@@ -212,6 +213,15 @@ const LeadCard = ({
             <span className="truncate text-[10px] font-medium text-slate-600 dark:text-slate-400">{fmtPhone(lead.phone)}</span>
             <Pill label={lead.priority || 'low'} cls={PRIORITY_CLS[lead.priority || 'low']} />
             <span className="truncate text-[10px] font-medium text-slate-600 dark:text-slate-400">{lead?.email || '-'}</span>
+            {showAssigneeOnCollapsed && (
+              <span
+                className="inline-flex max-w-[140px] items-center gap-0.5 truncate text-[10px] font-medium text-slate-500 dark:text-slate-400"
+                title={lead.assignedTo?.name ? `Assigned: ${lead.assignedTo.name}` : 'Unassigned'}
+              >
+                <User size={10} className="flex-shrink-0 opacity-70" />
+                <span className="truncate">{lead.assignedTo?.name || 'Unassigned'}</span>
+              </span>
+            )}
             {/* <StageTargetChips stageMeta={stageMeta} dense /> */}
             {lead.tasks?.length > 0 && (
               <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500 dark:bg-slate-700 dark:text-slate-400">

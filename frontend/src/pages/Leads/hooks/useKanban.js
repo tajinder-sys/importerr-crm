@@ -10,7 +10,7 @@ const emptyMeta = () => ({
   listQuery: defaultKanbanListQuery(),
 });
 
-const useKanban = () => {
+const useKanban = (globalAssignedTo = '') => {
   const [pipelines, setPipelines] = useState([]);
   const [selectedPipelineId, setSelectedPipelineId] = useState('');
 
@@ -96,7 +96,7 @@ const useKanban = () => {
       };
       if (q.status) paramsBase.status = q.status;
       if (q.source) paramsBase.source = q.source;
-      if (q.assignedTo) paramsBase.assignedTo = q.assignedTo;
+      if (globalAssignedTo) paramsBase.assignedTo = globalAssignedTo;
       const s = (q.search || '').trim();
       if (s) paramsBase.search = s;
 
@@ -125,7 +125,7 @@ const useKanban = () => {
       }
       return { leads, total, page: resolvedPage };
     },
-    [selectedPipelineId],
+    [selectedPipelineId, globalAssignedTo],
   );
 
   const bootstrapKanbanLeads = useCallback(

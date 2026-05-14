@@ -66,7 +66,10 @@ const ACTIVITY_TYPES = {
   LEAD_CONVERTED: 'lead_converted',
   QUOTE_SENT: 'lead_quote_sent',
   QUOTE_RESENT: 'lead_quote_resent',
-  STAGE_CHANGED: 'stage_changed'
+  STAGE_CHANGED: 'stage_changed',
+  TASK_CREATED: 'task_created',
+  TASK_UPDATED: 'task_updated',
+  TASK_DELETED: 'task_deleted'
 };
 
 const COMMUNICATION_SOURCES = {

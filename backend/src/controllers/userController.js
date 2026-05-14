@@ -12,6 +12,7 @@ const {
 } = require('../utils/validators');
 
 const Team = require('../models/Team');
+const Pipeline = require('../models/Pipeline');
 
 // =========================
 // Get All Users
@@ -401,9 +402,73 @@ const deactivateUser = async (req, res) => {
   }
 };
 
+// =========================
+// Team roster for filters / pickers (active team_member + team_manager, id + name only)
+// =========================
+const getTeamAssignableRoster = async (req, res) => {
+  try {
+    const requestedTeamId = req.query.team_id ? String(req.query.team_id).trim() : '';
+    const requestedPipelineId = req.query.pipeline_id ? String(req.query.pipeline_id).trim() : '';
+
+    if (req.user.role === USER_ROLES.TEAM_MEMBER) {
+      const u = await User.findById(req.user.id).select('name').lean();
+      return sendSuccess(res, 'Team roster retrieved successfully', {
+        users: u ? [{ _id: u._id, name: u.name || '' }] : [],
+      });
+    }
+
+    let pipelineTeamId = null;
+    if (requestedPipelineId) {
+      const pipeline = await Pipeline.findById(requestedPipelineId).select('teamId').lean();
+      if (!pipeline?.teamId) {
+        return sendSuccess(res, 'Team roster retrieved successfully', { users: [] });
+      }
+      pipelineTeamId = String(pipeline.teamId);
+      if (req.user.role === USER_ROLES.TEAM_MANAGER) {
+        const mt = req.user.teamId || req.user.team_id;
+        if (!mt || pipelineTeamId !== String(mt)) {
+          return sendSuccess(res, 'Team roster retrieved successfully', { users: [] });
+        }
+      }
+    }
+
+    const filter = {
+      isActive: true,
+      role: { $in: [USER_ROLES.TEAM_MEMBER, USER_ROLES.TEAM_MANAGER] },
+    };
+
+    if (req.user.role === USER_ROLES.TEAM_MANAGER) {
+      const mt = req.user.teamId || req.user.team_id;
+      if (!mt) {
+        return sendSuccess(res, 'Team roster retrieved successfully', { users: [] });
+      }
+      filter.team_id = mt;
+    } else if (req.user.role === USER_ROLES.ADMIN) {
+      if (pipelineTeamId) {
+        filter.team_id = pipelineTeamId;
+      } else if (requestedTeamId) {
+        filter.team_id = requestedTeamId;
+      }
+    }
+
+    const users = await User.find(filter).select('name').sort({ name: 1 }).lean();
+
+    const list = users.map((u) => ({
+      _id: u._id,
+      name: u.name || '',
+    }));
+
+    sendSuccess(res, 'Team roster retrieved successfully', { users: list });
+  } catch (error) {
+    console.error('getTeamAssignableRoster error:', error);
+    sendBadRequest(res, 'Failed to load team roster');
+  }
+};
+
 module.exports = {
   getUsers,
   getUserById,
+  getTeamAssignableRoster,
   createUser,
   updateUser,
   updateUserPassword,

@@ -6,6 +6,9 @@ import {
 } from 'lucide-react';
 import api from '../../utils/api';
 import { API_ROUTES } from '../../utils/apiRoutes';
+import { fetchTeamAssignableUsers } from '../../utils/fetchTeamAssignableUsers';
+import { USER_ROLES } from '../../utils/constants';
+import { useAuth } from '../../hooks/useAuth';
 import Modal from './ui/Modal';
 
 /* ─── Constants ──────────────────────────────────────────────── */
@@ -75,6 +78,17 @@ const toDateOnly = (iso) => {
   } catch {
     return '';
   }
+};
+
+/** Normalize populated or raw ObjectId refs to string id */
+const idFromRef = (ref) => {
+  if (ref == null || ref === '') return '';
+  if (typeof ref === 'string') return ref.trim();
+  if (typeof ref === 'object') {
+    const id = ref._id ?? ref.id;
+    return id != null ? String(id) : '';
+  }
+  return String(ref);
 };
 
 /** Hydrate form state from an existing task object */
@@ -149,20 +163,102 @@ const Toggle = ({ checked, onChange }) => (
 
 const TaskModal = ({ isOpen, onClose, onCreated, onUpdated, leadId, leadName, task = null }) => {
   const isEdit = Boolean(task);
+  const { user } = useAuth();
+  const userId = String(user?._id || user?.id || '');
+  const canPickAssignee =
+    user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.TEAM_MANAGER;
+  const isTeamMember = user?.role === USER_ROLES.TEAM_MEMBER;
 
   const [form, setForm] = useState(EMPTY_FORM);
+  const [assigneeOptions, setAssigneeOptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError]   = useState('');
   const [success, setSuccess] = useState(false);
 
+  /* Load assignee list for admins / team managers (scoped to lead pipeline team when lead is known) */
+  useEffect(() => {
+    if (!isOpen || !canPickAssignee) {
+      setAssigneeOptions([]);
+      return undefined;
+    }
+    const leadIdForPipeline =
+      idFromRef(leadId) || (isEdit && task ? idFromRef(task.lead_id) : '');
+
+    let cancelled = false;
+    (async () => {
+      try {
+        let list = [];
+        if (!leadIdForPipeline) {
+          list = await fetchTeamAssignableUsers();
+        } else {
+          try {
+            const leadRes = await api.get(API_ROUTES.leads.byId(leadIdForPipeline));
+            const leadEntity = leadRes?.data?.lead;
+            const pid = idFromRef(leadEntity?.pipelineId);
+            if (pid) {
+              list = await fetchTeamAssignableUsers({ pipelineId: pid });
+            }
+          } catch {
+            list = [];
+          }
+        }
+
+        const byId = new Map((list || []).map((u) => [String(u._id), u]));
+        if (isEdit && task?.assigned_to) {
+          const a = task.assigned_to;
+          const aid = String(a._id ?? a);
+          if (aid && !byId.has(aid)) {
+            byId.set(aid, {
+              _id: aid,
+              name: a.name || a.email || 'Assignee',
+            });
+          }
+        }
+        if (userId && !byId.has(userId)) {
+          byId.set(userId, {
+            _id: userId,
+            name: user?.name || user?.email || 'Me',
+          });
+        }
+        const merged = [...byId.values()].sort((a, b) =>
+          String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }),
+        );
+        if (!cancelled) setAssigneeOptions(merged);
+      } catch {
+        if (!cancelled) {
+          setAssigneeOptions(
+            userId ? [{ _id: userId, name: user?.name || user?.email || 'Me' }] : [],
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isOpen,
+    canPickAssignee,
+    userId,
+    user?.name,
+    user?.email,
+    leadId,
+    isEdit,
+    task?.lead_id,
+    task?.assigned_to,
+    task?._id,
+  ]);
+
   /* Populate form when switching between create/edit or when task changes */
   useEffect(() => {
-    if (isOpen) {
-      setForm(isEdit ? taskToForm(task) : EMPTY_FORM);
-      setError('');
-      setSuccess(false);
+    if (!isOpen) return;
+    setError('');
+    setSuccess(false);
+    if (isEdit && task) {
+      setForm(taskToForm(task));
+    } else {
+      setForm({ ...EMPTY_FORM, assigned_to: userId });
     }
-  }, [isOpen, task]);
+  }, [isOpen, task, isEdit, userId]);
 
   const set = (field) => (e) =>
     setForm((f) => ({
@@ -178,13 +274,18 @@ const TaskModal = ({ isOpen, onClose, onCreated, onUpdated, leadId, leadName, ta
     setError('');
     if (!form.title.trim()) { setError('Task title is required.'); return; }
 
+    let assignedToPayload = form.assigned_to ? String(form.assigned_to).trim() : '';
+    if (isTeamMember) {
+      assignedToPayload = userId;
+    }
+
     const payload = {
       ...form,
       title:          form.title.trim(),
       start_date:     form.start_date     || null,
       due_date:       form.due_date       || null,
       reminder_at:    form.reminder_at    || null,
-      assigned_to:    form.assigned_to    || undefined,
+      assigned_to:    assignedToPayload || null,
       repeat_type:    form.is_recurring   ? form.repeat_type    : undefined,
       repeat_end_date: form.is_recurring && form.repeat_end_date ? form.repeat_end_date : null,
     };
@@ -411,18 +512,35 @@ const TaskModal = ({ isOpen, onClose, onCreated, onUpdated, leadId, leadName, ta
             />
           </div>
 
-          {/* Assigned To */}
-          <div>
-            <Label>
-              Assigned To{' '}
-              <span className="text-slate-300 normal-case font-normal">(User ID)</span>
-            </Label>
-            <Input
-              placeholder="User ID (optional)"
-              value={form.assigned_to}
-              onChange={set('assigned_to')}
-            />
-          </div>
+          {/* Assignee */}
+          {canPickAssignee ? (
+            <div>
+              <Label>Assign to</Label>
+              <Select value={form.assigned_to} onChange={set('assigned_to')}>
+                <option value="">Unassigned</option>
+                {assigneeOptions.map((u) => (
+                  <option key={String(u._id)} value={String(u._id)}>
+                    {u.name || String(u._id)}
+                  </option>
+                ))}
+              </Select>
+              <p className="mt-1 text-[10px] text-slate-400">
+                Choose any active team member or manager, or leave unassigned.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <Label>Assign to</Label>
+              <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200">
+                <Users size={14} className="text-slate-400 shrink-0" />
+                <span>
+                  {isEdit && task?.assigned_to?.name
+                    ? task.assigned_to.name
+                    : 'You (this task will be assigned to you)'}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Recurring toggle */}
           <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 dark:border-slate-700 dark:bg-slate-800/60">

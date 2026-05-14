@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import { Eye, Pencil, UserPlus, X } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '../components/common/ui/Card';
@@ -8,6 +8,8 @@ import Modal from '../components/common/ui/Modal';
 import Chip from '../components/common/ui/Chip';
 import LeadForm from '../components/leads/LeadForm';
 import api from '../utils/api';
+import { fetchTeamAssignableUsers } from '../utils/fetchTeamAssignableUsers';
+import { enrichPipelinesWithStages } from '../utils/enrichPipelinesWithStages';
 import {
   formatDateIndian,
   formatIndianPhoneInput,
@@ -19,7 +21,7 @@ import { useAuth } from '../hooks/useAuth';
 import { getChipVariant } from '../utils/chipConstants';
 import { API_ROUTES } from '../utils/apiRoutes';
 import { UiPageTitle, UiSectionTitle } from '../components/common/ui/Typography';
-import { useEffect } from 'react';
+import { TASK_PRIORITY_LEVELS } from '../utils/constants';
 
 const formatLeadPhoneDisplay = (phone) => {
   if (!phone) return '-';
@@ -46,11 +48,13 @@ const Leads = () => {
   const accountId = searchParams.get('accountId') || '';
   const accountName = searchParams.get('accountName') || '';
   const [tableRefreshKey, setTableRefreshKey] = useState(0);
+  const [isLeadsLoading, setIsLeadsLoading] = useState(false);
   const [showCreateLeadModal, setShowCreateLeadModal] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
   const [creatingLead, setCreatingLead] = useState(false);
   const [createError, setCreateError] = useState('');
   const [assignableMembers, setAssignableMembers] = useState([]);
+  const [pipelinesForLeadForm, setPipelinesForLeadForm] = useState([]);
   const [leadForm, setLeadForm] = useState({
     name: '',
     email: '',
@@ -58,7 +62,11 @@ const Leads = () => {
     source: 'importerr_inquiry',
     assignedTo: '',
     leadType: 'guest',
-    status: 'new'
+    status: 'new',
+    pipelineId: '',
+    stageId: '',
+    message: 'Lead inquiry',
+    priority: TASK_PRIORITY_LEVELS.LOW,
   });
   const [pipelines, setPipelines] = useState([]);
   const [selectedPipeline, setSelectedPipeline] = useState(null);
@@ -72,30 +80,95 @@ const Leads = () => {
       source: 'importerr_inquiry',
       assignedTo: '',
       leadType: 'guest',
-      status: 'new'
+      status: 'new',
+      pipelineId: selectedPipeline || '',
+      stageId: '',
+      message: 'Lead inquiry',
+      priority: TASK_PRIORITY_LEVELS.LOW,
     });
     setCreateError('');
   };
 
-  const loadAssignableMembers = useCallback(async () => {
-    if (!canManageLeadAssignment) return;
-    const response = await api.get(API_ROUTES.users.list, {
-      params: { role: 'team_member', page: 1, limit: 200 }
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get(API_ROUTES.pipelines.list, { params: { isActive: true, limit: 200 } });
+        const list = res?.data?.pipelines || res?.data || [];
+        if (!cancelled) setPipelines(list);
+      } catch {
+        if (!cancelled) setPipelines([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const loadMembersForPipeline = useCallback(
+    async (pipelineId, ensureUser = null) => {
+      if (!canManageLeadAssignment || !pipelineId) {
+        setAssignableMembers([]);
+        return;
+      }
+      try {
+        const list = await fetchTeamAssignableUsers({ pipelineId: String(pipelineId) });
+        const base = (list || []).map((u) => ({
+          _id: u._id,
+          name: u.name || '',
+          email: '',
+        }));
+        if (ensureUser?._id && !base.some((m) => String(m._id) === String(ensureUser._id))) {
+          base.push({
+            _id: ensureUser._id,
+            name: ensureUser.name || '',
+            email: ensureUser.email || '',
+          });
+        }
+        setAssignableMembers(base);
+      } catch {
+        setAssignableMembers([]);
+      }
+    },
+    [canManageLeadAssignment],
+  );
+
+  useEffect(() => {
+    if (!showCreateLeadModal || !pipelines?.length) {
+      setPipelinesForLeadForm([]);
+      return undefined;
+    }
+    let cancelled = false;
+    enrichPipelinesWithStages(pipelines).then((list) => {
+      if (!cancelled) setPipelinesForLeadForm(list);
     });
-    setAssignableMembers(response?.data?.users || []);
-  }, [canManageLeadAssignment]);
+    return () => {
+      cancelled = true;
+    };
+  }, [showCreateLeadModal, pipelines]);
+
+  useEffect(() => {
+    if (!showCreateLeadModal || !canManageLeadAssignment) return undefined;
+    if (!leadForm.pipelineId) {
+      setAssignableMembers([]);
+      return undefined;
+    }
+    const ensureUser = editingLead?.assignedTo || null;
+    loadMembersForPipeline(leadForm.pipelineId, ensureUser);
+    return undefined;
+  }, [
+    showCreateLeadModal,
+    canManageLeadAssignment,
+    leadForm.pipelineId,
+    loadMembersForPipeline,
+    editingLead?._id,
+    editingLead?.assignedTo?._id,
+  ]);
 
   const openCreateLeadModal = async () => {
     resetLeadForm();
     setEditingLead(null);
     setShowCreateLeadModal(true);
-    if (canManageLeadAssignment && assignableMembers.length === 0) {
-      try {
-        await loadAssignableMembers();
-      } catch (error) {
-        setCreateError(error?.message || 'Failed to load users');
-      }
-    }
   };
 
   const openEditLeadModal = async (lead) => {
@@ -109,30 +182,13 @@ const Leads = () => {
       source: lead?.source || 'importerr_inquiry',
       assignedTo: assignedUserId,
       leadType: lead?.leadType || 'guest',
-      status: lead?.status || 'new'
+      status: lead?.status || 'new',
+      pipelineId: lead?.pipelineId?._id || lead?.pipelineId || '',
+      stageId: lead?.stageId?._id || lead?.stageId || '',
+      message: lead?.message || 'Lead inquiry',
+      priority: lead?.priority || TASK_PRIORITY_LEVELS.LOW,
     });
-    if (assignedUserId) {
-      setAssignableMembers((prev) => {
-        const exists = prev.some((member) => String(member?._id) === assignedUserId);
-        if (exists) return prev;
-        return [
-          ...prev,
-          {
-            _id: assignedUserId,
-            name: lead?.assignedTo?.name || 'Assigned User',
-            email: lead?.assignedTo?.email || ''
-          }
-        ];
-      });
-    }
     setShowCreateLeadModal(true);
-    if (canManageLeadAssignment && assignableMembers.length === 0) {
-      try {
-        await loadAssignableMembers();
-      } catch (error) {
-        setCreateError(error?.message || 'Failed to load users');
-      }
-    }
   };
 
   const handleLeadFormChange = (event) => {
@@ -160,7 +216,15 @@ const Leads = () => {
         phone: normalizedPhone,
         source: leadForm.source,
         leadType: leadForm.leadType,
-        ...(canManageLeadAssignment && leadForm.assignedTo ? { assignedTo: leadForm.assignedTo } : {})
+        message: (leadForm.message || '').trim() || 'Lead inquiry',
+        priority: leadForm.priority || TASK_PRIORITY_LEVELS.LOW,
+        ...(canManageLeadAssignment
+          ? {
+              assignedTo: leadForm.assignedTo || undefined,
+              pipelineId: leadForm.pipelineId || undefined,
+              stageId: leadForm.stageId || undefined,
+            }
+          : {}),
       });
       setShowCreateLeadModal(false);
       resetLeadForm();
@@ -191,7 +255,15 @@ const Leads = () => {
         source: leadForm.source,
         leadType: leadForm.leadType,
         status: leadForm.status,
-        ...(canManageLeadAssignment ? { assignedTo: leadForm.assignedTo || null } : {})
+        message: (leadForm.message || '').trim(),
+        priority: leadForm.priority || TASK_PRIORITY_LEVELS.LOW,
+        ...(canManageLeadAssignment
+          ? {
+              assignedTo: leadForm.assignedTo || null,
+              pipelineId: leadForm.pipelineId || null,
+              stageId: leadForm.stageId || null,
+            }
+          : {}),
       });
       setShowCreateLeadModal(false);
       setEditingLead(null);
@@ -229,6 +301,8 @@ const Leads = () => {
       };
     } catch {
       return { data: [], total: 0 };
+    } finally {
+      setIsLeadsLoading(false);
     }
   }, [accountId]);
 
@@ -469,6 +543,7 @@ const Leads = () => {
             }}
             loading={creatingLead}
             submitLabel={editingLead ? 'Update Lead' : 'Create Lead'}
+            pipelines={pipelinesForLeadForm.length ? pipelinesForLeadForm : pipelines}
           />
         </Modal>
       </div>

@@ -27,8 +27,7 @@ const KanbanBoard = ({
   onEdit,
   onAddLead,
   onNotify,
-  canFilterByAssignee,
-  assignableMembers,
+  isAdmin,
 }) => {
   const [activeLead, setActiveLead] = useState(null);
 
@@ -224,8 +223,7 @@ const KanbanBoard = ({
               onEdit={onEdit}
               onAddLead={onAddLead}
               onNotify={onNotify}
-              canFilterByAssignee={canFilterByAssignee}
-              assignableMembers={assignableMembers}
+              isAdmin={isAdmin}
             />
           );
         })}
@@ -245,6 +243,7 @@ const KanbanBoard = ({
               columnStage={dragOverlayStage}
               onEdit={() => {}}
               onNotify={onNotify}
+              showAssigneeOnCollapsed={isAdmin}
             />
           </div>
         )}

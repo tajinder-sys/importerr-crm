@@ -10,6 +10,9 @@ import SelectField from '../../components/common/ui/SelectField';
 import api from '../../utils/api';
 import { API_ROUTES } from '../../utils/apiRoutes';
 import { fetchTasks, fetchCalendarTasks } from '../../store/tasksSlice';
+import { useAuth } from '../../hooks/useAuth';
+import { USER_ROLES } from '../../utils/constants';
+import { fetchTeamAssignableUsers } from '../../utils/fetchTeamAssignableUsers';
 import { UiPageTitle, UiSectionTitle, UiPageDescription } from '../../components/common/ui/Typography';
 import {
   Plus,
@@ -83,6 +86,9 @@ const StatCard = ({ Icon, label, value, color, loading }) => (
 );
 const TasksPage = () => {
   const dispatch = useDispatch();
+  const { user } = useAuth();
+  const isAdmin = user?.role === USER_ROLES.ADMIN;
+  const isTeamManager = user?.role === USER_ROLES.TEAM_MANAGER;
   const { tasks, stats, loading } = useSelector((s) => s.tasks);
   const [showModal, setShowModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
@@ -91,8 +97,46 @@ const TasksPage = () => {
     status: '',
     priority: '',
     task_type: '',
-    due_date: ''
+    due_date: '',
+    scope: '',
+    assigned_to: '',
+    team_id: '',
   });
+  const [assigneeOptions, setAssigneeOptions] = useState([]);
+  const [teamOptions, setTeamOptions] = useState([]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get(API_ROUTES.teams.list, { params: { limit: 200, status: 'active' } });
+        const list = res?.data?.teams || res?.data || [];
+        if (!cancelled) setTeamOptions(Array.isArray(list) ? list : []);
+      } catch {
+        if (!cancelled) setTeamOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin && !isTeamManager) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await fetchTeamAssignableUsers();
+        if (!cancelled) setAssigneeOptions(Array.isArray(list) ? list : []);
+      } catch {
+        if (!cancelled) setAssigneeOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, isTeamManager]);
 
   useEffect(() => {
     dispatch(fetchTasks({ search, filters }));
@@ -117,7 +161,13 @@ const TasksPage = () => {
       try {
         await api.delete(API_ROUTES.tasks.delete(task._id));
         dispatch(fetchTasks({ search, filters }));
-        dispatch(fetchCalendarTasks());
+        dispatch(
+          fetchCalendarTasks({
+            ...(filters.scope ? { scope: filters.scope } : {}),
+            ...(filters.assigned_to ? { assigned_to: filters.assigned_to } : {}),
+            ...(filters.team_id ? { team_id: filters.team_id } : {}),
+          }),
+        );
       } catch (error) {
         console.error('Error deleting task:', error);
       }
@@ -128,7 +178,13 @@ const TasksPage = () => {
     setShowModal(false);
     setEditingTask(null);
     dispatch(fetchTasks({ search, filters }));
-    dispatch(fetchCalendarTasks());
+    dispatch(
+      fetchCalendarTasks({
+        ...(filters.scope ? { scope: filters.scope } : {}),
+        ...(filters.assigned_to ? { assigned_to: filters.assigned_to } : {}),
+        ...(filters.team_id ? { team_id: filters.team_id } : {}),
+      }),
+    );
   };
 
   const isOverdue = (task) => {
@@ -351,6 +407,48 @@ const TasksPage = () => {
                 <option value="upcoming">Upcoming</option>
               </SelectField>
             </div>
+
+            {(isAdmin || isTeamManager) && (
+              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                {isTeamManager && (
+                  <SelectField
+                    label="View"
+                    value={filters.scope}
+                    onChange={(e) => handleFilterChange('scope', e.target.value)}
+                  >
+                    <option value="">All (my work + team)</option>
+                    <option value="mine">Assigned / created by me</option>
+                    <option value="team">My team only</option>
+                  </SelectField>
+                )}
+                <SelectField
+                  label="Assignee"
+                  value={filters.assigned_to}
+                  onChange={(e) => handleFilterChange('assigned_to', e.target.value)}
+                >
+                  <option value="">All assignees</option>
+                  {assigneeOptions.map((u) => (
+                    <option key={String(u._id)} value={String(u._id)}>
+                      {u.name || String(u._id)}
+                    </option>
+                  ))}
+                </SelectField>
+                {isAdmin && (
+                  <SelectField
+                    label="Team"
+                    value={filters.team_id}
+                    onChange={(e) => handleFilterChange('team_id', e.target.value)}
+                  >
+                    <option value="">All teams</option>
+                    {teamOptions.map((t) => (
+                      <option key={t._id} value={String(t._id)}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </SelectField>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 

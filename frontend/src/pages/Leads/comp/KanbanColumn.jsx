@@ -17,7 +17,6 @@ const hasActiveListFilters = (q) => {
     q.sortOrder !== d.sortOrder ||
     !!q.status ||
     !!q.source ||
-    !!q.assignedTo ||
     !!(q.search || '').trim()
   );
 };
@@ -37,6 +36,7 @@ const KanbanColumn = ({
   onEdit,
   onAddLead,
   onNotify,
+  isAdmin,
 }) => {
   const { setNodeRef, isOver } = useDroppable({ id: stage._id });
   const panelRef = useRef(null);
@@ -318,6 +318,7 @@ const KanbanColumn = ({
                 onView={onView}
                 onEdit={onEdit}
                 onNotify={onNotify}
+                showAssigneeOnCollapsed={isAdmin}
               />
             ))}
           </SortableContext>

@@ -13,14 +13,31 @@ const Stage = require('../models/Stage');
 const Task = require('../models/Task');
 
 const isAdminUser = (user) => user?.role === 'admin';
-const isTeamUser = (user) =>
-  user?.role === USER_ROLES.TEAM_MEMBER || user?.role === USER_ROLES.TEAM_MANAGER;
+const isTeamManagerUser = (user) => user?.role === USER_ROLES.TEAM_MANAGER;
 const canAssignOthers = (user) =>
   user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.TEAM_MANAGER;
 const canViewLeadHistory = (user) =>
   user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.TEAM_MANAGER;
 const allowsFlexibleReplySource = (source) =>
   source === COMMUNICATION_SOURCES.IMPORTERR_INQUIRY;
+
+async function getActivePipelineIdsForTeam(teamId) {
+  if (!teamId) return [];
+  const rows = await Pipeline.find({ teamId, isActive: true }).select('_id').lean();
+  return rows.map((r) => r._id);
+}
+
+async function pipelineBelongsToTeam(pipelineIdStr, teamId) {
+  if (!pipelineIdStr || !teamId) return false;
+  const pl = await Pipeline.findById(pipelineIdStr).select('teamId').lean();
+  return Boolean(pl?.teamId && String(pl.teamId) === String(teamId));
+}
+
+async function leadPipelineBelongsToTeam(leadDoc, teamId) {
+  if (!leadDoc?.pipelineId || !teamId) return false;
+  const pid = leadDoc.pipelineId._id ?? leadDoc.pipelineId;
+  return pipelineBelongsToTeam(pid, teamId);
+}
 
 const createInboundClientCommunication = async ({ leadId, source, message }) => {
   if (!message || !String(message).trim()) return;
@@ -34,17 +51,29 @@ const createInboundClientCommunication = async ({ leadId, source, message }) => 
   });
 };
 
-const validateAssignableUser = async (assignedTo) => {
+const validateAssignableUser = async (assignedTo, pipelineId = null) => {
   if (!assignedTo) return { valid: true };
 
   const assignee = await User.findOne({
     _id: assignedTo,
-    role: USER_ROLES.TEAM_MEMBER,
-    isActive: true
-  }).select('_id');
+    isActive: true,
+    role: { $in: [USER_ROLES.TEAM_MEMBER, USER_ROLES.TEAM_MANAGER] },
+  })
+    .select('team_id')
+    .lean();
 
   if (!assignee) {
-    return { valid: false, message: 'assignedTo must be an active team member' };
+    return { valid: false, message: 'assignedTo must be an active team member or team manager' };
+  }
+
+  if (pipelineId) {
+    const pipeline = await Pipeline.findById(pipelineId).select('teamId').lean();
+    if (!pipeline?.teamId) {
+      return { valid: false, message: 'Invalid pipeline for assignment' };
+    }
+    if (String(assignee.team_id) !== String(pipeline.teamId)) {
+      return { valid: false, message: 'Assignee must belong to the team for the selected pipeline' };
+    }
   }
 
   return { valid: true };
@@ -92,15 +121,65 @@ const getLeads = async (req, res) => {
 
     if (status) query.status = status;
     if (source) query.source = source;
-    if (assignedTo) query.assignedTo = assignedTo;
     if (priority) query.priority = priority;
     if (stageId) query.stageId = mongoose.Types.ObjectId.isValid(stageId) ? new mongoose.Types.ObjectId(stageId) : stageId;
-    if (pipelineId) query.pipelineId = mongoose.Types.ObjectId.isValid(pipelineId) ? new mongoose.Types.ObjectId(pipelineId) : pipelineId;
     if (accountId) query.accountId = accountId;
 
-    // Non-admin team users can only view leads assigned to themselves.
-    if (isTeamUser(req.user)) {
+    if (isAdminUser(req.user)) {
+      if (assignedTo) query.assignedTo = assignedTo;
+      if (pipelineId) {
+        query.pipelineId = mongoose.Types.ObjectId.isValid(pipelineId)
+          ? new mongoose.Types.ObjectId(pipelineId)
+          : pipelineId;
+      }
+    } else if (isTeamManagerUser(req.user)) {
+      const mt = req.user.teamId || req.user.team_id;
+      if (!mt) {
+        query._id = { $in: [] };
+      } else if (pipelineId) {
+        const allowed = await pipelineBelongsToTeam(pipelineId, mt);
+        if (!allowed) {
+          return sendForbidden(res, 'You can only view leads in your team\'s pipelines');
+        }
+        query.pipelineId = mongoose.Types.ObjectId.isValid(pipelineId)
+          ? new mongoose.Types.ObjectId(pipelineId)
+          : pipelineId;
+        if (assignedTo) {
+          const assignee = await User.findById(assignedTo).select('team_id isActive').lean();
+          if (!assignee?.isActive || String(assignee.team_id) !== String(mt)) {
+            return sendForbidden(res, 'You can only filter by members of your team');
+          }
+          query.assignedTo = assignedTo;
+        }
+      } else {
+        const pipelineIds = await getActivePipelineIdsForTeam(mt);
+        if (pipelineIds.length) {
+          query.pipelineId = { $in: pipelineIds };
+        } else {
+          query._id = { $in: [] };
+        }
+        if (assignedTo) {
+          const assignee = await User.findById(assignedTo).select('team_id isActive').lean();
+          if (!assignee?.isActive || String(assignee.team_id) !== String(mt)) {
+            return sendForbidden(res, 'You can only filter by members of your team');
+          }
+          query.assignedTo = assignedTo;
+        }
+      }
+    } else if (req.user.role === USER_ROLES.TEAM_MEMBER) {
       query.assignedTo = req.user.id;
+      if (pipelineId) {
+        const mt = req.user.teamId || req.user.team_id;
+        const allowed = mt && (await pipelineBelongsToTeam(pipelineId, mt));
+        if (!allowed) {
+          return sendForbidden(res, 'You can only view leads in your team\'s pipelines');
+        }
+        query.pipelineId = mongoose.Types.ObjectId.isValid(pipelineId)
+          ? new mongoose.Types.ObjectId(pipelineId)
+          : pipelineId;
+      }
+    } else {
+      query._id = { $in: [] };
     }
 
     if (search) {
@@ -111,8 +190,8 @@ const getLeads = async (req, res) => {
       ];
     }
 
-    // Only get leads that have pipelineId and stageId set (unless specifically filtered)
-    if (!pipelineId) {
+    // Only get leads that have pipelineId and stageId set (unless already scoped by role)
+    if (!query.pipelineId) {
       query.pipelineId = { $exists: true, $ne: null };
     }
     if (!stageId) {
@@ -235,8 +314,20 @@ const getLeadById = async (req, res) => {
         ? lead.assignedTo.toString()
         : null;
 
-    if (isTeamUser(req.user) && assignedUserId !== req.user.id) {
+    if (req.user.role === USER_ROLES.TEAM_MEMBER && assignedUserId !== req.user.id) {
       return sendForbidden(res, 'You can only view your assigned leads');
+    }
+
+    if (isTeamManagerUser(req.user)) {
+      const mt = req.user.teamId || req.user.team_id;
+      let ok = await leadPipelineBelongsToTeam(lead, mt);
+      if (!ok && assignedUserId) {
+        const assignee = await User.findById(assignedUserId).select('team_id').lean();
+        ok = Boolean(assignee && String(assignee.team_id) === String(mt));
+      }
+      if (!ok) {
+        return sendForbidden(res, 'You can only view leads for your team');
+      }
     }
 
     const activities = canViewLeadHistory(req.user)
@@ -296,17 +387,6 @@ const createOrUpdateLead = async (req, res) => {
       totalQuantity,
     } = req.body;
 
-    let resolvedAssignedTo = assignedTo;
-
-    if (isTeamUser(req.user)) {
-      resolvedAssignedTo = req.user.id;
-    } else if (assignedTo && canAssignOthers(req.user)) {
-      const assigneeValidation = await validateAssignableUser(assignedTo);
-      if (!assigneeValidation.valid) {
-        return sendBadRequest(res, assigneeValidation.message);
-      }
-    }
-
     let resolvedPipelineId = pipelineId || null;
     let resolvedStageId    = stageId    || null;
 
@@ -325,7 +405,6 @@ const createOrUpdateLead = async (req, res) => {
           return sendBadRequest(res, 'Selected stage does not belong to the chosen pipeline');
         }
       } else {
-        // Auto-assign the first stage when pipeline is set but stage is not
         const firstStage = await Stage.findOne({ pipelineId: resolvedPipelineId }).sort({ order: 1 });
         if (firstStage) resolvedStageId = firstStage._id;
       }
@@ -352,6 +431,40 @@ const createOrUpdateLead = async (req, res) => {
       if (!lead) {
         lead      = new Lead({ lastInteraction: new Date() });
         isNewLead = true;
+      }
+    }
+
+    if (isExplicitUpdate && isTeamManagerUser(req.user)) {
+      const mt = req.user.teamId || req.user.team_id;
+      const existingPid = lead.pipelineId && String(lead.pipelineId._id || lead.pipelineId);
+      const targetPid = resolvedPipelineId || existingPid || null;
+      if (targetPid) {
+        if (!(await pipelineBelongsToTeam(targetPid, mt))) {
+          return sendForbidden(res, 'You can only edit leads in your team\'s pipelines');
+        }
+      } else if (lead?.assignedTo) {
+        const assignee = await User.findById(lead.assignedTo).select('team_id').lean();
+        if (!assignee || String(assignee.team_id) !== String(mt)) {
+          return sendForbidden(res, 'You can only edit leads for your team');
+        }
+      }
+    }
+
+    let resolvedAssignedTo = assignedTo;
+
+    if (req.user.role === USER_ROLES.TEAM_MEMBER) {
+      resolvedAssignedTo = req.user.id;
+    } else if (assignedTo && canAssignOthers(req.user)) {
+      const pipelineForAssignment =
+        resolvedPipelineId ||
+        (lead?.pipelineId && String(lead.pipelineId._id || lead.pipelineId)) ||
+        null;
+      if (!pipelineForAssignment) {
+        return sendBadRequest(res, 'Select a pipeline before assigning this lead');
+      }
+      const assigneeValidation = await validateAssignableUser(assignedTo, pipelineForAssignment);
+      if (!assigneeValidation.valid) {
+        return sendBadRequest(res, assigneeValidation.message);
       }
     }
 
@@ -503,8 +616,21 @@ const addLeadCommunication = async (req, res) => {
       return sendNotFound(res, 'Lead not found');
     }
 
-    if (isTeamUser(req.user) && lead?.assignedTo?.toString() !== req.user.id) {
+    if (req.user.role === USER_ROLES.TEAM_MEMBER && lead?.assignedTo?.toString() !== req.user.id) {
       return sendForbidden(res, 'You can only communicate for your assigned leads');
+    }
+
+    if (isTeamManagerUser(req.user)) {
+      const leadForScope = await Lead.findById(req.params.id).select('pipelineId assignedTo').lean();
+      const mt = req.user.teamId || req.user.team_id;
+      let ok = await leadPipelineBelongsToTeam(leadForScope, mt);
+      if (!ok && leadForScope?.assignedTo) {
+        const assignee = await User.findById(leadForScope.assignedTo).select('team_id').lean();
+        ok = Boolean(assignee && String(assignee.team_id) === String(mt));
+      }
+      if (!ok) {
+        return sendForbidden(res, 'You can only communicate for leads for your team');
+      }
     }
 
     const { message, source } = req.body;
@@ -578,7 +704,18 @@ const deleteLead = async (req, res) => {
 
 const getLeadStatsOverview = async (req, res) => {
   try {
-    const baseMatch = isTeamUser(req.user) ? { assignedTo: req.user.id } : {};
+    const baseMatch = {};
+    if (req.user.role === USER_ROLES.TEAM_MEMBER) {
+      baseMatch.assignedTo = req.user.id;
+    } else if (isTeamManagerUser(req.user)) {
+      const mt = req.user.teamId || req.user.team_id;
+      const pipelineIds = await getActivePipelineIdsForTeam(mt);
+      if (pipelineIds.length) {
+        baseMatch.pipelineId = { $in: pipelineIds };
+      } else {
+        baseMatch._id = { $in: [] };
+      }
+    }
 
     const totalLeads = await Lead.countDocuments(baseMatch);
     const newLeads = await Lead.countDocuments({ ...baseMatch, status: LEAD_STATUSES.NEW });
@@ -625,6 +762,18 @@ const updateLeadStage = async (req, res) => {
     const lead = await Lead.findById(id);
     if (!lead) {
       return sendNotFound(res, 'Lead not found');
+    }
+
+    if (isTeamManagerUser(req.user)) {
+      const mt = req.user.teamId || req.user.team_id;
+      let ok = await leadPipelineBelongsToTeam(lead, mt);
+      if (!ok && lead?.assignedTo) {
+        const assignee = await User.findById(lead.assignedTo).select('team_id').lean();
+        ok = Boolean(assignee && String(assignee.team_id) === String(mt));
+      }
+      if (!ok) {
+        return sendForbidden(res, 'You can only update leads for your team');
+      }
     }
 
     if (lead.stageId?.toString() === stageId) {

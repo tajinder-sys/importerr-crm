@@ -1,8 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import api from '../utils/api';
 import { API_ROUTES } from '../utils/apiRoutes';
-
-const CRM_ASSIGNEE_LIST_LIMIT = 5000;
+import { fetchTeamAssignableUsers } from '../utils/fetchTeamAssignableUsers';
 
 const emptyDraft = () => ({ assignedCrmUserId: '', status: 'active' });
 
@@ -53,17 +52,9 @@ export const fetchCrmUsersForAssignees = createAsyncThunk(
   'sellerUsers/fetchCrmUsersForAssignees',
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get(API_ROUTES.users.list, {
-        params: {
-          page: 1,
-          limit: CRM_ASSIGNEE_LIST_LIMIT,
-          includeAdmin: 'false',
-          roles: 'team_member,team_manager',
-        },
-      });
-      if (!res?.success) throw new Error(res?.message || 'Failed to load CRM users');
-      const data = res?.data || res;
-      return data.users || [];
+      const users = await fetchTeamAssignableUsers();
+      if (!Array.isArray(users)) throw new Error('Invalid response');
+      return users;
     } catch (error) {
       return rejectWithValue(getErrorMessage(error, 'Failed to load CRM users'));
     }

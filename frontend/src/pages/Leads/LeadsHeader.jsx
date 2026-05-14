@@ -1,7 +1,19 @@
-import { UserPlus, LayoutGrid, GitBranch, Layers, CheckCircle2, KanbanSquare, Table2 } from 'lucide-react';
+import { UserPlus, LayoutGrid, GitBranch, Layers, CheckCircle2, KanbanSquare, Table2, User } from 'lucide-react';
 import { UiToolbarTitle } from '../../components/common/ui';
+import SelectField from '../../components/common/ui/SelectField';
 
-const LeadsHeader = ({ pipelines, selectedPipeline, onSelect, onCreateLead, view, onViewChange }) => {
+const LeadsHeader = ({
+  pipelines,
+  selectedPipeline,
+  onSelect,
+  onCreateLead,
+  view,
+  onViewChange,
+  showAssigneeFilter = false,
+  assignableMembers = [],
+  assigneeFilter = '',
+  onAssigneeFilterChange,
+}) => {
   const current      = pipelines.find((p) => p._id === selectedPipeline);
   const totalStages  = current?.stages?.length || 0;
   const activeStages = current?.stages?.filter((s) => s.isActive).length || 0;
@@ -119,6 +131,29 @@ const LeadsHeader = ({ pipelines, selectedPipeline, onSelect, onCreateLead, view
           <p className="px-4 py-3 text-xs text-slate-400 italic dark:text-slate-500">No pipelines available</p>
         )}
       </div>
+
+      {showAssigneeFilter && (
+        <div className="flex flex-wrap items-center gap-3 px-6 py-2.5 border-t border-slate-100 bg-slate-50/90 dark:bg-slate-900/40 dark:border-slate-700">
+          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+            <User size={14} className="flex-shrink-0 opacity-80" />
+            <span className="text-xs font-semibold whitespace-nowrap">Assigned to</span>
+          </div>
+          <SelectField
+            size="sm"
+            wrapperClassName="w-full min-w-[200px] max-w-xs sm:w-64"
+            value={assigneeFilter}
+            onChange={(e) => onAssigneeFilterChange?.(e.target.value)}
+            aria-label="Filter leads by assignee"
+          >
+            <option value="">All assignees</option>
+            {assignableMembers.map((m) => (
+              <option key={m._id} value={String(m._id)}>
+                {m.name || m.email || m._id}
+              </option>
+            ))}
+          </SelectField>
+        </div>
+      )}
     </div>
   );
 };

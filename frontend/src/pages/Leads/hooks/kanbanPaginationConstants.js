@@ -8,7 +8,6 @@ export const defaultKanbanListQuery = () => ({
   status: '',
   source: '',
   search: '',
-  assignedTo: '',
 });
 
 export const KANBAN_SORT_OPTIONS = [
