@@ -24,12 +24,21 @@ import Profile from './pages/Profile.jsx';
 import Integrations from './pages/settings/Integrations.jsx';
 import SellerUsers from './pages/settings/SellerUsers.jsx';
 import Leads from './pages/Leads/Lead.jsx';
+import UnassignedLeads from './pages/UnassignedLeads.jsx';
 import { cn } from './utils/helpers';
 import { surfaces } from './config/designSystem';
+import { USER_ROLES } from './utils/constants';
 
 const AdminRoute = ({ children }) => {
   const { user } = useAuth();
   if (user?.role !== 'admin') return <Navigate to="/dashboard" replace />;
+  return children;
+};
+
+const AdminOrTeamManagerRoute = ({ children }) => {
+  const { user } = useAuth();
+  const ok = user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.TEAM_MANAGER;
+  if (!ok) return <Navigate to="/dashboard" replace />;
   return children;
 };
 
@@ -49,6 +58,14 @@ const AuthenticatedShell = () => {
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
           <Routes>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route
+              path="/leads/unassigned"
+              element={(
+                <AdminOrTeamManagerRoute>
+                  <UnassignedLeads />
+                </AdminOrTeamManagerRoute>
+              )}
+            />
             <Route path="/leads" element={<Leads />} />
             <Route path="/leads/:id" element={<LeadDetails />} />
             <Route path="/activities" element={<Activities />} />

@@ -1,5 +1,5 @@
 import { UserPlus, LayoutGrid, GitBranch, Layers, CheckCircle2, KanbanSquare, Table2, User } from 'lucide-react';
-import { SearchableSelect, UiToolbarTitle } from '../../components/common/ui';
+import { Button, SearchableSelect, UiToolbarTitle } from '../../components/common/ui';
 const selectBtn =
   'h-9 w-full rounded-lg border-slate-200/90 bg-white px-2.5 text-xs font-medium dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-100';
 
@@ -90,15 +90,15 @@ const LeadsHeader = ({
               <span className="hidden sm:inline">Table</span>
             </button>
           </div>
-
-          <button
+          <Button
+            size="sm"
             onClick={onCreateLead}
+            startIcon={<UserPlus size={13} />}
             className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm shadow-indigo-200 transition-all duration-150 hover:-translate-y-px active:translate-y-0"
           >
-            <UserPlus size={13} />
             <span className="hidden sm:inline">Create Lead</span>
             <span className="sm:hidden">New</span>
-          </button>
+          </Button>
         </div>
       </div>
 

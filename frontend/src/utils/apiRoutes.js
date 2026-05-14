@@ -15,6 +15,7 @@ export const API_ROUTES = {
   },
   leads: {
     list: '/leads',
+    unassigned: '/leads/unassigned',
     create: '/leads',
     byId: (leadId) => `/leads/${encodeURIComponent(leadId)}`,
     update: (leadId) => `/leads/${encodeURIComponent(leadId)}`,

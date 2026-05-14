@@ -8,8 +8,10 @@ import {
   Home, Users, Users2, Activity, Settings, Globe, FileText,
   Mail, MessageSquare, CreditCard, GitBranch, Store,
   ChevronDown, ChevronRight, ChevronLeft,
+  UserRoundX,
 } from 'lucide-react';
 import { useState } from 'react';
+import { USER_ROLES } from '../../utils/constants';
 
 const Sidebar = () => {
   const { user } = useAuth();
@@ -22,10 +24,14 @@ const Sidebar = () => {
   const [templatesOpen, setTemplatesOpen] = useState(location.pathname.startsWith('/templates'));
 
   const isUserAdmin = user?.role === 'admin';
+  const canSeeUnassignedLeads = isUserAdmin || user?.role === USER_ROLES.TEAM_MANAGER;
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Lead Management', href: '/leads', icon: Users },
+    ...(canSeeUnassignedLeads
+      ? [{ name: 'Unassigned Leads', href: '/leads/unassigned', icon: UserRoundX }]
+      : []),
     { name: 'Task Activities', href: '/activities', icon: Activity },
     ...(isUserAdmin ? [
       { name: 'Team Management', href: '/teams', icon: Users2 },
@@ -42,8 +48,12 @@ const Sidebar = () => {
     { href: '/templates/whatsapp', icon: MessageSquare, title: 'WhatsApp templates' },
   ] : [];
 
-  const isActive = (href) =>
-    location.pathname === href || (href !== '/dashboard' && location.pathname.startsWith(href));
+  const isActive = (href) => {
+    if (href === '/leads') {
+      return location.pathname === '/leads';
+    }
+    return location.pathname === href || (href !== '/dashboard' && location.pathname.startsWith(`${href}/`));
+  };
 
   const navItemCls = (active) => cn(
     'group flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors',

@@ -307,6 +307,125 @@ const getLeads = async (req, res) => {
   }
 };
 
+const getUnassignedLeads = async (req, res) => {
+  try {
+    if (!isAdminUser(req.user) && !isTeamManagerUser(req.user)) {
+      return sendForbidden(res, 'Insufficient permissions');
+    }
+
+    const {
+      page = 1,
+      limit = 10,
+      skip: skipRaw,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = req.query;
+
+    const notDuplicate = { duplicateOf: { $in: [null, undefined] } };
+
+    const limitNum = Math.min(200, Math.max(1, parseInt(String(limit), 10) || 10));
+    let skipVal;
+    if (skipRaw !== undefined && skipRaw !== null && skipRaw !== '') {
+      const s = parseInt(String(skipRaw), 10);
+      skipVal = Number.isFinite(s) && s >= 0 ? s : 0;
+    } else {
+      const p = Math.max(1, parseInt(String(page), 10) || 1);
+      skipVal = (p - 1) * limitNum;
+    }
+    const pageNum = Math.floor(skipVal / limitNum) + 1;
+
+    let roleMatch;
+    if (isAdminUser(req.user)) {
+      roleMatch = {
+        $and: [
+          notDuplicate,
+          {
+            $or: [
+              { pipelineId: { $exists: false } },
+              { pipelineId: null },
+              { assignedTo: { $exists: false } },
+              { assignedTo: null },
+            ],
+          },
+        ],
+      };
+    } else {
+      const mt = req.user.teamId || req.user.team_id;
+      const pipelineIds = await getActivePipelineIdsForTeam(mt);
+      if (!pipelineIds.length) {
+        return sendSuccess(res, 'Unassigned leads retrieved successfully', {
+          leads: [],
+          pagination: {
+            page: 1,
+            limit: limitNum,
+            total: 0,
+            pages: 0,
+          },
+        });
+      }
+      roleMatch = {
+        $and: [
+          notDuplicate,
+          { pipelineId: { $in: pipelineIds } },
+          {
+            $or: [
+              { assignedTo: { $exists: false } },
+              { assignedTo: null },
+            ],
+          },
+        ],
+      };
+    }
+
+    let query = roleMatch;
+    if (search) {
+      query = {
+        $and: [
+          roleMatch,
+          {
+            $or: [
+              { name: { $regex: search, $options: 'i' } },
+              { email: { $regex: search, $options: 'i' } },
+              { phone: { $regex: search, $options: 'i' } },
+            ],
+          },
+        ],
+      };
+    }
+
+    const allowedSort = new Set(['name', 'email', 'phone', 'createdAt', 'updatedAt', 'status', 'source', 'priority']);
+    const sortField = allowedSort.has(String(sortBy)) ? String(sortBy) : 'createdAt';
+    const sortDir = sortOrder === 'desc' ? -1 : 1;
+    const sort = { [sortField]: sortDir, _id: sortDir };
+
+    const leads = await Lead.find(query)
+      .populate('assignedTo', 'name email')
+      .populate('pipelineId', 'name')
+      .populate('stageId', 'name order color followUpDays probabilityPercent')
+      .sort(sort)
+      .limit(limitNum)
+      .skip(skipVal)
+      .lean();
+
+    const total = await Lead.countDocuments(query);
+    const pages = total === 0 ? 0 : Math.ceil(total / limitNum);
+
+    return sendSuccess(res, 'Unassigned leads retrieved successfully', {
+      leads,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages,
+      },
+    });
+  } catch (error) {
+    console.error('getUnassignedLeads error:', error);
+    return sendBadRequest(res, 'Failed to retrieve unassigned leads');
+  }
+};
+
 const getLeadById = async (req, res) => {
   try {
     const lead = await Lead.findById(req.params.id)
@@ -849,6 +968,7 @@ const updateLeadStage = async (req, res) => {
 
 module.exports = {
   getLeads,
+  getUnassignedLeads,
   getLeadById,
   createOrUpdateLead,
   addLeadCommunication,

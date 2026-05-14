@@ -377,10 +377,12 @@ const TasksPage = () => {
             </UiPageDescription>
           </div>
           <Button
+            size="sm"
             onClick={openCreateModal}
             startIcon={<Plus className="h-4 w-4" />}
           >
-            New Task
+            <span className="hidden sm:inline">New Task</span>
+            <span className="sm:hidden">New</span>
           </Button>
         </div>
 

@@ -362,6 +362,7 @@ const Teams = () => {
           </div>
           {admin ? (
             <Button
+              size="sm"
               onClick={() => {
                 resetForm();
                 setEditingMember(null);
@@ -369,7 +370,8 @@ const Teams = () => {
               }}
               startIcon={<UserPlus className="h-4 w-4" />}
             >
-              Create Member
+              <span className="hidden sm:inline">Create</span>
+              <span className="sm:hidden">New</span>
             </Button>
           ) : null}
         </div>

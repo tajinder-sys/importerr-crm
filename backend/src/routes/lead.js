@@ -3,6 +3,7 @@ const router = express.Router();
 const { auth, authorize } = require('../middleware/auth');
 const {
   getLeads,
+  getUnassignedLeads,
   getLeadById,
   createOrUpdateLead,
   addLeadCommunication,
@@ -14,6 +15,7 @@ const { getNotes, addNote, updateNote, deleteNote } = require('../controllers/no
 
 router.get('/', auth, getLeads);
 router.get('/stats/overview', auth, getLeadStatsOverview);
+router.get('/unassigned', auth, authorize(['admin', 'team_manager']), getUnassignedLeads);
 router.get('/:id', auth, getLeadById);
 router.post('/', auth, createOrUpdateLead);
 router.post('/:id/communications', auth, addLeadCommunication);
