@@ -2,10 +2,11 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
+const requestLogger = require('./middleware/requestLogger');
 
 const app = express();
 
-connectDB();
+// DB connection is handled in server.js startup
 
 const corsOptions = {
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -15,6 +16,7 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(requestLogger);
 
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));

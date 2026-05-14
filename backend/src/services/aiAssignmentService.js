@@ -5,6 +5,8 @@ const User = require('../models/User');
 const Lead = require('../models/lead');
 const SellerAssignment = require('../models/SellerAssignment');
 const EmailService = require('./EmailService');
+const AiLog = require('../models/AiLog');
+const logger = require('../utils/logger');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -43,15 +45,37 @@ ${pipelineList}
 Reply in this exact JSON format only, no explanation:
 {"pipelineId": "<id or null>", "priority": "<high|medium|low>"}`;
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: prompt }],
-    max_tokens: 60,
-    temperature: 0,
-    response_format: { type: 'json_object' },
-  });
-
-  const parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
+  const t0 = Date.now();
+  let response, parsed, logEntry;
+  try {
+    response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 60,
+      temperature: 0,
+      response_format: { type: 'json_object' },
+    });
+    parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
+    logEntry = {
+      leadId: lead._id,
+      callType: 'matchPipeline',
+      prompt,
+      rawResponse: response.choices[0]?.message?.content,
+      parsedResult: parsed,
+      tokensUsed: {
+        prompt: response.usage?.prompt_tokens,
+        completion: response.usage?.completion_tokens,
+        total: response.usage?.total_tokens,
+      },
+      latencyMs: Date.now() - t0,
+      success: true,
+    };
+  } catch (err) {
+    logEntry = { leadId: lead._id, callType: 'matchPipeline', prompt, error: err.message, latencyMs: Date.now() - t0, success: false };
+    AiLog.create(logEntry).catch(() => {});
+    throw err;
+  }
+  AiLog.create(logEntry).catch(() => {});
   return {
     pipelineId: parsed.pipelineId && parsed.pipelineId !== 'null' ? parsed.pipelineId : null,
     priority: ['high', 'medium', 'low'].includes(parsed.priority) ? parsed.priority : 'medium',
@@ -72,15 +96,37 @@ Lead:
 Reply in this exact JSON format only, no explanation:
 {"priority": "<urgent|high|medium|low>"}`;
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: prompt }],
-    max_tokens: 20,
-    temperature: 0,
-    response_format: { type: 'json_object' },
-  });
-
-  const parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
+  const t0 = Date.now();
+  let response, parsed, logEntry;
+  try {
+    response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 20,
+      temperature: 0,
+      response_format: { type: 'json_object' },
+    });
+    parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
+    logEntry = {
+      leadId: lead._id,
+      callType: 'getPriority',
+      prompt,
+      rawResponse: response.choices[0]?.message?.content,
+      parsedResult: parsed,
+      tokensUsed: {
+        prompt: response.usage?.prompt_tokens,
+        completion: response.usage?.completion_tokens,
+        total: response.usage?.total_tokens,
+      },
+      latencyMs: Date.now() - t0,
+      success: true,
+    };
+  } catch (err) {
+    logEntry = { leadId: lead._id, callType: 'getPriority', prompt, error: err.message, latencyMs: Date.now() - t0, success: false };
+    AiLog.create(logEntry).catch(() => {});
+    throw err;
+  }
+  AiLog.create(logEntry).catch(() => {});
   return ['urgent', 'high', 'medium', 'low'].includes(parsed.priority) ? parsed.priority : 'medium';
 };
 
@@ -118,13 +164,9 @@ const assignMemberFromTeam = async (teamId, leadPriority) => {
   );
 
   if (priorityMatched.length) {
-    console.log(
-      `Assigned via priority match (${leadPriority}): user ${sorted[0]._id}`
-    );
+    logger.info(`Assigned via priority match (${leadPriority}): user ${sorted[0]._id}`);
   } else {
-    console.log(
-      `No priority match for "${leadPriority}", assigned via least-load: user ${sorted[0]._id}`
-    );
+    logger.info(`No priority match for "${leadPriority}", assigned via least-load: user ${sorted[0]._id}`);
   }
 
   return sorted[0]._id;
@@ -165,9 +207,7 @@ const assignLeadWithAI = async (lead) => {
           // AI decides priority only
           priority = await getPriorityWithAI(lead);
 
-          console.log(
-            `Lead ${lead._id}: assigned via previous lead history → user ${assignedTo}, priority=${priority}`
-          );
+          logger.info(`Lead ${lead._id}: assigned via previous lead history → user ${assignedTo}, priority=${priority}`);
         }
       }
     }
@@ -201,9 +241,7 @@ const assignLeadWithAI = async (lead) => {
           }
         }
 
-        console.log(
-          `Lead ${lead._id}: assigned via SellerAssignment → user ${assignedTo}, pipeline ${pipelineId}, priority=${priority}`
-        );
+        logger.info(`Lead ${lead._id}: assigned via SellerAssignment → user ${assignedTo}, pipeline ${pipelineId}, priority=${priority}`);
       }
     }
 
@@ -223,9 +261,7 @@ const assignLeadWithAI = async (lead) => {
         if (!targetPipeline) {
           // AI returned null pipelineId — use default
           targetPipeline = await getDefaultPipeline();
-          console.log(
-            `Lead ${lead._id}: AI returned no pipeline match, falling back to default`
-          );
+          logger.info(`Lead ${lead._id}: AI returned no pipeline match, falling back to default`);
         }
       } else {
         // No pipelines at all — still try default
@@ -239,9 +275,7 @@ const assignLeadWithAI = async (lead) => {
         // Assign member: priority-match first, then least-loaded
         assignedTo = await assignMemberFromTeam(targetPipeline.teamId, priority);
 
-        console.log(
-          `Lead ${lead._id}: AI/default pipeline "${targetPipeline.name}", assigned user ${assignedTo}, priority=${priority}`
-        );
+        logger.info(`Lead ${lead._id}: AI/default pipeline "${targetPipeline.name}", assigned user ${assignedTo}, priority=${priority}`);
       }
     }
 
@@ -258,7 +292,7 @@ const assignLeadWithAI = async (lead) => {
     if (assignedTo) update.assignedTo = assignedTo;
 
     await Lead.findByIdAndUpdate(lead._id, update);
-    console.log(`Lead ${lead._id} final update:`, update);
+    logger.info(`Lead ${lead._id} final update`, update);
 
     // ── Send email to assigned user ──────────────────────────────
     if (assignedTo) {
@@ -277,11 +311,11 @@ const assignLeadWithAI = async (lead) => {
           });
         }
       } catch (err) {
-        console.error('Assignment email failed:', err.message);
+        logger.error('Assignment email failed', { error: err.message });
       }
     }
   } catch (err) {
-    console.error('AI assignment error:', err.message);
+    logger.error('AI assignment error', { error: err.message });
   }
 };
 

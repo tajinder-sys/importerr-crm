@@ -1,8 +1,82 @@
 require('dotenv').config();
 const app = require('./src/app');
+const connectDB = require('./src/config/db');
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+const c = {
+  reset: '\x1b[0m',
+  green: '\x1b[32m',
+  red: '\x1b[31m',
+  yellow: '\x1b[33m',
+  cyan: '\x1b[36m',
+  gray: '\x1b[90m',
+  bold: '\x1b[1m',
+};
+
+const tick  = `${c.green}✔${c.reset}`;
+const cross = `${c.red}✖${c.reset}`;
+const dot   = `${c.gray}◦${c.reset}`;
+
+const ms = (n) => `${c.cyan}${n}ms${c.reset}`;
+const now = () => new Date().toLocaleTimeString('en-IN', { hour12: false });
+
+async function start() {
+  const appStart = Date.now();
+
+  console.log(`\n${c.bold}${c.cyan}  Importerr CRM — Starting up...${c.reset}\n`);
+
+  // ── MongoDB ──────────────────────────────────────────────────
+  process.stdout.write(`  ${dot} MongoDB       connecting...`);
+  let dbMs;
+  try {
+    dbMs = await connectDB();
+    process.stdout.write(`\r  ${tick} MongoDB       connected        ${ms(dbMs)}\n`);
+  } catch (err) {
+    process.stdout.write(`\r  ${cross} MongoDB       FAILED — ${err.message}\n`);
+    process.exit(1);
+  }
+
+  // ── Redis (optional) ─────────────────────────────────────────
+  const redisHost = process.env.REDIS_HOST;
+  const redisUrl  = process.env.REDIS_URL;
+  if (redisHost || redisUrl) {
+    process.stdout.write(`  ${dot} Redis         connecting...`);
+    const t0 = Date.now();
+    try {
+      const redis = require('redis');
+      const client = redis.createClient(
+        redisUrl
+          ? { url: redisUrl }
+          : {
+              socket: { host: redisHost, port: Number(process.env.REDIS_PORT) || 6379 },
+              ...(process.env.REDIS_PASSWORD ? { password: process.env.REDIS_PASSWORD } : {}),
+            }
+      );
+      await client.connect();
+      await client.ping();
+      process.stdout.write(`\r  ${tick} Redis         connected        ${ms(Date.now() - t0)}\n`);
+    } catch (err) {
+      process.stdout.write(`\r  ${cross} Redis         FAILED — ${err.message}\n`);
+    }
+  } else {
+    console.log(`  ${c.gray}◌ Redis         skipped (not configured)${c.reset}`);
+  }
+
+  // ── HTTP Server ───────────────────────────────────────────────
+  process.stdout.write(`  ${dot} HTTP Server   starting...`);
+  const t0 = Date.now();
+  await new Promise((resolve) => {
+    app.listen(PORT, () => {
+      process.stdout.write(`\r  ${tick} HTTP Server   listening        ${ms(Date.now() - t0)}\n`);
+      resolve();
+    });
+  });
+
+  // ── Summary ───────────────────────────────────────────────────
+  const total = Date.now() - appStart;
+  console.log(`\n  ${c.bold}${c.green}Ready${c.reset} in ${ms(total)}  ${c.gray}[${now()}]${c.reset}`);
+  console.log(`  ${c.gray}→ http://localhost:${PORT}${c.reset}\n`);
+}
+
+start();
