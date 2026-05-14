@@ -166,11 +166,14 @@ const useKanban = (globalAssignedTo = '') => {
 
   useEffect(() => {
     if (activeStages.length === 0) {
-      setLeadsByStage({});
-      setStageKanbanMeta({});
-      return;
+      const t = setTimeout(() => {
+        setLeadsByStage({});
+        setStageKanbanMeta({});
+      }, 0);
+      return () => clearTimeout(t);
     }
-    bootstrapKanbanLeads(activeStages);
+    const t = setTimeout(() => { bootstrapKanbanLeads(activeStages); }, 0);
+    return () => clearTimeout(t);
   }, [activeStages, bootstrapKanbanLeads]);
 
   const goToStagePage = useCallback(

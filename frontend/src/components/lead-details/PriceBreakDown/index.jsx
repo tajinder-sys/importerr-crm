@@ -1,28 +1,14 @@
-import { useState } from 'react';
-import { Pencil, Check, Loader2, RotateCcw, Package, ChevronDown, ChevronUp } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import Modal from '../../common/ui/Modal';
 import Button from '../../common/ui/Button';
-import { formatCurrency } from '../../../utils/helpers';
 import ModalTitle from './PricingModalHeader';
 import CostFactorsSection from './CostFactorsSection';
 import VariantsSection from './VariantsSection';
 import SectionLabel from './SectionLabel';
 import RecalcSkeleton from './RecalcSkeleton';
 
-const EditBadge = () => (
-  <span className="text-[9px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-full px-1.5 py-0.5 uppercase tracking-wider">
-    editable
-  </span>
-);
 
-const RecalcOverlay = () => (
-  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-white/85 backdrop-blur-sm rounded-2xl">
-    <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center">
-      <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
-    </div>
-    <span className="text-xs font-medium text-slate-500">Recalculating price…</span>
-  </div>
-);
+
 
 const PricingBreakdownModal = ({
   isOpen,

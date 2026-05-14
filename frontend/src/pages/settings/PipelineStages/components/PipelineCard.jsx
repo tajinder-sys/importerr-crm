@@ -1,4 +1,4 @@
-import { Edit2, Plus, GitBranch, ChevronRight, Layers, Users } from 'lucide-react';
+import { Edit2, Plus, GitBranch, ChevronRight, Layers } from 'lucide-react';
 import { UiSectionTitle } from '../../../../components/common/ui';
 import StageCard from './StageCard';
 

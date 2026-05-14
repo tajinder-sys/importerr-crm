@@ -16,7 +16,7 @@ class TeamService {
       return response.data;
     } catch (error) {
       console.error('Error fetching teams:', error);
-      throw new Error(error.response?.data?.message || 'Failed to fetch teams');
+      throw new Error(error.response?.data?.message || 'Failed to fetch teams', { cause: error });
     }
   }
 
@@ -31,7 +31,7 @@ class TeamService {
       return response.data;
     } catch (error) {
       console.error('Error fetching team:', error);
-      throw new Error(error.response?.data?.message || 'Failed to fetch team');
+      throw new Error(error.response?.data?.message || 'Failed to fetch team', { cause: error });
     }
   }
 
@@ -46,7 +46,7 @@ class TeamService {
       return response.data;
     } catch (error) {
       console.error('Error fetching team by slug:', error);
-      throw new Error(error.response?.data?.message || 'Failed to fetch team');
+      throw new Error(error.response?.data?.message || 'Failed to fetch team', { cause: error });
     }
   }
 
@@ -61,7 +61,7 @@ class TeamService {
       return response.data;
     } catch (error) {
       console.error('Error creating team:', error);
-      throw new Error(error.response?.data?.message || 'Failed to create team');
+      throw new Error(error.response?.data?.message || 'Failed to create team', { cause: error });
     }
   }
 
@@ -77,7 +77,7 @@ class TeamService {
       return response.data;
     } catch (error) {
       console.error('Error updating team:', error);
-      throw new Error(error.response?.data?.message || 'Failed to update team');
+      throw new Error(error.response?.data?.message || 'Failed to update team', { cause: error });
     }
   }
 
@@ -92,7 +92,7 @@ class TeamService {
       return response.data;
     } catch (error) {
       console.error('Error deleting team:', error);
-      throw new Error(error.response?.data?.message || 'Failed to delete team');
+      throw new Error(error.response?.data?.message || 'Failed to delete team', { cause: error });
     }
   }
 
@@ -107,7 +107,7 @@ class TeamService {
       return response.data;
     } catch (error) {
       console.error('Error fetching team members:', error);
-      throw new Error(error.response?.data?.message || 'Failed to fetch team members');
+      throw new Error(error.response?.data?.message || 'Failed to fetch team members', { cause: error });
     }
   }
 
@@ -123,7 +123,7 @@ class TeamService {
       return response.data;
     } catch (error) {
       console.error('Error adding team member:', error);
-      throw new Error(error.response?.data?.message || 'Failed to add team member');
+      throw new Error(error.response?.data?.message || 'Failed to add team member', { cause: error });
     }
   }
 
@@ -139,7 +139,7 @@ class TeamService {
       return response.data;
     } catch (error) {
       console.error('Error removing team member:', error);
-      throw new Error(error.response?.data?.message || 'Failed to remove team member');
+      throw new Error(error.response?.data?.message || 'Failed to remove team member', { cause: error });
     }
   }
 
@@ -156,7 +156,7 @@ class TeamService {
       return response.data;
     } catch (error) {
       console.error('Error updating member role:', error);
-      throw new Error(error.response?.data?.message || 'Failed to update member role');
+      throw new Error(error.response?.data?.message || 'Failed to update member role', { cause: error });
     }
   }
 
@@ -171,7 +171,7 @@ class TeamService {
       return response.data;
     } catch (error) {
       console.error('Error fetching user teams:', error);
-      throw new Error(error.response?.data?.message || 'Failed to fetch user teams');
+      throw new Error(error.response?.data?.message || 'Failed to fetch user teams', { cause: error });
     }
   }
 
@@ -186,7 +186,7 @@ class TeamService {
       return response.data;
     } catch (error) {
       console.error('Error fetching team stats:', error);
-      throw new Error(error.response?.data?.message || 'Failed to fetch team statistics');
+      throw new Error(error.response?.data?.message || 'Failed to fetch team statistics', { cause: error });
     }
   }
 
@@ -216,7 +216,7 @@ class TeamService {
       };
     } catch (error) {
       console.error('Error in bulk add members:', error);
-      throw new Error('Failed to perform bulk add members operation');
+      throw new Error('Failed to perform bulk add members operation', { cause: error });
     }
   }
 
@@ -242,7 +242,7 @@ class TeamService {
       };
     } catch (error) {
       console.error('Error in bulk remove members:', error);
-      throw new Error('Failed to perform bulk remove members operation');
+      throw new Error('Failed to perform bulk remove members operation', { cause: error });
     }
   }
 

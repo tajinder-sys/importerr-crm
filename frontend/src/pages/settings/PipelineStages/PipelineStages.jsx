@@ -51,11 +51,6 @@ const PipelineStages = () => {
   const [pipelineForm, setPipelineForm] = useState(DEFAULT_PIPELINE_FORM);
   const [stageForm, setStageForm] = useState(DEFAULT_STAGE_FORM);
 
-  /* ─── Bootstrap ───────────────────────────────────────────── */
-  useEffect(() => {
-    Promise.all([fetchPipelines(), fetchTeams()]);
-  }, []);
-
   const notify = (message, type = 'success') => setSnackbar({ open: true, message, type });
 
   /* ─── Fetch ───────────────────────────────────────────────── */
@@ -64,14 +59,6 @@ const PipelineStages = () => {
       const res = await api.get(API_ROUTES.pipelines.list, { params: { limit: 200 } });
       if (res.success) {
         const raw = res.data?.pipelines || res.data || [];
-        const sorted = [...raw].sort((a, b) => {
-          if (a.isDefault && !b.isDefault) return -1;
-          if (!a.isDefault && b.isDefault) return 1;
-          if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
-          return String(a.name || '').localeCompare(String(b.name || ''), undefined, {
-            sensitivity: 'base',
-          });
-        });
         setPipelines(raw);
       }
       else notify('Failed to load pipelines', 'error');
@@ -81,7 +68,7 @@ const PipelineStages = () => {
       setLoading(false);
     }
   };
-  console.log(pipelines);
+
   const fetchTeams = async () => {
     try {
       const res = await api.get(API_ROUTES.teams.list);
@@ -90,6 +77,13 @@ const PipelineStages = () => {
       notify(e.message || 'Failed to load teams', 'error');
     }
   };
+
+  /* ─── Bootstrap ───────────────────────────────────────────── */
+  useEffect(() => {
+    const load = async () => { await Promise.all([fetchPipelines(), fetchTeams()]); };
+    load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* ─── Pipeline CRUD ───────────────────────────────────────── */
   const handlePipelineSubmit = async (e) => {

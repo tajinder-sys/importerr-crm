@@ -34,7 +34,7 @@ const SellerUsers = () => {
   const dispatch = useDispatch();
 
   const {
-    activeTab, assignments, tableSellers, sellerSearchInput, sellerSearchApplied,
+    activeTab, assignments, sellerSearchInput, sellerSearchApplied,
     sellerTableRev, assignedSearchInput, assignedSearchApplied, crmUsers,
     crmUsersLoading, sellerProfiles, assignedProfilesLoading, draftBySeller,
     savingId, snackbar,

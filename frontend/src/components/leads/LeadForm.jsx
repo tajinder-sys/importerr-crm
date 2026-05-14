@@ -4,9 +4,6 @@ import {
   UserCheck, MessageSquare, AlertCircle, CheckCircle2, Loader2, Info
 } from 'lucide-react';
 
-import Button from '../common/ui/Button';
-import Input from '../common/ui/Input';
-import Alert from '../common/ui/Alert';
 import SearchableSelect from '../common/ui/SearchableSelect';
 import { formatLabel } from '../../utils/helpers';
 import { TASK_PRIORITY_OPTIONS, TASK_PRIORITY_LEVELS } from '../../utils/constants';
@@ -157,12 +154,13 @@ const LeadForm = ({
   onChange,
   assignableMembers = [],
   canManageLeadAssignment = false,
-  error: serverError,
   onSubmit,
   onCancel,
   loading = false,
   submitLabel,
   pipelines = [],
+  // eslint-disable-next-line no-unused-vars
+  error,
 }) => {
   const [touched,       setTouched]   = useState({});
   const [errors,        setErrors]    = useState({});
@@ -170,13 +168,16 @@ const LeadForm = ({
 
   /* Live re-validate touched fields when values change */
   useEffect(() => {
-    setErrors((prev) => {
-      const next = { ...prev };
-      Object.keys(touched).forEach((k) => {
-        if (touched[k]) next[k] = runValidator(k, values[k]);
+    const t = setTimeout(() => {
+      setErrors((prev) => {
+        const next = { ...prev };
+        Object.keys(touched).forEach((k) => {
+          if (touched[k]) next[k] = runValidator(k, values[k]);
+        });
+        return next;
       });
-      return next;
-    });
+    }, 0);
+    return () => clearTimeout(t);
   }, [values, touched]);
 
   /* Derived select options */

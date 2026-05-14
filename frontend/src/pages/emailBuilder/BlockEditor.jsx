@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { useState } from 'react';
 import { ChevronUp, ChevronDown, Trash2, GripVertical, Type, MousePointerClick, Image, Minus, Space, Columns, Heading } from 'lucide-react';
 
 // ─── Block type registry ─────────────────────────────────────────────────────
@@ -84,7 +85,7 @@ function AlignSelect({ value, onChange }) {
   );
 }
 
-function HeadingEditor({ block, onChange, activeBlockId, onFocus, placeholderTarget }) {
+function HeadingEditor({ block, onChange, activeBlockId, onFocus }) {
   const isActive = activeBlockId === block.id;
   return (
     <div className="space-y-3">
@@ -214,7 +215,7 @@ function SpacerEditor({ block, onChange }) {
   );
 }
 
-function ColumnsEditor({ block, onChange, activeBlockId, onFocus }) {
+function ColumnsEditor({ block, onChange, onFocus }) {
   return (
     <div className="space-y-3">
       <p className="text-[11px] text-gray-500">Two-column layout — edit each column separately.</p>
@@ -295,7 +296,7 @@ export function BlockEditor({ block, index, total, onChange, onDelete, onMove, a
           {block.type === 'image'    && <ImageEditor   block={block} onChange={onChange} />}
           {block.type === 'divider'  && <DividerEditor block={block} onChange={onChange} />}
           {block.type === 'spacer'   && <SpacerEditor  block={block} onChange={onChange} />}
-          {block.type === 'columns'  && <ColumnsEditor block={block} onChange={onChange} activeBlockId={activeBlockId} onFocus={onFocus} />}
+          {block.type === 'columns'  && <ColumnsEditor block={block} onChange={onChange} onFocus={onFocus} />}
         </div>
       )}
     </div>

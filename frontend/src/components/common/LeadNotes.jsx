@@ -36,13 +36,13 @@ const CardVariant = ({ notes, notesLoading, onAdd, onEdit, onDelete, deletingNot
   const visibleNotes = expanded ? notes : notes.slice(0, 2);
 
   return (
-    <div className="mt-2 pt-2 border-t border-slate-100">
+    <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700">
       {/* Header */}
       <div className="flex items-center justify-between mb-1.5">
         <button
           type="button"
           onClick={() => setExpanded((p) => !p)}
-          className="flex items-center gap-1 text-[10px] font-semibold text-slate-500 hover:text-slate-700 transition-colors"
+          className="flex items-center gap-1 text-[10px] font-semibold text-slate-500 hover:text-slate-700 transition-colors dark:text-slate-400 dark:hover:text-slate-200"
         >
           <MessageSquare size={10} />
           Notes {notes.length > 0 && `(${notes.length})`}
@@ -66,11 +66,11 @@ const CardVariant = ({ notes, notesLoading, onAdd, onEdit, onDelete, deletingNot
       {notesLoading ? (
         <div className="space-y-1">
           {[1, 2].map((i) => (
-            <div key={i} className="h-8 bg-slate-100 animate-pulse rounded-lg" />
+            <div key={i} className="h-8 bg-slate-100 animate-pulse rounded-lg dark:bg-slate-700" />
           ))}
         </div>
       ) : notes.length === 0 ? (
-        <p className="text-[10px] text-slate-400 italic py-1">No notes yet</p>
+        <p className="text-[10px] text-slate-400 italic py-1 dark:text-slate-500">No notes yet</p>
       ) : (
         <div className="space-y-1">
           {visibleNotes.map((note) => {
@@ -78,19 +78,19 @@ const CardVariant = ({ notes, notesLoading, onAdd, onEdit, onDelete, deletingNot
             return (
               <div
                 key={note._id}
-                className="group/note flex items-start gap-1.5 bg-amber-50/70 border border-amber-100 rounded-lg px-2 py-1.5"
+                className="group/note flex items-start gap-1.5 bg-amber-50/70 border border-amber-100 rounded-lg px-2 py-1.5 dark:bg-amber-900/20 dark:border-amber-800/50"
               >
                 {/* Avatar dot */}
-                <div className="w-4 h-4 rounded-full bg-amber-200 text-amber-700 flex items-center justify-center text-[8px] font-bold flex-shrink-0 mt-0.5">
+                <div className="w-4 h-4 rounded-full bg-amber-200 text-amber-700 flex items-center justify-center text-[8px] font-bold flex-shrink-0 mt-0.5 dark:bg-amber-800 dark:text-amber-200">
                   {note.createdBy?.name?.charAt(0)?.toUpperCase() || 'U'}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] text-slate-600 leading-relaxed line-clamp-2 break-words">
+                  <p className="text-[10px] text-slate-600 leading-relaxed line-clamp-2 break-words dark:text-slate-300">
                     {note.content}
                   </p>
                   <div className="flex items-center gap-1 mt-0.5">
-                    <span className="text-[9px] text-slate-400">{formatDateShort(note.createdAt)}</span>
+                    <span className="text-[9px] text-slate-400 dark:text-slate-500">{formatDateShort(note.createdAt)}</span>
                     {isEdited && <span className="text-[9px] text-amber-500">· edited</span>}
                   </div>
                 </div>
@@ -124,7 +124,7 @@ const CardVariant = ({ notes, notesLoading, onAdd, onEdit, onDelete, deletingNot
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setExpanded((p) => !p); }}
-              className="w-full text-center text-[10px] text-slate-400 hover:text-slate-600 py-0.5 transition-colors"
+              className="w-full text-center text-[10px] text-slate-400 hover:text-slate-600 py-0.5 transition-colors dark:text-slate-500 dark:hover:text-slate-300"
             >
               {expanded ? 'Show less' : `+${notes.length - 2} more`}
             </button>
@@ -239,7 +239,7 @@ const LeadNotes = ({ leadId, variant = 'page', showError, showSuccess, initialNo
 
   const [addingNote, setAddingNote] = useState(false);
   const [updatingNote, setUpdatingNote] = useState(false);
-  const [deletingNoteId, setDeletingNoteId] = useState(null);
+  const [deletingNoteId] = useState(null);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -258,7 +258,12 @@ const LeadNotes = ({ leadId, variant = 'page', showError, showSuccess, initialNo
     }
   }, [leadId, showError]);
 
-  useEffect(() => { if (variant !== 'card') fetchNotes(); }, [fetchNotes]);
+  useEffect(() => {
+    if (variant !== 'card') {
+      const load = async () => { await fetchNotes(); };
+      load();
+    }
+  }, [fetchNotes]);
 
   /* add */
   const handleAddNote = async () => {
@@ -357,13 +362,13 @@ const LeadNotes = ({ leadId, variant = 'page', showError, showSuccess, initialNo
           onSubmit={(e) => { e.preventDefault(); handleAddNote(); }}
         >
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Note Content</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">Note Content</label>
             <textarea
               value={newNoteContent}
               onChange={(e) => setNewNoteContent(e.target.value)}
               rows={5}
               placeholder="Write your note here..."
-              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500"
             />
           </div>
           <div className="flex justify-end gap-3">
@@ -380,13 +385,13 @@ const LeadNotes = ({ leadId, variant = 'page', showError, showSuccess, initialNo
           onSubmit={(e) => { e.preventDefault(); handleUpdateNote(); }}
         >
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Update Note</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2 dark:text-slate-300">Update Note</label>
             <textarea
               value={editingNote?.content || ''}
               onChange={(e) => setEditingNote((prev) => ({ ...prev, content: e.target.value }))}
               rows={5}
               placeholder="Update note..."
-              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500"
             />
           </div>
           <div className="flex justify-end gap-3">

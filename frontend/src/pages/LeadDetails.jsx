@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, startTransition } from 'react';
 import { ArrowLeft, Pencil } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/common/ui/Button';
@@ -81,24 +81,6 @@ const LeadDetailsSkeleton = () => (
   </div>
 );
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Flatten lead.variants into a plain array regardless of shape */
-const flattenVariants = (variants) => {
-  if (!variants) return [];
-  if (Array.isArray(variants)) return variants;
-  if (Array.isArray(variants.variantLines)) return variants.variantLines;
-  if (Array.isArray(variants.variants)) return variants.variants;
-  return [];
-};
-
-/** Normalize a variant row for the pricing draft */
-const normalizeVariantRow = (v) => ({
-  skuId: v?.skuId ?? v?.id ?? '',
-  label: v?.label || v?.name || '',
-  ap: Number(v?.ap ?? v?.unitPrice ?? 0),
-  selectedQuantity: Number(v?.selectedQuantity ?? v?.quantity ?? 1),
-});
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -119,11 +101,7 @@ const LeadDetails = () => {
   const [leadCommunications, setLeadCommunications] = useState([]);
 
   // ── Product / pricing ──
-  const [productSkuInput, setProductSkuInput] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [isFetchingProduct, setIsFetchingProduct] = useState(false);
-  const [variantPriceDetails, setVariantPriceDetails] = useState(null);
-  const [isFetchingVariantPriceDetails, setIsFetchingVariantPriceDetails] = useState(false);
   const [finalPrice, setFinalPrice] = useState(null);
 
   const [initialFinalPrice, setInitialFinalPrice] = useState(null);
@@ -158,14 +136,16 @@ const LeadDetails = () => {
     [leadActivities]
   );
 
+  const leadSource = lead?.source ?? null;
+
   const communicationSourceOptions = useMemo(() => {
-    if (!lead?.source || lead.source === 'importerr_inquiry') return [{ value: 'whatsapp' }, { value: 'email' }];
-    return [{ value: lead.source }];
-  }, [lead?.source]);
+    if (!leadSource || leadSource === 'importerr_inquiry') return [{ value: 'whatsapp' }, { value: 'email' }];
+    return [{ value: leadSource }];
+  }, [leadSource]);
 
   const effectiveReplySource = useMemo(
-    () => lead?.source === 'importerr_inquiry' ? replySource : communicationSourceOptions[0]?.value || lead?.source || 'whatsapp',
-    [lead?.source, replySource, communicationSourceOptions]
+    () => leadSource === 'importerr_inquiry' ? replySource : communicationSourceOptions[0]?.value || leadSource || 'whatsapp',
+    [leadSource, replySource, communicationSourceOptions]
   );
 
   const visibleTabs = useMemo(
@@ -181,7 +161,6 @@ const LeadDetails = () => {
     try {
       const { data } = await api.get(API_ROUTES.leads.byId(leadId));
       setLead(data?.lead || null);
-      setProductSkuInput(data?.lead?.productSku || '');
       setLeadActivities(data?.activities || []);
       setLeadCommunications(data?.communications || []);
     } catch (err) {
@@ -191,39 +170,20 @@ const LeadDetails = () => {
     }
   }, [leadId, showError]);
 
-  const fetchVariantPriceDetails = useCallback(async (productRef, { silent = false } = {}) => {
+  const fetchVariantPriceDetails = useCallback(async (productRef) => {
     const ref = String(productRef || '').trim();
-    if (!ref) { setVariantPriceDetails(null); return; }
-
-    setIsFetchingVariantPriceDetails(true);
+    
     try {
       const { data } = await api.get(API_ROUTES.importerr.productVariantPriceDetails(ref));
-      setVariantPriceDetails(data || null);
+   
       setSelectedProduct(data?.product || null);
     } catch {
-      setVariantPriceDetails(null);
       setSelectedProduct(null);
     } finally {
-      setIsFetchingVariantPriceDetails(false);
+      console.log('Product price details fetched');
     }
   }, []);
 
-  const fetchProductBySkuValue = useCallback(async (skuValue, { silent = false } = {}) => {
-    const sku = String(skuValue || '').trim();
-    if (!sku) { if (!silent) showError('Please enter product SKU'); return; }
-
-    setIsFetchingProduct(true);
-    try {
-      const { data } = await api.get(API_ROUTES.importerr.productBySku(sku));
-      setSelectedProduct(data || null);
-      if (!silent) showSuccess('Product fetched successfully');
-    } catch (err) {
-      setSelectedProduct(null);
-      if (!silent) showError(err?.message || 'Failed to fetch product details');
-    } finally {
-      setIsFetchingProduct(false);
-    }
-  }, [showError, showSuccess]);
 
   const loadAssignableForPipeline = useCallback(
     async (pipelineId, ensureUser = null) => {
@@ -255,7 +215,7 @@ const LeadDetails = () => {
 
   useEffect(() => {
     if (!canManageLeadAssignment) {
-      setPipelinesForLeadForm([]);
+      startTransition(() => setPipelinesForLeadForm([]));
       return undefined;
     }
     let cancelled = false;
@@ -277,17 +237,19 @@ const LeadDetails = () => {
   useEffect(() => {
     if (!showEditLeadModal || !canManageLeadAssignment) return undefined;
     if (!leadForm.pipelineId) {
-      setAssignableMembers([]);
+      startTransition(() => setAssignableMembers([]));
       return undefined;
     }
     const ensureUser = lead?.assignedTo || null;
-    loadAssignableForPipeline(leadForm.pipelineId, ensureUser);
+    const run = async () => { await loadAssignableForPipeline(leadForm.pipelineId, ensureUser); };
+    run();
     return undefined;
   }, [
     showEditLeadModal,
     canManageLeadAssignment,
     leadForm.pipelineId,
     loadAssignableForPipeline,
+    lead,
     lead?._id,
     lead?.assignedTo?._id,
   ]);
@@ -303,8 +265,8 @@ const LeadDetails = () => {
   // Auto-fetch product data when lead loads
   useEffect(() => {
     const productRef = String(lead?.productId || lead?.productSku || '').trim();
-    if (!productRef) { setVariantPriceDetails(null); return; }
-    fetchVariantPriceDetails(productRef, { silent: true });
+    const run = async () => { await fetchVariantPriceDetails(productRef); };
+    run();
   }, [lead?.productId, lead?.productSku, lead?.variants, fetchVariantPriceDetails]);
 
 
@@ -429,7 +391,6 @@ const LeadDetails = () => {
       setInitialBreakdown(null);
       setPricingVariantsDraft([]);
       setPricingFormulaDraft({});
-      setVariantPriceDetails(null);
       setSelectedProduct(null);
       await fetchLeadDetail();
       showSuccess(options?.isEdit ? 'Product updated on lead' : 'Product added to lead');
@@ -496,7 +457,6 @@ const LeadDetails = () => {
               {activeTab === 'lead_details' && (
                 <LeadDetailsOverviewCard
                   lead={lead}
-                  isFetchingProduct={isFetchingProduct}
                   selectedProduct={selectedProduct}
                   setFinalPrice={setFinalPrice}
                   finalPrice={finalPrice}

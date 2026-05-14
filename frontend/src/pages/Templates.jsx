@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, startTransition } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { Eye, Plus, Pencil, Trash2, Send, Sparkles, X } from 'lucide-react';
+import { Eye, Plus, Pencil, Trash2, Sparkles, X } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../components/common/ui/Card';
 import Button from '../components/common/ui/Button';
 import Input from '../components/common/ui/Input';
@@ -10,7 +10,7 @@ import api from '../utils/api';
 import { API_ROUTES } from '../utils/apiRoutes';
 import { useAuth } from '../hooks/useAuth';
 
-import { BlockEditor, AddBlockPanel, BLOCK_TYPES } from './emailBuilder/BlockEditor';
+import { BlockEditor, AddBlockPanel } from './emailBuilder/BlockEditor';
 import { EmailPreview } from './emailBuilder/EmailPreview';
 import { generateEmailHtml, htmlToBlocks, parseBodyJson, uid } from './emailBuilder/generateEmailHtml';
 import { TEMPLATE_PRESETS } from './emailBuilder/templatePresets';
@@ -31,41 +31,39 @@ function toSlug(str) {
 
 // ─── Email Builder Modal ──────────────────────────────────────────────────────
 
-function EmailBuilderModal({ isOpen, onClose, editingTemplate, normalizedType, onSave, isSaving }) {
+function EmailBuilderModal({ isOpen, onClose, editingTemplate, onSave, isSaving }) {
   const [name, setName]       = useState('');
   const [slug, setSlug]       = useState('');
   const [subject, setSubject] = useState('');
   const [blocks, setBlocks]   = useState([]);
   const [activeBlockId, setActiveBlockId] = useState(null);
   const [showPresets, setShowPresets]     = useState(false);
-  const [testEmail, setTestEmail]         = useState('');
-  const [testSent, setTestSent]           = useState(false);
 
   // Populate form when opening/editing
   useEffect(() => {
     if (!isOpen) return;
-    if (editingTemplate) {
-      setName(editingTemplate.name || '');
-      setSlug(editingTemplate.slug || '');
-      setSubject(editingTemplate.subject || '');
-      const parsed = parseBodyJson(editingTemplate.bodyJson);
-      if (parsed) {
-        setBlocks(parsed.map((b) => ({ ...b, id: b.id || uid() })));
-      } else if (editingTemplate.body) {
-        // Backward compat: convert legacy HTML → text block
-        setBlocks(htmlToBlocks(editingTemplate.body));
+    startTransition(() => {
+      if (editingTemplate) {
+        setName(editingTemplate.name || '');
+        setSlug(editingTemplate.slug || '');
+        setSubject(editingTemplate.subject || '');
+        const parsed = parseBodyJson(editingTemplate.bodyJson);
+        if (parsed) {
+          setBlocks(parsed.map((b) => ({ ...b, id: b.id || uid() })));
+        } else if (editingTemplate.body) {
+          // Backward compat: convert legacy HTML → text block
+          setBlocks(htmlToBlocks(editingTemplate.body));
+        } else {
+          setBlocks([]);
+        }
       } else {
+        setName('');
+        setSlug('');
+        setSubject('');
         setBlocks([]);
       }
-    } else {
-      setName('');
-      setSlug('');
-      setSubject('');
-      setBlocks([]);
-    }
-    setShowPresets(false);
-    setTestSent(false);
-    setTestEmail('');
+      setShowPresets(false);
+    });
   }, [isOpen, editingTemplate]);
 
   // Block operations
@@ -317,7 +315,7 @@ const Templates = () => {
     }
   }, [isValidType, normalizedType]);
 
-  useEffect(() => { fetchTemplates(); }, [fetchTemplates]);
+  useEffect(() => { const run = async () => { await fetchTemplates(); }; run(); }, [fetchTemplates]);
 
   // ── Email builder save ─────────────────────────────────────────────────────
 

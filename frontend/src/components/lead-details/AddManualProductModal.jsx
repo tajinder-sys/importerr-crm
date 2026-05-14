@@ -7,25 +7,7 @@ import ImagePreview from '../common/ui/ImagePreview';
 import api from '../../utils/api';
 import { API_ROUTES } from '../../utils/apiRoutes';
 import { formatCurrency } from '../../utils/helpers';
-
-/** Map Importerr variation → lead variant line (matches inquiry / pricing shape). */
-export const mapImporterrVariationToLeadVariant = (v, selectedQuantity = 1) => {
-  const attrs = Array.isArray(v?.skuAttributes) ? v.skuAttributes : [];
-  const label =
-    attrs.map((a) => a.valueTrans || a.value).filter(Boolean).join(' / ') || `Variant ${v.skuId}`;
-  const imgAttr = attrs.find((a) => a.skuImageUrl || a.thumbnailImage);
-  const imageUrl = imgAttr?.skuImageUrl || imgAttr?.thumbnailImage || '';
-  const ap = Number(v.ap ?? v.finalPrice ?? v.consignPrice ?? 0);
-  const qty = Math.max(1, Number(selectedQuantity) || 1);
-  return {
-    skuId: v.skuId,
-    label,
-    ap,
-    unitPrice: ap,
-    selectedQuantity: qty,
-    imageUrl,
-  };
-};
+import { mapImporterrVariationToLeadVariant } from './productUtils';
 
 const pushUnique = (list, url) => {
   const u = String(url || '').trim();
@@ -153,13 +135,16 @@ const AddManualProductModal = ({
   /** Opening in add mode: empty form. */
   useEffect(() => {
     if (!isOpen || mode !== 'add') return;
-    setSkuInput('');
-    setProduct(null);
-    setError('');
-    setGalleryOpen(false);
-    setQtyBySkuId({});
-    setIncluded({});
-    setGalleryIndex(0);
+    const t = setTimeout(() => {
+      setSkuInput('');
+      setProduct(null);
+      setError('');
+      setGalleryOpen(false);
+      setQtyBySkuId({});
+      setIncluded({});
+      setGalleryIndex(0);
+    }, 0);
+    return () => clearTimeout(t);
   }, [isOpen, mode]);
 
   /** Opening in edit mode: load product by lead SKU and restore variant lines. */

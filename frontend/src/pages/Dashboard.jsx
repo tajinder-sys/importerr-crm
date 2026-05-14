@@ -35,7 +35,6 @@ import { cn, formatCurrency, formatDate, formatLabel } from '../utils/helpers';
 import api from '../utils/api';
 import { useAuth } from '../hooks/useAuth';
 import { API_ROUTES } from '../utils/apiRoutes';
-import { fetchTeamAssignableUsers } from '../utils/fetchTeamAssignableUsers';
 import { UiPageTitle, UiSectionTitle } from '../components/common/ui/Typography';
 import { getChipVariant } from '../utils/chipConstants';
 
@@ -186,13 +185,15 @@ const Dashboard = () => {
         setLoading(true);
         setError('');
         try {
-          const [leadsData, teamRoster] = await Promise.all([
+          const [leadsData, usersResponse] = await Promise.all([
             fetchAllLeads(filters),
-            admin ? fetchTeamAssignableUsers() : Promise.resolve([]),
+            admin
+              ? api.get(API_ROUTES.users.list, { params: { includeAdmin: 'false', limit: 200 } })
+              : Promise.resolve(null)
           ]);
 
           setLeads(leadsData);
-          setUsers(teamRoster || []);
+          setUsers(usersResponse?.data?.users || []);
           setCurrentTimestamp(Date.now());
         } catch (err) {
           setError(err?.message || 'Failed to load dashboard data');
@@ -212,12 +213,13 @@ const Dashboard = () => {
     setFilters((prev) => ({ ...prev, [name]: value }));
   };
 
-  const anchorMs = useMemo(
-    () =>
-      currentTimestamp ||
-      (leads.length ? Math.max(...leads.map((lead) => new Date(lead.createdAt).getTime())) : Date.now()),
-    [currentTimestamp, leads]
-  );
+  const [mountTime] = useState(() => new Date().valueOf());
+
+  const anchorMs = useMemo(() => {
+    if (currentTimestamp) return currentTimestamp;
+    if (leads.length) return Math.max(...leads.map((lead) => new Date(lead.createdAt).getTime()));
+    return mountTime;
+  }, [currentTimestamp, leads, mountTime]);
 
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {
@@ -368,6 +370,7 @@ const Dashboard = () => {
       points.push({ label, count });
     }
     return points;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anchorMs, filters.period, filters.source, filters.owner, filteredLeads, leads]);
 
   const recentLeads = useMemo(() => {
@@ -397,22 +400,21 @@ const Dashboard = () => {
     filteredLeads.forEach((lead) => {
       const userId = lead?.assignedTo?._id;
       if (!userId) return;
-      const uid = String(userId);
-      leadCountByUser[uid] = (leadCountByUser[uid] || 0) + 1;
+      leadCountByUser[userId] = (leadCountByUser[userId] || 0) + 1;
       if (lead.status === 'converted') {
-        convertedCountByUser[uid] = (convertedCountByUser[uid] || 0) + 1;
+        convertedCountByUser[userId] = (convertedCountByUser[userId] || 0) + 1;
       }
     });
 
     return users
+      .filter((member) => member.role === 'team_member' || member.role === 'team_manager')
       .map((member) => {
-        const uid = String(member._id);
-        const leadsCount = leadCountByUser[uid] || 0;
-        const convertedCount = convertedCountByUser[uid] || 0;
+        const leadsCount = leadCountByUser[member._id] || 0;
+        const convertedCount = convertedCountByUser[member._id] || 0;
         const rate = leadsCount > 0 ? `${((convertedCount / leadsCount) * 100).toFixed(1)}%` : '0.0%';
         return {
-          _id: uid,
           name: member.name,
+          role: member.role,
           leads: leadsCount,
           converted: convertedCount,
           rate
@@ -863,6 +865,7 @@ const Dashboard = () => {
                             <thead>
                               <tr className="border-b border-slate-200 bg-slate-50/90 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400">
                                 <th className="px-4 py-2.5">Member</th>
+                                <th className="px-4 py-2.5">Role</th>
                                 <th className="px-4 py-2.5 text-right">Leads</th>
                                 <th className="px-4 py-2.5 text-right">Won</th>
                                 <th className="px-4 py-2.5 text-right">Rate</th>
@@ -870,8 +873,9 @@ const Dashboard = () => {
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                               {teamPerformance.slice(0, 8).map((row) => (
-                                <tr key={row._id} className="bg-white hover:bg-slate-50/60 dark:bg-slate-800 dark:hover:bg-slate-700">
+                                <tr key={row.name} className="bg-white hover:bg-slate-50/60 dark:bg-slate-800 dark:hover:bg-slate-700">
                                   <td className="px-4 py-2.5 font-medium text-slate-900">{row.name}</td>
+                                  <td className="px-4 py-2.5 text-slate-600">{formatLabel(row.role)}</td>
                                   <td className="px-4 py-2.5 text-right tabular-nums text-slate-700">{row.leads}</td>
                                   <td className="px-4 py-2.5 text-right tabular-nums text-slate-700">{row.converted}</td>
                                   <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-primary-700">

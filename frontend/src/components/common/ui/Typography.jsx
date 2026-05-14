@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { cn } from '../../../utils/helpers';
 import { typography } from '../../../config/designSystem';
 

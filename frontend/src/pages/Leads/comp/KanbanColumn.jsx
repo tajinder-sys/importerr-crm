@@ -59,7 +59,8 @@ const KanbanColumn = ({
 
   useEffect(() => {
     if (!panelOpen) return;
-    setSearchDraft(listQuery.search || '');
+    const t = setTimeout(() => setSearchDraft(listQuery.search || ''), 0);
+    return () => clearTimeout(t);
   }, [panelOpen, listQuery.search]);
 
   useEffect(() => {

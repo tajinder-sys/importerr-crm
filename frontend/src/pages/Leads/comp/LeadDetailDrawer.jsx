@@ -1,4 +1,4 @@
-import { X, Phone, Mail, User, Calendar, Tag, FileText, GitBranch, Layers } from 'lucide-react';
+import { X, Phone, Mail, User, Calendar, Tag, GitBranch, Layers } from 'lucide-react';
 import { formatDateIndian } from '../../../utils/helpers';
 
 const fmtPhone = (phone) => {

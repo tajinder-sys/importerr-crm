@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Eye, Send, RotateCcw, Box, Scale } from 'lucide-react';
+import { Eye, Send, RotateCcw } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../common/ui/Card';
 import Button from '../common/ui/Button';
 import { UiSectionTitle } from '../common/ui/Typography';
@@ -8,7 +8,6 @@ import api from '../../utils/api';
 import { API_ROUTES } from '../../utils/apiRoutes';
 import Snackbar from '../common/ui/Snackbar';
 import PricingBreakdownModal from './PriceBreakDown';
-import ImagePreview from '../common/ui/ImagePreview';
 import VariantsList from '../common/ui/VariantsList';
 import { formatCurrency } from '../../utils/helpers';
 
@@ -64,7 +63,6 @@ const DiscountBadge = ({ percent }) => {
 
 const LeadDetailsOverviewCard = ({
   lead,
-  isFetchingProduct,
   selectedProduct,
   setFinalPrice,
   finalPrice,
@@ -166,6 +164,7 @@ const LeadDetailsOverviewCard = ({
     if (!lead?.productSku || hasFetchedRef.current || finalPrice) return;
     hasFetchedRef.current = true;
     fetchFinalPriceByOfferId(lead.productSku, lead.variants);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lead?.productSku]);
 
   useEffect(() => {
@@ -176,6 +175,7 @@ const LeadDetailsOverviewCard = ({
         Object.entries(finalPrice.formula).map(([k, v]) => [k, v ?? ''])
       );
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finalPrice]);
 
   const handleFormulaFieldChange = (key, value) => {
@@ -247,7 +247,6 @@ const LeadDetailsOverviewCard = ({
           <DetailsTab
             lead={lead}
             selectedProduct={selectedProduct}
-            isFetchingProduct={isFetchingProduct}
             onAttachManualProduct={onAttachManualProduct}
           />
 

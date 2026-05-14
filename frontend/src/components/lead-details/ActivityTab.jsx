@@ -3,29 +3,6 @@ import { formatDateIndian, formatLabel } from '../../utils/helpers';
 import { UiSectionTitle } from '../common/ui/Typography';
 import MetadataViewer from '../common/ui/MetadataViewer';
 
-const formatMetadataValue = (value) => {
-  if (value === null || value === undefined || value === '') return '-';
-  if (typeof value === 'object') return JSON.stringify(value);
-  return String(value);
-};
-
-const renderMetadata = (metadata) => {
-  if (!metadata || typeof metadata !== 'object' || Object.keys(metadata).length === 0) {
-    return '-';
-  }
-
-  return (
-    <div className="space-y-1">
-      {Object.entries(metadata).map(([key, value]) => (
-        <div key={key} className="text-xs">
-          <span className="font-medium text-gray-700">{formatLabel(key)}:</span>{' '}
-          <span className="text-gray-600 break-all">{formatMetadataValue(value)}</span>
-        </div>
-      ))}
-    </div>
-  );
-};
-
 const ActivityTab = ({ canViewHistory, sortedLeadActivities }) => {
   if (!canViewHistory) {
     return (

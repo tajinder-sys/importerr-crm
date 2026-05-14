@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader } from '../../components/common/ui/Card';
 import Modal from '../../components/common/ui/Modal';
 import Snackbar from '../../components/common/ui/Snackbar';
 import ToggleSwitch from '../../components/common/ui/ToggleSwitch';
@@ -17,9 +16,6 @@ import {
   Plus,
   Edit2,
   Trash2,
-  Key,
-  Calendar,
-  User
 } from 'lucide-react';
 
 
@@ -42,34 +38,25 @@ const PaymentMethods = () => {
     name: ''
   });
 
-  useEffect(() => {
-    fetchPaymentMethods();
-  }, []);
-
   const fetchPaymentMethods = async () => {
     try {
       const data = await api.get(API_ROUTES.paymentMethods.list);
-      
       if (data.success) {
         setPaymentMethods(data.data);
       } else {
-        setSnackbar({
-          open: true,
-          message: 'Failed to fetch payment methods',
-          type: 'error'
-        });
+        setSnackbar({ open: true, message: 'Failed to fetch payment methods', type: 'error' });
       }
     } catch (error) {
-      console.error('Error fetching payment methods:', error);
-      setSnackbar({
-        open: true,
-        message: error.message || 'Failed to fetch payment methods',
-        type: 'error'
-      });
+      setSnackbar({ open: true, message: error.message || 'Failed to fetch payment methods', type: 'error' });
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const load = async () => { await fetchPaymentMethods(); };
+    load();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

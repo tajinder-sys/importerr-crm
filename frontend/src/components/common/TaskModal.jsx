@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, startTransition } from 'react';
 import {
   Phone, Mail, Video, Users, MessageSquare, MapPin, Zap,
   CalendarDays, Clock, Flag, RotateCcw, ChevronDown, Loader2,
@@ -178,7 +178,7 @@ const TaskModal = ({ isOpen, onClose, onCreated, onUpdated, leadId, leadName, ta
   /* Load assignee list for admins / team managers (scoped to lead pipeline team when lead is known) */
   useEffect(() => {
     if (!isOpen || !canPickAssignee) {
-      setAssigneeOptions([]);
+      startTransition(() => setAssigneeOptions([]));
       return undefined;
     }
     const leadIdForPipeline =
@@ -243,6 +243,7 @@ const TaskModal = ({ isOpen, onClose, onCreated, onUpdated, leadId, leadName, ta
     user?.email,
     leadId,
     isEdit,
+    task,
     task?.lead_id,
     task?.assigned_to,
     task?._id,
@@ -251,13 +252,15 @@ const TaskModal = ({ isOpen, onClose, onCreated, onUpdated, leadId, leadName, ta
   /* Populate form when switching between create/edit or when task changes */
   useEffect(() => {
     if (!isOpen) return;
-    setError('');
-    setSuccess(false);
-    if (isEdit && task) {
-      setForm(taskToForm(task));
-    } else {
-      setForm({ ...EMPTY_FORM, assigned_to: userId });
-    }
+    startTransition(() => {
+      setError('');
+      setSuccess(false);
+      if (isEdit && task) {
+        setForm(taskToForm(task));
+      } else {
+        setForm({ ...EMPTY_FORM, assigned_to: userId });
+      }
+    });
   }, [isOpen, task, isEdit, userId]);
 
   const set = (field) => (e) =>

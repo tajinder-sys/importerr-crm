@@ -1,4 +1,4 @@
-import { Eye, Send, RotateCcw, Box, Scale } from 'lucide-react';
+import {Box, Scale } from 'lucide-react';
 import { formatCurrency } from '../../../utils/helpers';
 import ImagePreview from './ImagePreview';
 const DimsBadge = ({ length, width, height }) => (

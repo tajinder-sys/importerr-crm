@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, startTransition } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import api from '../../utils/api';
 import { API_ROUTES } from '../../utils/apiRoutes';
@@ -113,7 +113,7 @@ const Leads = () => {
 
   useEffect(() => {
     if (!showLeadModal || !pipelines?.length) {
-      setPipelinesForLeadForm([]);
+      startTransition(() => setPipelinesForLeadForm([]));
       return undefined;
     }
     let cancelled = false;
@@ -127,7 +127,7 @@ const Leads = () => {
 
   useEffect(() => {
     if (!showAssigneeFilters) {
-      setTeamRosterForFilters([]);
+      startTransition(() => setTeamRosterForFilters([]));
       return undefined;
     }
     fetchTeamAssignableUsers()
@@ -139,11 +139,12 @@ const Leads = () => {
   useEffect(() => {
     if (!showLeadModal || !canManageAssignment) return undefined;
     if (!leadForm.pipelineId) {
-      setAssignableMembers([]);
+      startTransition(() => setAssignableMembers([]));
       return undefined;
     }
     const ensureUser = editingLead?.assignedTo || null;
-    loadMembersForPipeline(leadForm.pipelineId, ensureUser);
+    const run = async () => { await loadMembersForPipeline(leadForm.pipelineId, ensureUser); };
+    run();
     return undefined;
   }, [
     showLeadModal,
@@ -152,6 +153,7 @@ const Leads = () => {
     loadMembersForPipeline,
     editingLead?._id,
     editingLead?.assignedTo?._id,
+    editingLead?.assignedTo
   ]);
 
   /* ── Open create lead modal ─────────────────────────── */
@@ -299,7 +301,7 @@ const Leads = () => {
         total: res?.data?.pagination?.total || 0,
       };
     },
-    [selectedPipelineId, tableRefreshKey]
+    [selectedPipelineId]
   );
 
   /* ── Table columns ──────────────────────────────────── */

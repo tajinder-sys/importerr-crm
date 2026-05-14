@@ -48,8 +48,12 @@ const SearchableSelect = ({
 
   useEffect(() => {
     if (open && searchable) setTimeout(() => searchRef.current?.focus(), 50);
-    if (!open) setQuery('');
   }, [open, searchable]);
+
+  const handleOpen = () => {
+    if (!open) setQuery('');
+    setOpen((prev) => !prev);
+  };
 
   const emitChange = (nextValue) => {
     if (typeof onChange === 'function') onChange({ target: { name, value: nextValue } });
@@ -60,7 +64,7 @@ const SearchableSelect = ({
       <button
         type="button"
         disabled={disabled}
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => handleOpen()}
         className={cn(
           'flex h-9 w-full items-center justify-between gap-2 rounded-md border px-3 text-left text-sm shadow-none transition-all',
           'border-gray-200 bg-white text-gray-800 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200',

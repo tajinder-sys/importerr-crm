@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader } from '../../components/common/ui/Card';
 import Input from '../../components/common/ui/Input';
 import Button from '../../components/common/ui/Button';
@@ -25,7 +25,6 @@ const TeamsSetting = () => {
   const [deletingTeam, setDeletingTeam] = useState(null);
   const [formErrors, setFormErrors] = useState({});
   const [tableRefreshKey, setTableRefreshKey] = useState(0);
-  const [isTeamsLoading, setIsTeamsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -145,7 +144,6 @@ const TeamsSetting = () => {
   };
 
   const fetchTeamsTableData = useCallback(async ({ page, limit, sortKey, sortDirection, search, status }) => {
-    setIsTeamsLoading(true);
     try {
       const response = await api.get(API_ROUTES.teams.list, {
         params: {
@@ -162,7 +160,7 @@ const TeamsSetting = () => {
         total: response?.data?.pagination?.total || 0
       };
     } finally {
-      setIsTeamsLoading(false);
+     console.log('Teams table data fetched');
     }
   }, []);
 

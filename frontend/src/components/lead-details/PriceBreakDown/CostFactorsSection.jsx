@@ -1,8 +1,6 @@
 import { formatCurrency } from "../../../utils/helpers";
 import { useState } from 'react';
-import { Pencil, Check, Loader2, RotateCcw, Package, ChevronDown, ChevronUp } from 'lucide-react';
-import Modal from '../../common/ui/Modal';
-import Button from '../../common/ui/Button';
+import { Pencil, Check } from 'lucide-react';
 import SectionLabel from "./SectionLabel";
 import NumberInput from "./NumberInput";
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import SectionLabel from './SectionLabel';
-import { Pencil, Check, Loader2, RotateCcw, Package, ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, RotateCcw, Package, ChevronDown, ChevronUp } from 'lucide-react';
 import NumberInput from './NumberInput';
 import ImagePreview from '../../common/ui/ImagePreview';
 

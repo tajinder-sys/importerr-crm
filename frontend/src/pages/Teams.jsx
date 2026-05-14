@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader } from '../components/common/ui/Card';
 import Input from '../components/common/ui/Input';
 import Button from '../components/common/ui/Button';
 import Alert from '../components/common/ui/Alert';
+import Snackbar from '../components/common/ui/Snackbar';
 import Table from '../components/common/ui/Table';
 import Modal from '../components/common/ui/Modal';
 import ConfirmationModal from '../components/common/ui/ConfirmationModal';
@@ -23,7 +24,8 @@ const Teams = () => {
   const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', type: 'success' });
+  const showSnack = (message, type = 'success') => setSnackbar({ open: true, message, type });
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [deletingMember, setDeletingMember] = useState(null);
@@ -45,18 +47,19 @@ const Teams = () => {
 
   const admin = user?.role === 'admin';
 
-  useEffect(() => {
-    loadAvailableTeams();
-  }, []);
-
-  const loadAvailableTeams = async () => {
-    try {
-      const response = await api.get(API_ROUTES.teams.list, { params: { limit: 100, status: 'active' } });
-      setAvailableTeams(response.data?.teams || []);
-    } catch (err) {
-      console.error('Error loading teams:', err);
-    }
-  };
+ useEffect(() => {
+      const loadAvailableTeams = async () => {
+        try {
+          const response = await api.get(API_ROUTES.teams.list, {
+            params: { limit: 100, status: "active" },
+          });
+          setAvailableTeams(response.data?.teams || []);
+        } catch (err) {
+          console.error("Error loading teams:", err);
+        }
+      };
+      loadAvailableTeams();
+    }, []);
 
   const formatIndianPhoneInput = (value) => {
     const digits = String(value || '').replace(/\D/g, '');
@@ -113,8 +116,8 @@ const Teams = () => {
       resetForm();
       setShowCreateForm(false);
       setTableRefreshKey((prev) => prev + 1);
-      setSuccess('User created successfully');
-      setTimeout(() => setSuccess(''), 3000);
+      showSnack('User created successfully');
+      
     } catch (err) {
       setError(err?.message || 'Failed to create user');
       const detailMessage = Array.isArray(err?.data) ? err.data.join(', ') : err?.message;
@@ -141,8 +144,8 @@ const Teams = () => {
       setEditingMember(null);
       resetForm();
       setTableRefreshKey((prev) => prev + 1);
-      setSuccess('User updated successfully');
-      setTimeout(() => setSuccess(''), 3000);
+      showSnack('User updated successfully');
+      
     } catch (err) {
       setError(err?.message || 'Failed to update user');
       const detailMessage = Array.isArray(err?.data) ? err.data.join(', ') : err?.message;
@@ -166,6 +169,16 @@ const Teams = () => {
     setFormErrors({});
   };
 
+  const handleToggleActive = async (member) => {
+    try {
+      await api.patch(API_ROUTES.users.toggle(member._id));
+      setTableRefreshKey((prev) => prev + 1);
+      showSnack(`User ${member.isActive ? 'deactivated' : 'activated'} successfully`, member.isActive ? 'error' : 'success');
+    } catch (err) {
+      showSnack(err?.message || 'Failed to update user status', 'error');
+    }
+  };
+
   const handleDeleteMember = async () => {
     if (!deletingMember) return;
     setSubmitting(true);
@@ -174,8 +187,8 @@ const Teams = () => {
       await api.delete(API_ROUTES.users.byId(deletingMember._id));
       setDeletingMember(null);
       setTableRefreshKey((prev) => prev + 1);
-      setSuccess('User deleted successfully');
-      setTimeout(() => setSuccess(''), 3000);
+      showSnack('User deleted successfully');
+      
     } catch (err) {
       setError(err?.message || 'Failed to delete user');
     } finally {
@@ -220,6 +233,7 @@ const Teams = () => {
           page,
           limit,
           search,
+          showAll: 'true',
           ...(role && role !== 'all' ? { role } : {}),
           ...(team_id && team_id !== 'all' ? { team_id } : {}),
           ...(priority && priority !== 'all' ? { priority } : {}),
@@ -250,7 +264,12 @@ const Teams = () => {
       sortKey: 'name',
       sortable: true,
       header: 'Name',
-      render: (member) => <span className="font-medium text-gray-900">{member.name}</span>
+      render: (member) => (
+        <div className="flex items-center gap-2">
+          <span className={`font-medium ${member.isActive ? 'text-gray-900 dark:text-slate-200' : 'text-gray-400 dark:text-slate-500 line-through'}`}>{member.name}</span>
+          {!member.isActive && <span className="rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-red-600 dark:bg-red-900/30 dark:text-red-400">Inactive</span>}
+        </div>
+      )
     },
     { key: 'email', sortKey: 'email', sortable: true, header: 'Email' },
     {
@@ -298,6 +317,19 @@ const Teams = () => {
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={() => handleToggleActive(member)}
+            title={member.isActive ? 'Deactivate user' : 'Activate user'}
+            className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 focus:outline-none"
+            style={{ backgroundColor: member.isActive ? '#22c55e' : '#d1d5db' }}
+          >
+            <span
+              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                member.isActive ? 'translate-x-[18px]' : 'translate-x-[2px]'
+              }`}
+            />
+          </button>
+          <button
+            type="button"
             onClick={() => openEditMember(member)}
             className="rounded-md p-1.5 text-gray-600 transition hover:bg-gray-100 hover:text-primary-600"
             title="Edit member"
@@ -343,7 +375,6 @@ const Teams = () => {
         </div>
 
         {error && <Alert variant="error">{error}</Alert>}
-        {success && <Alert variant="success">{success}</Alert>}
 
         <TeamFilters
           filters={draftFilters}
@@ -588,6 +619,12 @@ const Teams = () => {
           loading={submitting}
         />
       </div>
+      <Snackbar
+        open={snackbar.open}
+        message={snackbar.message}
+        type={snackbar.type}
+        onClose={() => setSnackbar(p => ({ ...p, open: false }))}
+      />
       </div>
     )
   );
