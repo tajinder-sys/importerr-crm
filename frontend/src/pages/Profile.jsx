@@ -132,7 +132,7 @@ const Profile = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 items-stretch">
 
           {/* Account Details */}
           <Card>
@@ -158,21 +158,23 @@ const Profile = () => {
           </Card>
 
           {/* Edit Profile */}
-          <Card>
+          <Card className="flex flex-col h-full">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-primary-600" />
                 <span className="font-semibold text-gray-900 dark:text-slate-100">Edit Profile</span>
               </div>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleProfileSave} className="space-y-4">
-                <Input label="Full Name" value={profileForm.name}
-                  onChange={(e) => setProfileForm(p => ({ ...p, name: e.target.value }))}
-                  placeholder="Your full name" required />
-                <Input label="Email Address" value={displayUser?.email || ''} disabled
-                  helperText="Email cannot be changed" />
-                <div className="flex justify-end">
+            <CardContent className="flex-1 flex flex-col">
+              <form onSubmit={handleProfileSave} className="flex flex-col flex-1 justify-between">
+                <div className="space-y-4">
+                  <Input label="Full Name" value={profileForm.name}
+                    onChange={(e) => setProfileForm(p => ({ ...p, name: e.target.value }))}
+                    placeholder="Your full name" required />
+                  <Input label="Email Address" value={displayUser?.email || ''} disabled
+                    helperText="Email cannot be changed" />
+                </div>
+                <div className="flex justify-end pt-4">
                   <Button type="submit" loading={savingProfile} startIcon={<Save className="h-4 w-4" />}>
                     Save Changes
                   </Button>
@@ -182,25 +184,27 @@ const Profile = () => {
           </Card>
 
           {/* Change Password */}
-          <Card>
+          <Card className="flex flex-col h-full">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Lock className="h-4 w-4 text-primary-600" />
                 <span className="font-semibold text-gray-900 dark:text-slate-100">Change Password</span>
               </div>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handlePasswordSave} className="space-y-4">
-                <Input label="Current Password" type="password" value={passwordForm.currentPassword}
-                  onChange={(e) => setPasswordForm(p => ({ ...p, currentPassword: e.target.value }))}
-                  placeholder="Enter current password" />
-                <Input label="New Password" type="password" value={passwordForm.newPassword}
-                  onChange={(e) => setPasswordForm(p => ({ ...p, newPassword: e.target.value }))}
-                  placeholder="Min. 6 characters" />
-                <Input label="Confirm Password" type="password" value={passwordForm.confirmPassword}
-                  onChange={(e) => setPasswordForm(p => ({ ...p, confirmPassword: e.target.value }))}
-                  placeholder="Repeat new password" />
-                <div className="flex justify-end">
+            <CardContent className="flex-1 flex flex-col">
+              <form onSubmit={handlePasswordSave} className="flex flex-col flex-1 justify-between">
+                <div className="space-y-4">
+                  <Input label="Current Password" type="password" value={passwordForm.currentPassword}
+                    onChange={(e) => setPasswordForm(p => ({ ...p, currentPassword: e.target.value }))}
+                    placeholder="Enter current password" />
+                  <Input label="New Password" type="password" value={passwordForm.newPassword}
+                    onChange={(e) => setPasswordForm(p => ({ ...p, newPassword: e.target.value }))}
+                    placeholder="Min. 6 characters" />
+                  <Input label="Confirm Password" type="password" value={passwordForm.confirmPassword}
+                    onChange={(e) => setPasswordForm(p => ({ ...p, confirmPassword: e.target.value }))}
+                    placeholder="Repeat new password" />
+                </div>
+                <div className="flex justify-end pt-4">
                   <Button type="submit" loading={savingPassword} startIcon={<Save className="h-4 w-4" />}>
                     Update Password
                   </Button>

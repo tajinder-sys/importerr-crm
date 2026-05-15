@@ -594,7 +594,7 @@ const Templates = () => {
                           </span>
                           {isEmail && (
                             <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
-                              ✉️ Email
+                              Email
                             </span>
                           )}
                         </div>
