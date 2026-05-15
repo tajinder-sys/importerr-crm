@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Clock, AlertTriangle, Pencil, PauseCircle, Infinity } from 'lucide-react';
-import api from '../../../utils/api';
-import { API_ROUTES } from '../../../utils/apiRoutes';
-import StageSlaOverrideModal from '../../../components/leads/StageSlaOverrideModal';
+import api from '../../../../utils/api';
+import { API_ROUTES } from '../../../../utils/apiRoutes';
+import StageSlaOverrideModal from '../../../../components/leads/StageSlaOverrideModal';
 
 function parseFetchedAt(iso) {
   if (!iso) return Date.now();

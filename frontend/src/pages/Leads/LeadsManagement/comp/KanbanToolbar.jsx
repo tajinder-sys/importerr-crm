@@ -1,6 +1,6 @@
 import { Search, X, SlidersHorizontal } from 'lucide-react';
-import SearchableSelect from '../../../components/common/ui/SearchableSelect';
-import Button from '../../../components/common/ui/Button';
+import SearchableSelect from '../../../../components/common/ui/SearchableSelect';
+import Button from '../../../../components/common/ui/Button';
 
 const STATUS_OPTIONS = ['all', 'new', 'contacted', 'qualified', 'won', 'lost'];
 const SOURCE_OPTIONS = ['all', 'importerr_inquiry', 'direct', 'referral', 'social_media', 'cold_call'];

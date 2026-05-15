@@ -1,28 +1,28 @@
 import { useState, useCallback, useEffect, useMemo, startTransition } from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import api from '../../utils/api';
-import { API_ROUTES } from '../../utils/apiRoutes';
-import { fetchTeamAssignableUsers } from '../../utils/fetchTeamAssignableUsers';
-import { enrichPipelinesWithStages } from '../../utils/enrichPipelinesWithStages';
-import { formatIndianPhoneInput, getPhonePayload, validatePhone } from '../../utils/helpers';
-import { getChipVariant } from '../../utils/chipConstants';
+import { useAuth } from '../../../hooks/useAuth';
+import api from '../../../utils/api';
+import { API_ROUTES } from '../../../utils/apiRoutes';
+import { fetchTeamAssignableUsers } from '../../../utils/fetchTeamAssignableUsers';
+import { enrichPipelinesWithStages } from '../../../utils/enrichPipelinesWithStages';
+import { formatIndianPhoneInput, getPhonePayload, validatePhone } from '../../../utils/helpers';
+import { getChipVariant } from '../../../utils/chipConstants';
 
 // Common components
-import Modal from '../../components/common/ui/Modal';
-import Snackbar from '../../components/common/ui/Snackbar';
-import LeadForm from '../../components/leads/LeadForm';
-import Table from '../../components/common/ui/Table';
-import { Card, CardContent, CardHeader } from '../../components/common/ui/Card';
-import { UiSectionTitle } from '../../components/common/ui/Typography';
-import Chip from '../../components/common/ui/Chip';
-import Button from '../../components/common/ui/Button';
+import Modal from '../../../components/common/ui/Modal';
+import Snackbar from '../../../components/common/ui/Snackbar';
+import LeadForm from '../../../components/leads/LeadForm';
+import Table from '../../../components/common/ui/Table';
+import { Card, CardContent, CardHeader } from '../../../components/common/ui/Card';
+import { UiSectionTitle } from '../../../components/common/ui/Typography';
+import Chip from '../../../components/common/ui/Chip';
+import Button from '../../../components/common/ui/Button';
 import { Eye, Pencil } from 'lucide-react';
 
 import LeadsHeader from './LeadsHeader';
 import LeadsSlaDueBanner from './comp/LeadsSlaDueBanner';
 import KanbanBoard from './comp/KanbanBoard';
 import useKanban from './hooks/useKanban';
-import { TASK_PRIORITY_LEVELS, USER_ROLES } from '../../utils/constants';
+import { TASK_PRIORITY_LEVELS, USER_ROLES } from '../../../utils/constants';
 
 const DEFAULT_LEAD_FORM = {
   name: '',

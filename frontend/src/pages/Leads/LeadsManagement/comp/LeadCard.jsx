@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { Eye, Pencil, Phone, Mail, User, Calendar, MessageSquare, ListTodo, ChevronDown, Percent, Timer } from 'lucide-react';
-import { formatDateIndian } from '../../../utils/helpers';
+import { formatDateIndian } from '../../../../utils/helpers';
 import LeadQuickViewModal from './LeadQuickViewModal';
-import LeadNotes from '../../../components/common/LeadNotes';
-import TaskModal from '../../../components/common/TaskModal';
+import LeadNotes from '../../../../components/common/LeadNotes';
+import TaskModal from '../../../../components/common/TaskModal';
 import LeadCardStageSla from './LeadCardStageSla';
-import LeadMarkCompletedButton from '../../../components/leads/LeadMarkCompletedButton';
+import LeadMarkCompletedButton from '../../../../components/leads/LeadMarkCompletedButton';
 import {  TrendingUp, Zap } from 'lucide-react';
 
 /* ── helpers ──────────────────────────────────────────────────── */

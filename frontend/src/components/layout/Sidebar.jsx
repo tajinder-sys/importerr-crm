@@ -22,22 +22,28 @@ const Sidebar = () => {
   const appLogo = theme === 'dark' ? '/images/logo_dark.png' : '/images/image.png';
   const [settingsOpen, setSettingsOpen] = useState(location.pathname.startsWith('/settings'));
   const [templatesOpen, setTemplatesOpen] = useState(location.pathname.startsWith('/templates'));
+  const [leadsOpen, setLeadsOpen] = useState(location.pathname.startsWith('/leads'));
 
   const isUserAdmin = user?.role === 'admin';
   const canSeeUnassignedLeads = isUserAdmin || user?.role === USER_ROLES.TEAM_MANAGER;
 
-  const navigation = [
+  const mainNavigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
-    ...(isUserAdmin ? [
-      { name: 'Team Management', href: '/teams', icon: Users2 },
-      { name: 'Seller Assignments', href: '/seller-users', icon: Store }
-    ] : []),
+    ...(isUserAdmin
+      ? [
+          { name: 'Team Management', href: '/teams', icon: Users2 },
+          { name: 'Seller Assignments', href: '/seller-users', icon: Store },
+        ]
+      : []),
+    { name: 'Task Activities', href: '/activities', icon: Activity },
+  ];
+
+  const leadsNavigation = [
     { name: 'Lead Management', href: '/leads', icon: Users },
     { name: 'Completed Leads', href: '/leads/completed', icon: FileCheck },
     ...(canSeeUnassignedLeads
       ? [{ name: 'Unassigned Leads', href: '/leads/unassigned', icon: UserRoundX }]
       : []),
-    { name: 'Task Activities', href: '/activities', icon: Activity },
   ];
 
   const adminShortcuts = isUserAdmin ? [
@@ -53,10 +59,17 @@ const Sidebar = () => {
 
   const isActive = (href) => {
     if (href === '/leads') {
-      return location.pathname === '/leads';
+      return (
+        location.pathname === '/leads' ||
+        (location.pathname.startsWith('/leads/') &&
+          !location.pathname.startsWith('/leads/completed') &&
+          !location.pathname.startsWith('/leads/unassigned'))
+      );
     }
     return location.pathname === href || (href !== '/dashboard' && location.pathname.startsWith(`${href}/`));
   };
+
+  const isLeadsSectionActive = leadsNavigation.some((item) => isActive(item.href));
 
   const navItemCls = (active) => cn(
     'group flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors',
@@ -112,7 +125,17 @@ const Sidebar = () => {
           <nav className="flex-1 px-2">
             {sidebarCollapsed ? (
               <div className="flex flex-col items-center gap-1 py-1">
-                {navigation.map((item) => {
+                {mainNavigation.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <a key={item.name} href={item.href} title={item.name}
+                      onClick={(e) => { e.preventDefault(); navigate(item.href); }}
+                      className={iconItemCls(isActive(item.href))}>
+                      <Icon className="h-5 w-5 shrink-0" />
+                    </a>
+                  );
+                })}
+                {leadsNavigation.map((item) => {
                   const Icon = item.icon;
                   return (
                     <a key={item.name} href={item.href} title={item.name}
@@ -134,7 +157,7 @@ const Sidebar = () => {
               <div className="rounded-xl border border-gray-100 bg-gray-50 p-2 dark:border-slate-700 dark:bg-slate-900">
                 <h3 className={cn(typography.navGroupLabel, 'px-2 py-1')}>Main Menu</h3>
                 <div className="mt-1 space-y-1">
-                  {navigation.map((item) => {
+                  {mainNavigation.map((item) => {
                     const Icon = item.icon;
                     return (
                       <a key={item.name} href={item.href}
@@ -145,6 +168,43 @@ const Sidebar = () => {
                       </a>
                     );
                   })}
+
+                  <div className="rounded-lg bg-white/60 p-1 dark:bg-slate-800/60">
+                    <button
+                      type="button"
+                      onClick={() => setLeadsOpen((p) => !p)}
+                      className={cn(
+                        'group flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm font-medium transition-colors',
+                        isLeadsSectionActive
+                          ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200'
+                      )}
+                    >
+                      <span className="flex items-center">
+                        <Users className="mr-2.5 h-4 w-4 shrink-0" />
+                        Leads
+                      </span>
+                      {leadsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </button>
+                    {leadsOpen && (
+                      <div className="ml-4 mt-1 space-y-1 pl-3">
+                        {leadsNavigation.map(({ href, icon: Icon, name: label }) => (
+                          <a
+                            key={href}
+                            href={href}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              navigate(href);
+                            }}
+                            className={subItemCls(isActive(href))}
+                          >
+                            <Icon className="h-3 w-3" />
+                            {label}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
                   {isUserAdmin && (
                     <a href="/export-reports"

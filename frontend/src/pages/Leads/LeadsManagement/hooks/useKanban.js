@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, startTransition } from 'react';
-import api from '../../../utils/api';
-import { API_ROUTES } from '../../../utils/apiRoutes';
+import api from '../../../../utils/api';
+import { API_ROUTES } from '../../../../utils/apiRoutes';
 import { KANBAN_PAGE_SIZE, defaultKanbanListQuery } from './kanbanPaginationConstants';
 
 const emptyMeta = () => ({

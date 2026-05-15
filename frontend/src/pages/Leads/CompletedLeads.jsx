@@ -1,16 +1,16 @@
 import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye } from 'lucide-react';
-import api from '../utils/api';
-import { API_ROUTES } from '../utils/apiRoutes';
-import PageHeader from '../components/common/ui/PageHeader';
-import Table from '../components/common/ui/Table';
-import { Card, CardContent, CardHeader } from '../components/common/ui/Card';
-import { UiSectionTitle } from '../components/common/ui/Typography';
-import Chip from '../components/common/ui/Chip';
-import Button from '../components/common/ui/Button';
-import { formatDate, formatLabel } from '../utils/helpers';
-import { getChipVariant } from '../utils/chipConstants';
+import api from '../../utils/api';
+import { API_ROUTES } from '../../utils/apiRoutes';
+import PageHeader from '../../components/common/ui/PageHeader';
+import Table from '../../components/common/ui/Table';
+import { Card, CardContent, CardHeader } from '../../components/common/ui/Card';
+import { UiSectionTitle } from '../../components/common/ui/Typography';
+import Chip from '../../components/common/ui/Chip';
+import Button from '../../components/common/ui/Button';
+import { formatDate, formatLabel } from '../../utils/helpers';
+import { getChipVariant } from '../../utils/chipConstants';
 
 const CompletedLeads = () => {
   const navigate = useNavigate();

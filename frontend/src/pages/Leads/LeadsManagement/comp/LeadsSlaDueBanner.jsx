@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Clock } from 'lucide-react';
-import api from '../../../utils/api';
-import { API_ROUTES } from '../../../utils/apiRoutes';
-import { formatSlaRemaining } from '../../../utils/formatSlaRemaining';
+import api from '../../../../utils/api';
+import { API_ROUTES } from '../../../../utils/apiRoutes';
+import { formatSlaRemaining } from '../../../../utils/formatSlaRemaining';
 
 /**
  * Compact banner on Leads page — uses API_ROUTES.leads.dueAssigned for the logged-in user.

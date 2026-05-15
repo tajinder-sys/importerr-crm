@@ -1,6 +1,6 @@
 import { ExternalLink, Phone, Mail, User, Calendar, MessageSquare, Clock, Layers } from 'lucide-react';
-import { formatDateIndian } from '../../../utils/helpers';
-import Modal from '../../../components/common/ui/Modal';
+import { formatDateIndian } from '../../../../utils/helpers';
+import Modal from '../../../../components/common/ui/Modal';
 
 const fmtPhone = (phone) => {
   if (!phone) return '-';

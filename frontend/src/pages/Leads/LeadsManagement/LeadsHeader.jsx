@@ -1,5 +1,5 @@
 import { UserPlus, LayoutGrid, GitBranch, Layers, CheckCircle2, KanbanSquare, Table2, User, Calendar } from 'lucide-react';
-import { Button, SearchableSelect, UiToolbarTitle } from '../../components/common/ui';
+import { Button, SearchableSelect, UiToolbarTitle } from '../../../components/common/ui';
 
 const selectBtn =
   'h-9 w-full rounded-lg border-slate-200/90 bg-white px-2.5 text-xs font-medium dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-100';

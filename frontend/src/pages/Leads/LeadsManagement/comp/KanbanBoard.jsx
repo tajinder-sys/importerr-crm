@@ -10,8 +10,8 @@ import {
 import { arrayMove } from '@dnd-kit/sortable';
 import KanbanColumn from './KanbanColumn';
 import LeadCard from './LeadCard';
-import api from '../../../utils/api';
-import { API_ROUTES } from '../../../utils/apiRoutes';
+import api from '../../../../utils/api';
+import { API_ROUTES } from '../../../../utils/apiRoutes';
 import { defaultKanbanListQuery, KANBAN_PAGE_SIZE } from '../hooks/kanbanPaginationConstants';
 
 const KanbanBoard = ({
