@@ -20,7 +20,9 @@ export const API_ROUTES = {
     byId: (leadId) => `/leads/${encodeURIComponent(leadId)}`,
     update: (leadId) => `/leads/${encodeURIComponent(leadId)}`,
     updateStage: (leadId) => `/leads/${encodeURIComponent(leadId)}/stage`,
+    complete: (leadId) => `/leads/${encodeURIComponent(leadId)}/complete`,
     stageTimer: (leadId) => `/leads/${encodeURIComponent(leadId)}/stage-timer`,
+    stageHistory: (leadId) => `/leads/${encodeURIComponent(leadId)}/stage-history`,
     slaOverride: (leadId, stageId) =>
       `/leads/${encodeURIComponent(leadId)}/stages/${encodeURIComponent(stageId)}/sla-override`,
     dueAssigned: (userId) => `/leads/due/assigned/${encodeURIComponent(userId)}`,

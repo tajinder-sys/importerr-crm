@@ -12,6 +12,8 @@ const Pipeline = require('../models/Pipeline');
 const Stage = require('../models/Stage');
 const Task = require('../models/Task');
 const leadStageProgressService = require('../services/leadStageProgressService');
+const leadCompletionService = require('../services/leadCompletionService');
+const { applyLeadCompletionFilter } = require('../utils/leadQueryFilters');
 
 const isAdminUser = (user) => user?.role === 'admin';
 const isTeamManagerUser = (user) => user?.role === USER_ROLES.TEAM_MANAGER;
@@ -115,10 +117,14 @@ const getLeads = async (req, res) => {
       search,
       accountId,
       sortBy = 'priority',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
+      completedOnly,
     } = req.query;
 
-    const query = { duplicateOf: { $in: [null, undefined] }  };
+    const query = { duplicateOf: { $in: [null, undefined] } };
+    applyLeadCompletionFilter(query, {
+      completedOnly: String(completedOnly).toLowerCase() === 'true',
+    });
 
     if (status) query.status = status;
     if (source) query.source = source;
@@ -207,7 +213,17 @@ const getLeads = async (req, res) => {
       query.stageId = { $exists: true, $ne: null };
     }
 
-    const allowedSort = new Set(['name', 'email', 'phone', 'createdAt', 'updatedAt', 'status', 'source', 'priority']);
+    const allowedSort = new Set([
+      'name',
+      'email',
+      'phone',
+      'createdAt',
+      'updatedAt',
+      'completedAt',
+      'status',
+      'source',
+      'priority',
+    ]);
     const sortField = allowedSort.has(String(sortBy)) ? String(sortBy) : 'createdAt';
     const sortDir = sortOrder === 'desc' ? -1 : 1;
 
@@ -386,6 +402,7 @@ const getUnassignedLeads = async (req, res) => {
     }
 
     let query = roleMatch;
+    applyLeadCompletionFilter(query, { completedOnly: false });
     if (search) {
       query = {
         $and: [
@@ -401,7 +418,17 @@ const getUnassignedLeads = async (req, res) => {
       };
     }
 
-    const allowedSort = new Set(['name', 'email', 'phone', 'createdAt', 'updatedAt', 'status', 'source', 'priority']);
+    const allowedSort = new Set([
+      'name',
+      'email',
+      'phone',
+      'createdAt',
+      'updatedAt',
+      'completedAt',
+      'status',
+      'source',
+      'priority',
+    ]);
     const sortField = allowedSort.has(String(sortBy)) ? String(sortBy) : 'createdAt';
     const sortDir = sortOrder === 'desc' ? -1 : 1;
     const sort = { [sortField]: sortDir, _id: sortDir };
@@ -482,11 +509,20 @@ const getLeadById = async (req, res) => {
     .populate('created_by', 'name email')
     .sort({ createdAt: -1 });
     
+    const leadPlain = lead.toObject ? lead.toObject() : lead;
+    const completion = await leadCompletionService.getLeadCompletionMeta(leadPlain);
+    const currentStageId = leadPlain.stageId?._id ?? leadPlain.stageId;
+    const stageHistory = await leadStageProgressService.getLeadStageHistoryForLead(lead._id, {
+      currentStageId,
+    });
+
     sendSuccess(res, 'Lead retrieved successfully', {
       lead,
+      completion,
+      stageHistory,
       activities,
       communications,
-      tasks
+      tasks,
     });
   } catch (error) {
     console.error('Get lead error:', error);
@@ -838,6 +874,46 @@ const addLeadCommunication = async (req, res) => {
   }
 };
 
+const markLeadCompletedHandler = async (req, res) => {
+  try {
+    const lead = await Lead.findById(req.params.id).select('assignedTo pipelineId stageId isCompleted');
+    if (!lead) {
+      return sendNotFound(res, 'Lead not found');
+    }
+
+    const assignedUserId = lead.assignedTo ? String(lead.assignedTo) : null;
+    const myUserId = String(req.user.id || req.user._id);
+
+    if (req.user.role === USER_ROLES.TEAM_MEMBER && assignedUserId !== myUserId) {
+      return sendForbidden(res, 'You can only complete your assigned leads');
+    }
+
+    if (isTeamManagerUser(req.user)) {
+      const mt = req.user.teamId || req.user.team_id;
+      let ok = await leadPipelineBelongsToTeam(lead, mt);
+      if (!ok && assignedUserId) {
+        const assignee = await User.findById(assignedUserId).select('team_id').lean();
+        ok = Boolean(assignee && String(assignee.team_id) === String(mt));
+      }
+      if (!ok) {
+        return sendForbidden(res, 'You can only complete leads for your team');
+      }
+    }
+
+    const result = await leadCompletionService.markLeadCompleted(req.params.id, {
+      completedNote: req.body?.completedNote,
+      performedBy: req.user.id || req.user._id,
+    });
+
+    return sendSuccess(res, 'Lead marked as completed', result);
+  } catch (error) {
+    if (error.statusCode === 400) return sendBadRequest(res, error.message);
+    if (error.statusCode === 404) return sendNotFound(res, error.message);
+    console.error('markLeadCompleted error:', error);
+    return sendBadRequest(res, 'Failed to mark lead as completed');
+  }
+};
+
 const deleteLead = async (req, res) => {
   try {
     const lead = await Lead.findById(req.params.id);
@@ -856,7 +932,7 @@ const deleteLead = async (req, res) => {
 
 const getLeadStatsOverview = async (req, res) => {
   try {
-    const baseMatch = { duplicateOf: { $exists: false } };
+    const baseMatch = { duplicateOf: { $exists: false }, isCompleted: { $ne: true } };
     if (req.user.role === USER_ROLES.TEAM_MEMBER) {
       baseMatch.assignedTo = req.user.id || req.user._id;
     } else if (isTeamManagerUser(req.user)) {
@@ -908,6 +984,7 @@ module.exports = {
   getLeadById,
   createOrUpdateLead,
   addLeadCommunication,
+  markLeadCompletedHandler,
   deleteLead,
-  getLeadStatsOverview
+  getLeadStatsOverview,
 };

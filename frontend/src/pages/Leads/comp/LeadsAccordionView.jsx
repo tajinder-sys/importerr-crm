@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import { UiSectionTitle } from '../../../components/common/ui';
 import LeadCard from './LeadCard';
@@ -13,7 +14,17 @@ const LeadsAccordionView = ({
   onEdit,
   onAddLead,
   onNotify,
+  onLeadCompleted,
 }) => {
+  const lastStageId = useMemo(() => {
+    if (!stages?.length) return null;
+    const last = stages.reduce((best, s) => {
+      if (!best) return s;
+      return (s.order ?? 0) > (best.order ?? 0) ? s : best;
+    }, null);
+    return last?._id ?? null;
+  }, [stages]);
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-8">
       {stages.map((stage) => {
@@ -99,6 +110,8 @@ const LeadsAccordionView = ({
                     accordionGroupName={`stage-${stage._id}`}
                     onEdit={onEdit}
                     onNotify={onNotify}
+                    isLastStage={lastStageId != null && String(stage._id) === String(lastStageId)}
+                    onLeadCompleted={onLeadCompleted}
                   />
                 ))}
             </div>

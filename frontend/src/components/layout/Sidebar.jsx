@@ -8,7 +8,7 @@ import {
   Home, Users, Users2, Activity, Settings, Globe, FileText, LayoutDashboard,
   Mail, MessageSquare, CreditCard, GitBranch, Store,
   ChevronDown, ChevronRight, ChevronLeft,
-  UserRoundX, Download,
+  UserRoundX, Download, FileCheck,
 } from 'lucide-react';
 import { useState } from 'react';
 import { USER_ROLES } from '../../utils/constants';
@@ -33,6 +33,7 @@ const Sidebar = () => {
       { name: 'Seller Assignments', href: '/seller-users', icon: Store }
     ] : []),
     { name: 'Lead Management', href: '/leads', icon: Users },
+    { name: 'Completed Leads', href: '/leads/completed', icon: FileCheck },
     ...(canSeeUnassignedLeads
       ? [{ name: 'Unassigned Leads', href: '/leads/unassigned', icon: UserRoundX }]
       : []),

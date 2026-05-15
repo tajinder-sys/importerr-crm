@@ -25,6 +25,23 @@ const useKanban = (globalAssignedTo = '') => {
   }, [leadsByStage, stageKanbanMeta]);
 
   const fetchLockRef = useRef({});
+  const pipelineLoadGenRef = useRef(0);
+  const selectedPipelineIdRef = useRef(selectedPipelineId);
+  const globalAssignedToRef = useRef(globalAssignedTo);
+  const assigneeFilterMountedRef = useRef(false);
+  const activeStagesRef = useRef([]);
+
+  useEffect(() => {
+    selectedPipelineIdRef.current = selectedPipelineId;
+  }, [selectedPipelineId]);
+
+  useEffect(() => {
+    activeStagesRef.current = activeStages;
+  }, [activeStages]);
+
+  useEffect(() => {
+    globalAssignedToRef.current = globalAssignedTo;
+  }, [globalAssignedTo]);
 
   const [snackbar, setSnackbar] = useState({ open: false, message: '', type: 'success' });
   const notify = useCallback((message, type = 'success') => {
@@ -40,13 +57,6 @@ const useKanban = (globalAssignedTo = '') => {
           params: { isActive: true, limit: 200 },
         });
         const list = res?.data?.pipelines || res?.data || [];
-        // const sorted = [...list].sort((a, b) => {
-        //   if (a.isDefault && !b.isDefault) return -1;
-        //   if (!a.isDefault && b.isDefault) return 1;
-        //   return String(a.name || '').localeCompare(String(b.name || ''), undefined, {
-        //     sensitivity: 'base',
-        //   }); 
-        // });
         setPipelines(list);
         setSelectedPipelineId((prev) => {
           if (prev && list.some((p) => p._id === prev)) return prev;
@@ -59,126 +69,165 @@ const useKanban = (globalAssignedTo = '') => {
     fetchPipelines();
   }, []);
 
+  const fetchStagePage = useCallback(async (stageId, { page, limit, listQuery }) => {
+    const pipelineId = selectedPipelineIdRef.current;
+    if (!pipelineId) return { leads: [], total: 0, page: 1 };
+
+    const q =
+      listQuery ??
+      stageStateRef.current.stageKanbanMeta[stageId]?.listQuery ??
+      defaultKanbanListQuery();
+    const safePage = Math.max(1, page);
+
+    const paramsBase = {
+      pipelineId,
+      stageId,
+      limit,
+      sortBy: q.sortBy,
+      sortOrder: q.sortOrder,
+    };
+    if (q.status) paramsBase.status = q.status;
+    if (q.source) paramsBase.source = q.source;
+    if (globalAssignedToRef.current) paramsBase.assignedTo = globalAssignedToRef.current;
+    const s = (q.search || '').trim();
+    if (s) paramsBase.search = s;
+
+    const run = (skip) =>
+      api.get(API_ROUTES.leads.list, {
+        params: { ...paramsBase, skip },
+      });
+
+    let skip = (safePage - 1) * limit;
+    let res = await run(skip);
+    let leads = res?.data?.leads || [];
+    let total =
+      typeof res?.data?.pagination?.total === 'number'
+        ? res.data.pagination.total
+        : leads.length;
+    const maxPage = Math.max(1, Math.ceil(total / limit));
+    let resolvedPage = Math.min(safePage, maxPage);
+    if (resolvedPage !== safePage) {
+      skip = (resolvedPage - 1) * limit;
+      res = await run(skip);
+      leads = res?.data?.leads || [];
+      total =
+        typeof res?.data?.pagination?.total === 'number'
+          ? res.data.pagination.total
+          : leads.length;
+    }
+    return { leads, total, page: resolvedPage };
+  }, []);
+
+  const loadLeadsForStages = useCallback(async (stages, expectedGen) => {
+    const pipelineId = selectedPipelineIdRef.current;
+    if (!pipelineId || !stages?.length) return;
+    if (expectedGen != null && expectedGen !== pipelineLoadGenRef.current) return;
+
+    fetchLockRef.current = {};
+    const map = {};
+    const meta = {};
+
+    await Promise.all(
+      stages.map(async (s) => {
+        const id = s._id;
+        const listQuery = defaultKanbanListQuery();
+        try {
+          const { leads, total, page } = await fetchStagePage(id, {
+            page: 1,
+            limit: KANBAN_PAGE_SIZE,
+            listQuery,
+          });
+          if (expectedGen != null && expectedGen !== pipelineLoadGenRef.current) return;
+          map[id] = leads;
+          meta[id] = { total, page, loadingMore: false, listQuery };
+        } catch (e) {
+          console.error('Stage lead bootstrap failed', id, e);
+          map[id] = [];
+          meta[id] = { ...emptyMeta(), listQuery };
+        }
+      }),
+    );
+
+    if (expectedGen != null && expectedGen !== pipelineLoadGenRef.current) return;
+    setLeadsByStage(map);
+    setStageKanbanMeta(meta);
+  }, [fetchStagePage]);
+
   useEffect(() => {
-    if (!selectedPipelineId) return;
-    const fetchStages = async () => {
-      setLoadingStages(true);
+    if (!selectedPipelineId) {
+      setActiveStages([]);
+      setLeadsByStage({});
+      setStageKanbanMeta({});
+      return;
+    }
+
+    const gen = ++pipelineLoadGenRef.current;
+    setActiveStages([]);
+    setLeadsByStage({});
+    setStageKanbanMeta({});
+    setLoadingStages(true);
+
+    let cancelled = false;
+
+    (async () => {
       try {
         const res = await api.get(API_ROUTES.stages.list, {
           params: { pipelineId: selectedPipelineId },
         });
+        if (cancelled || gen !== pipelineLoadGenRef.current) return;
+
         const stages = (res?.data?.stages || res?.data || []).filter((s) => s.isActive);
         setActiveStages(stages);
+
+        if (stages.length) {
+          await loadLeadsForStages(stages, gen);
+        }
       } catch (err) {
-        console.error('Failed to load stages', err);
-        setActiveStages([]);
+        if (!cancelled && gen === pipelineLoadGenRef.current) {
+          console.error('Failed to load stages', err);
+          setActiveStages([]);
+        }
       } finally {
-        setLoadingStages(false);
+        if (!cancelled && gen === pipelineLoadGenRef.current) {
+          setLoadingStages(false);
+        }
       }
+    })();
+
+    return () => {
+      cancelled = true;
     };
-    fetchStages();
-  }, [selectedPipelineId]);
-
-  const fetchStagePage = useCallback(
-    async (stageId, { page, limit, listQuery }) => {
-      const q =
-        listQuery ??
-        stageStateRef.current.stageKanbanMeta[stageId]?.listQuery ??
-        defaultKanbanListQuery();
-      const safePage = Math.max(1, page);
-
-      const paramsBase = {
-        pipelineId: selectedPipelineId,
-        stageId,
-        limit,
-        sortBy: q.sortBy,
-        sortOrder: q.sortOrder,
-      };
-      if (q.status) paramsBase.status = q.status;
-      if (q.source) paramsBase.source = q.source;
-      if (globalAssignedTo) paramsBase.assignedTo = globalAssignedTo;
-      const s = (q.search || '').trim();
-      if (s) paramsBase.search = s;
-
-      const run = (skip) =>
-        api.get(API_ROUTES.leads.list, {
-          params: { ...paramsBase, skip },
-        });
-
-      let skip = (safePage - 1) * limit;
-      let res = await run(skip);
-      let leads = res?.data?.leads || [];
-      let total =
-        typeof res?.data?.pagination?.total === 'number'
-          ? res.data.pagination.total
-          : leads.length;
-      const maxPage = Math.max(1, Math.ceil(total / limit));
-      let resolvedPage = Math.min(safePage, maxPage);
-      if (resolvedPage !== safePage) {
-        skip = (resolvedPage - 1) * limit;
-        res = await run(skip);
-        leads = res?.data?.leads || [];
-        total =
-          typeof res?.data?.pagination?.total === 'number'
-            ? res.data.pagination.total
-            : leads.length;
-      }
-      return { leads, total, page: resolvedPage };
-    },
-    [selectedPipelineId, globalAssignedTo],
-  );
-
-  const bootstrapKanbanLeads = useCallback(
-    async (stages) => {
-      if (!selectedPipelineId || !stages?.length) return;
-      setLoadingStages(true);
-      fetchLockRef.current = {};
-
-      const map = {};
-      const meta = {};
-
-      await Promise.all(
-        stages.map(async (s) => {
-          const id = s._id;
-          const listQuery = defaultKanbanListQuery();
-          try {
-            const { leads, total, page } = await fetchStagePage(id, {
-              page: 1,
-              limit: KANBAN_PAGE_SIZE,
-              listQuery,
-            });
-            map[id] = leads;
-            meta[id] = { total, page, loadingMore: false, listQuery };
-          } catch (e) {
-            console.error('Stage lead bootstrap failed', id, e);
-            map[id] = [];
-            meta[id] = { ...emptyMeta(), listQuery };
-          }
-        }),
-      );
-
-      setLeadsByStage(map);
-      setStageKanbanMeta(meta);
-      setLoadingStages(false);
-    },
-    [selectedPipelineId, fetchStagePage],
-  );
+  }, [selectedPipelineId, loadLeadsForStages]);
 
   useEffect(() => {
-    if (activeStages.length === 0) {
-      const t = setTimeout(() => {
-        setLeadsByStage({});
-        setStageKanbanMeta({});
-      }, 0);
-      return () => clearTimeout(t);
+    if (!assigneeFilterMountedRef.current) {
+      assigneeFilterMountedRef.current = true;
+      return;
     }
-    const t = setTimeout(() => { bootstrapKanbanLeads(activeStages); }, 0);
-    return () => clearTimeout(t);
-  }, [activeStages, bootstrapKanbanLeads]);
+    if (!selectedPipelineIdRef.current || activeStagesRef.current.length === 0) return;
+
+    const gen = pipelineLoadGenRef.current;
+    let cancelled = false;
+    setLoadingStages(true);
+
+    (async () => {
+      try {
+        await loadLeadsForStages(activeStagesRef.current, gen);
+      } finally {
+        if (!cancelled && gen === pipelineLoadGenRef.current) {
+          setLoadingStages(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [globalAssignedTo, loadLeadsForStages]);
 
   const goToStagePage = useCallback(
     async (stageId, page) => {
-      if (!selectedPipelineId || !stageId) return;
+      if (!selectedPipelineIdRef.current || !stageId) return;
       if (fetchLockRef.current[stageId]) return;
 
       const m = stageStateRef.current.stageKanbanMeta[stageId] || emptyMeta();
@@ -217,12 +266,12 @@ const useKanban = (globalAssignedTo = '') => {
         delete fetchLockRef.current[stageId];
       }
     },
-    [selectedPipelineId, fetchStagePage],
+    [fetchStagePage],
   );
 
   const updateStageListQuery = useCallback(
     async (stageId, patch) => {
-      if (!selectedPipelineId || !stageId) return;
+      if (!selectedPipelineIdRef.current || !stageId) return;
       if (fetchLockRef.current[stageId]) return;
 
       const prevMeta = stageStateRef.current.stageKanbanMeta[stageId] || emptyMeta();
@@ -261,12 +310,12 @@ const useKanban = (globalAssignedTo = '') => {
         delete fetchLockRef.current[stageId];
       }
     },
-    [selectedPipelineId, fetchStagePage],
+    [fetchStagePage],
   );
 
   const refreshStage = useCallback(
     async (stageId) => {
-      if (!selectedPipelineId) return;
+      if (!selectedPipelineIdRef.current) return;
       if (stageId) {
         try {
           const meta = stageStateRef.current.stageKanbanMeta[stageId] || emptyMeta();
@@ -293,14 +342,27 @@ const useKanban = (globalAssignedTo = '') => {
         }
         return;
       }
-      if (activeStages.length) await bootstrapKanbanLeads(activeStages);
+      if (activeStages.length) {
+        setLoadingStages(true);
+        try {
+          await loadLeadsForStages(activeStages, pipelineLoadGenRef.current);
+        } finally {
+          setLoadingStages(false);
+        }
+      }
     },
-    [selectedPipelineId, activeStages, bootstrapKanbanLeads, fetchStagePage],
+    [activeStages, loadLeadsForStages, fetchStagePage],
   );
 
-  const refreshAllStages = useCallback(() => {
-    if (activeStages.length) bootstrapKanbanLeads(activeStages);
-  }, [activeStages, bootstrapKanbanLeads]);
+  const refreshAllStages = useCallback(async () => {
+    if (!activeStages.length) return;
+    setLoadingStages(true);
+    try {
+      await loadLeadsForStages(activeStages, pipelineLoadGenRef.current);
+    } finally {
+      setLoadingStages(false);
+    }
+  }, [activeStages, loadLeadsForStages]);
 
   return {
     pipelines,

@@ -6,6 +6,7 @@ import LeadQuickViewModal from './LeadQuickViewModal';
 import LeadNotes from '../../../components/common/LeadNotes';
 import TaskModal from '../../../components/common/TaskModal';
 import LeadCardStageSla from './LeadCardStageSla';
+import LeadMarkCompletedButton from '../../../components/leads/LeadMarkCompletedButton';
 import {  TrendingUp, Zap } from 'lucide-react';
 
 /* ── helpers ──────────────────────────────────────────────────── */
@@ -115,6 +116,8 @@ const LeadCard = ({
   showAssigneeOnCollapsed = false,
   slaAdmin = false,
   onStageTimerUpdated,
+  isLastStage = false,
+  onLeadCompleted,
 }) => {
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
@@ -230,6 +233,13 @@ const LeadCard = ({
           stageId={lead.stageId?._id || lead.stageId}
           slaAdmin={slaAdmin}
           onStageTimerUpdated={onStageTimerUpdated}
+          onNotify={onNotify}
+        />
+
+        <LeadMarkCompletedButton
+          lead={lead}
+          isLastStage={isLastStage}
+          onCompleted={onLeadCompleted}
           onNotify={onNotify}
         />
 

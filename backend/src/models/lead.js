@@ -116,11 +116,27 @@ const leadSchema = new mongoose.Schema({
   notes: [noteSchema],
   accountId: { type: String, default: null, index: true },
   priority: { type: String, enum: ['high', 'medium', 'low','urgent'], default: 'medium' },
-  gmailThreadId: { type: String, default: null, index: true }
+  gmailThreadId: { type: String, default: null, index: true },
+  isCompleted: {
+    type: Boolean,
+    default: false,
+    index: true,
+  },
+  completedNote: {
+    type: String,
+    trim: true,
+    maxlength: 2000,
+    default: null,
+  },
+  completedAt: {
+    type: Date,
+    default: null,
+  },
 }, { timestamps: true });
 
 leadSchema.index({ phone: 1, email: 1 });
 leadSchema.index({ assignedTo: 1, status: 1 });
+leadSchema.index({ isCompleted: 1, assignedTo: 1 });
 leadSchema.index({ userId: 1 });
 leadSchema.index({ productId: 1 });
 leadSchema.index({ productSku: 1 });

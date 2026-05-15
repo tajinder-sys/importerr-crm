@@ -46,7 +46,7 @@ function parseDays(raw) {
 async function buildLeadMatch(req, query, options = {}) {
   const { ignoreQueryPipeline = false } = options;
   const { source, pipelineId, userId } = query;
-  const match = { duplicateOf: { $in: [null, undefined] } };
+  const match = { duplicateOf: { $in: [null, undefined] }, isCompleted: { $ne: true } };
   const days = parseDays(query.days);
 
   if (days) {

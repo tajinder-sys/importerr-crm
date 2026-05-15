@@ -84,6 +84,11 @@ const Leads = () => {
   /* ── Table state (for table view) ───────────────────── */
   const [tableRefreshKey, setTableRefreshKey] = useState(0);
 
+  const handleLeadCompletedFromBoard = useCallback(() => {
+    refreshAllStages();
+    setTableRefreshKey((k) => k + 1);
+  }, [refreshAllStages]);
+
   const loadMembersForPipeline = useCallback(
     async (pipelineId, ensureUser = null) => {
       if (!canManageAssignment || !pipelineId) {
@@ -383,6 +388,7 @@ const Leads = () => {
             onNotify={notify}
             isAdmin={showAssigneeFilters}
             slaAdmin={isAdmin}
+            onRefreshAllStages={handleLeadCompletedFromBoard}
           />
         )}
 

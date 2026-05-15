@@ -64,6 +64,7 @@ const ACTIVITY_TYPES = {
   FILE_ATTACHED: 'file_attached',
   COMMUNICATION_SENT: 'communication_sent',
   LEAD_CONVERTED: 'lead_converted',
+  LEAD_COMPLETED: 'lead_completed',
   QUOTE_SENT: 'lead_quote_sent',
   QUOTE_RESENT: 'lead_quote_resent',
   STAGE_CHANGED: 'stage_changed',

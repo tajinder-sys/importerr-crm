@@ -9,9 +9,11 @@ const {
   addLeadCommunication,
   deleteLead,
   getLeadStatsOverview,
+  markLeadCompletedHandler,
 } = require('../controllers/lead');
 const {
   getLeadStageTimer,
+  getLeadStageHistory,
   overrideLeadStageSLAHandler,
   getAssignedUserDueLeadsHandler,
   getOverdueLeadsHandler,
@@ -24,6 +26,8 @@ router.get('/stats/overview', auth, getLeadStatsOverview);
 router.get('/unassigned', auth, authorize(['admin', 'team_manager']), getUnassignedLeads);
 router.get('/due/assigned/:userId', auth, getAssignedUserDueLeadsHandler);
 router.get('/overdue/team/:teamId', auth, getOverdueLeadsHandler);
+router.post('/:id/complete', auth, markLeadCompletedHandler);
+router.get('/:id/stage-history', auth, getLeadStageHistory);
 router.get('/:id/stage-timer', auth, getLeadStageTimer);
 router.patch(
   '/:leadId/stages/:stageId/sla-override',

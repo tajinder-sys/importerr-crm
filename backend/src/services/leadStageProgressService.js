@@ -125,6 +125,11 @@ async function moveLeadToStage(leadId, newStageId, { session, now = new Date() }
     err.statusCode = 404;
     throw err;
   }
+  if (lead.isCompleted) {
+    const err = new Error('Cannot change stage of a completed lead');
+    err.statusCode = 400;
+    throw err;
+  }
 
   const newStage = await Stage.findById(nsid).session(session || null);
   if (!newStage) {
@@ -340,6 +345,7 @@ async function getAssignedUserDueLeads(userId, { withinSeconds = 86400 } = {}) {
     assignedTo: uid,
     stageId: { $exists: true, $ne: null },
     duplicateOf: { $in: [null, undefined] },
+    isCompleted: { $ne: true },
   })
     .select('_id stageId name email pipelineId')
     .lean();
@@ -452,13 +458,14 @@ async function getOverdueLeadsForTeam(teamId) {
     pipelineId: { $in: pipelineIds },
     isActive: true,
   })
-    .populate('leadId', 'name email assignedTo stageId pipelineId')
+    .populate('leadId', 'name email assignedTo stageId pipelineId isCompleted')
     .lean();
 
   const now = new Date();
   const overdue = [];
   for (const p of progresses) {
     const leadDoc = p.leadId && typeof p.leadId === 'object' && p.leadId._id ? p.leadId : null;
+    if (leadDoc?.isCompleted) continue;
     const view = computeView(
       {
         allowedSeconds: p.allowedSeconds,
@@ -483,6 +490,69 @@ async function getOverdueLeadsForTeam(teamId) {
   return overdue;
 }
 
+/**
+ * All stage SLA rows for a lead, sorted by pipeline stage order (for completed-lead timeline).
+ */
+async function getLeadStageHistoryForLead(leadId, { now = new Date(), currentStageId = null } = {}) {
+  const lid =
+    leadId instanceof mongoose.Types.ObjectId ? leadId : new mongoose.Types.ObjectId(String(leadId));
+
+  const progresses = await LeadStageProgress.find({ leadId: lid }).lean();
+  if (!progresses.length) return [];
+
+  const stageIds = [...new Set(progresses.map((p) => String(p.stageId)))];
+  const stages = await Stage.find({ _id: { $in: stageIds } })
+    .select('name order color followUpDays')
+    .lean();
+  const stageMap = new Map(stages.map((s) => [String(s._id), s]));
+
+  const currentSid = currentStageId ? String(currentStageId._id ?? currentStageId) : null;
+
+  const rows = progresses.map((p) => {
+    const st = stageMap.get(String(p.stageId)) || {};
+    const view = computeView(p, now);
+    const timeSpentSeconds = view.consumedSeconds + (view.isActive ? view.runningSeconds : 0);
+    const allowed = view.allowedSeconds || 0;
+    const usagePercent =
+      allowed > 0 ? Math.min(100, Math.round((timeSpentSeconds / allowed) * 1000) / 10) : 0;
+
+    let status = 'paused';
+    if (view.isActive) status = view.isOverdue ? 'overdue' : 'active';
+    else if (view.isOverdue) status = 'overdue';
+    else if (timeSpentSeconds > 0) status = 'done';
+
+    return {
+      progressId: p._id,
+      stageId: p.stageId,
+      stageName: st.name || 'Stage',
+      stageOrder: st.order ?? 0,
+      stageColor: st.color || '#6B7280',
+      followUpDays: st.followUpDays,
+      allowedSeconds: allowed,
+      consumedSeconds: view.consumedSeconds,
+      runningSeconds: view.runningSeconds,
+      timeSpentSeconds,
+      remainingSeconds: view.remainingSeconds,
+      usagePercent,
+      isOverdue: view.isOverdue,
+      isActive: view.isActive,
+      status,
+      isCurrentStage: currentSid != null && String(p.stageId) === currentSid,
+      overriddenByAdmin: Boolean(p.overriddenByAdmin),
+      overrideReason: p.overrideReason || '',
+      currentEnteredAt: p.currentEnteredAt,
+      lastPausedAt: p.lastPausedAt,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+    };
+  });
+
+  rows.sort(
+    (a, b) => a.stageOrder - b.stageOrder || String(a.stageId).localeCompare(String(b.stageId))
+  );
+  return rows;
+}
+
 module.exports = {
   allowedSecondsFromStage,
   computeView,
@@ -496,4 +566,5 @@ module.exports = {
   getAssignedUserDueLeads,
   getOverdueLeadsForTeam,
   attachStageTimersToLeads,
+  getLeadStageHistoryForLead,
 };

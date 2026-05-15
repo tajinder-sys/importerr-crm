@@ -26,6 +26,7 @@ import Integrations from './pages/settings/Integrations.jsx';
 import SellerUsers from './pages/settings/SellerUsers.jsx';
 import Leads from './pages/Leads/Lead.jsx';
 import UnassignedLeads from './pages/UnassignedLeads.jsx';
+import CompletedLeads from './pages/CompletedLeads.jsx';
 import ExportReports from './pages/ExportReports.jsx';
 import { cn } from './utils/helpers';
 import { surfaces } from './config/designSystem';
@@ -69,6 +70,7 @@ const AuthenticatedShell = () => {
               )}
             />
             <Route path="/leads" element={<Leads />} />
+            <Route path="/leads/completed" element={<CompletedLeads />} />
             <Route path="/leads/:id" element={<LeadDetails />} />
             <Route path="/activities" element={<Activities />} />
             <Route path="/profile" element={<Profile />} />

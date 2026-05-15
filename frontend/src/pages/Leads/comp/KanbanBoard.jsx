@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -29,8 +29,54 @@ const KanbanBoard = ({
   onNotify,
   isAdmin,
   slaAdmin = false,
+  onRefreshAllStages,
 }) => {
   const [activeLead, setActiveLead] = useState(null);
+
+  const lastStageId = useMemo(() => {
+    if (!stages?.length) return null;
+    const last = stages.reduce((best, s) => {
+      if (!best) return s;
+      return (s.order ?? 0) > (best.order ?? 0) ? s : best;
+    }, null);
+    return last?._id ?? null;
+  }, [stages]);
+
+  const handleLeadCompleted = useCallback(
+    (leadId) => {
+      const id = leadId?._id ?? leadId;
+      if (!id) return;
+
+      setLeadsByStage((prev) => {
+        const next = { ...prev };
+        for (const sid of Object.keys(next)) {
+          const list = next[sid] || [];
+          if (list.some((l) => String(l._id) === String(id))) {
+            next[sid] = list.filter((l) => String(l._id) !== String(id));
+          }
+        }
+        return next;
+      });
+
+      setStageKanbanMeta((prev) => {
+        const next = { ...prev };
+        for (const sid of Object.keys(next)) {
+          const meta = next[sid];
+          if (!meta || typeof meta.total !== 'number') continue;
+          const hadLead = (leadsByStage[sid] || []).some((l) => String(l._id) === String(id));
+          if (hadLead && meta.total > 0) {
+            next[sid] = { ...meta, total: meta.total - 1 };
+          }
+        }
+        return next;
+      });
+
+      if (typeof onRefreshAllStages === 'function') {
+        onRefreshAllStages();
+      }
+    },
+    [setLeadsByStage, setStageKanbanMeta, leadsByStage, onRefreshAllStages]
+  );
 
   const handleStageTimerUpdated = useCallback(
     (leadId, nextTimer) => {
@@ -260,6 +306,8 @@ const KanbanBoard = ({
               isAdmin={isAdmin}
               slaAdmin={slaAdmin}
               onStageTimerUpdated={handleStageTimerUpdated}
+              isLastStage={lastStageId != null && String(stage._id) === String(lastStageId)}
+              onLeadCompleted={handleLeadCompleted}
             />
           );
         })}

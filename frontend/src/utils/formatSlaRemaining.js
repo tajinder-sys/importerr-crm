@@ -18,3 +18,22 @@ export function formatSlaRemaining(totalSeconds) {
   const sec = abs % 60;
   return `${prefix}${m}m ${String(sec).padStart(2, '0')}s`;
 }
+
+/** Human-readable duration for time spent in a stage (history timeline). */
+export function formatStageDuration(totalSeconds) {
+  if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) return '0m';
+  const abs = Math.floor(totalSeconds);
+  const d = Math.floor(abs / 86400);
+  const h = Math.floor((abs % 86400) / 3600);
+  const m = Math.floor((abs % 3600) / 60);
+  const parts = [];
+  if (d) parts.push(`${d}d`);
+  if (h) parts.push(`${h}h`);
+  if (m || !parts.length) parts.push(`${m}m`);
+  return parts.join(' ');
+}
+
+export function formatAllowedSla(seconds) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return 'No SLA';
+  return formatStageDuration(seconds);
+}

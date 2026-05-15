@@ -23,6 +23,8 @@ import LeadNotes from '../components/common/LeadNotes';
 import LeadTasksTab from '../components/lead-details/LeadTasksTab';
 import PageHeader from '../components/common/ui/PageHeader';
 import LeadStageSlaBar from '../components/leads/LeadStageSlaBar';
+import LeadMarkCompletedPanel from '../components/leads/LeadMarkCompletedPanel';
+import LeadStageTimeline from '../components/lead-details/LeadStageTimeline';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -98,6 +100,8 @@ const LeadDetails = () => {
   // ── Core data ──
   const [loading, setLoading] = useState(false);
   const [lead, setLead] = useState(null);
+  const [completion, setCompletion] = useState(null);
+  const [stageHistory, setStageHistory] = useState([]);
   const [leadActivities, setLeadActivities] = useState([]);
   const [leadCommunications, setLeadCommunications] = useState([]);
 
@@ -162,6 +166,8 @@ const LeadDetails = () => {
     try {
       const { data } = await api.get(API_ROUTES.leads.byId(leadId));
       setLead(data?.lead || null);
+      setCompletion(data?.completion || null);
+      setStageHistory(data?.stageHistory || []);
       setLeadActivities(data?.activities || []);
       setLeadCommunications(data?.communications || []);
     } catch (err) {
@@ -422,8 +428,12 @@ const LeadDetails = () => {
               <Button variant="outline" startIcon={<Pencil className="h-4 w-4" />} onClick={openEditLeadModal} disabled={!lead}>
                 Edit Lead
               </Button>
-              <Button variant="outline" startIcon={<ArrowLeft className="h-4 w-4" />} onClick={() => navigate('/leads')}>
-                Back to Leads
+              <Button
+                variant="outline"
+                startIcon={<ArrowLeft className="h-4 w-4" />}
+                onClick={() => navigate(lead?.isCompleted ? '/leads/completed' : '/leads')}
+              >
+                {lead?.isCompleted ? 'Back to completed' : 'Back to Leads'}
               </Button>
             </>
           )}
@@ -431,13 +441,28 @@ const LeadDetails = () => {
 
         {loading && <LeadDetailsSkeleton />}
 
-        {!loading && lead && lead.stageId && (
+        {!loading && lead && (
+          <LeadMarkCompletedPanel
+            lead={lead}
+            completion={completion}
+            onCompleted={async () => {
+              showSuccess('Lead marked as completed');
+              await fetchLeadDetail();
+            }}
+          />
+        )}
+
+        {!loading && lead && lead.stageId && !lead.isCompleted && (
           <LeadStageSlaBar
             leadId={lead._id}
             stageId={lead.stageId?._id || lead.stageId}
             isAdmin={user?.role === 'admin'}
             onNotify={(msg, type) => (type === 'error' ? showError(msg) : showSuccess(msg))}
           />
+        )}
+
+        {!loading && lead && (lead.isCompleted || stageHistory.length > 0) && (
+          <LeadStageTimeline stages={stageHistory} className="!mt-4" />
         )}
 
         {!loading && lead && (

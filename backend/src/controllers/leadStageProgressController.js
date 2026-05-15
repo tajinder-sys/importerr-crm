@@ -11,6 +11,7 @@ const {
   getAssignedUserDueLeads,
   getOverdueLeadsForTeam,
   runMoveLeadToStageTransaction,
+  getLeadStageHistoryForLead,
 } = require('../services/leadStageProgressService');
 const { sendSuccess, sendBadRequest, sendNotFound, sendForbidden } = require('../utils/responseHandler');
 const { USER_ROLES } = require('../utils/constants');
@@ -253,8 +254,31 @@ async function moveLeadToStageHandler(req, res) {
   }
 }
 
+async function getLeadStageHistory(req, res) {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return sendBadRequest(res, 'Invalid lead id');
+    }
+    const gate = await assertLeadTimerAccess(req, id);
+    if (!gate.ok) {
+      if (gate.status === 404) return sendNotFound(res, gate.message);
+      return sendForbidden(res, gate.message);
+    }
+
+    const history = await getLeadStageHistoryForLead(id, {
+      currentStageId: gate.lead?.stageId,
+    });
+    return sendSuccess(res, 'Stage history retrieved', { stages: history });
+  } catch (err) {
+    console.error('getLeadStageHistory error:', err);
+    return sendBadRequest(res, 'Failed to load stage history');
+  }
+}
+
 module.exports = {
   getLeadStageTimer,
+  getLeadStageHistory,
   overrideLeadStageSLAHandler,
   getAssignedUserDueLeadsHandler,
   getOverdueLeadsHandler,
