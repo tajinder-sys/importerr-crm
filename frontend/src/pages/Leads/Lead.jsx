@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, startTransition } from 'react';
+import { useState, useCallback, useEffect, useMemo, startTransition } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import api from '../../utils/api';
 import { API_ROUTES } from '../../utils/apiRoutes';
@@ -46,6 +46,19 @@ const Leads = () => {
   const canManageAssignment = isAdmin || isTeamManager;
 
   const [assigneeFilter, setAssigneeFilter] = useState('');
+  const [datePreset, setDatePreset]         = useState('all');
+  const [dateFrom, setDateFrom]             = useState('');
+  const [dateTo, setDateTo]                 = useState('');
+
+  const computedDateParams = useMemo(() => {
+    const today = new Date();
+    const fmt = (d) => d.toISOString().slice(0, 10);
+    if (datePreset === 'today') { const d = fmt(today); return { dateFrom: d, dateTo: d }; }
+    if (datePreset === '7d')  return { dateFrom: fmt(new Date(today - 7  * 86400000)), dateTo: fmt(today) };
+    if (datePreset === '30d') return { dateFrom: fmt(new Date(today - 30 * 86400000)), dateTo: fmt(today) };
+    if (datePreset === 'custom' && dateFrom && dateTo) return { dateFrom, dateTo };
+    return {};
+  }, [datePreset, dateFrom, dateTo]);
 
   const {
     pipelines,
@@ -64,7 +77,7 @@ const Leads = () => {
     setStageKanbanMeta,
     goToStagePage,
     updateStageListQuery,
-  } = useKanban(showAssigneeFilters ? assigneeFilter : '');
+  } = useKanban(showAssigneeFilters ? assigneeFilter : '', computedDateParams);
   /* ── View toggle (kanban / table) ───────────────────── */
   const [view, setView] = useState('kanban');
 
@@ -296,10 +309,11 @@ const Leads = () => {
       const res = await api.get(API_ROUTES.leads.list, {
         params: {
           page, limit,
-          sortBy: sortKey || 'priority',
+          sortBy: sortKey || 'createdAt',
           sortOrder: sortDirection || 'desc',
           ...(selectedPipelineId ? { pipelineId: selectedPipelineId } : {}),
           ...(assignedTo ? { assignedTo } : {}),
+          ...computedDateParams,
         },
       });
       return {
@@ -307,7 +321,7 @@ const Leads = () => {
         total: res?.data?.pagination?.total || 0,
       };
     },
-    [selectedPipelineId]
+    [selectedPipelineId, datePreset, dateFrom, dateTo]
   );
 
   /* ── Table columns ──────────────────────────────────── */
@@ -333,6 +347,26 @@ const Leads = () => {
       render: (l) => <Chip label={l.priority || TASK_PRIORITY_LEVELS.LOW} variant={getChipVariant('PRIORITY', l.priority || TASK_PRIORITY_LEVELS.LOW)} /> },
     { key: 'status', header: 'Status',
       render: (l) => <Chip label={l.status} variant={getChipVariant('STATUS', l.status)} /> },
+    { key: 'createdAt', sortKey: 'createdAt', sortable: true, header: 'Created',
+      render: (l) => {
+        const d = l.createdAt ? new Date(l.createdAt) : null;
+        if (!d) return '-';
+        const diffMs   = Date.now() - d;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHrs  = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+        const relative = diffMins < 60 ? `${diffMins}m ago`
+          : diffHrs  < 24 ? `${diffHrs}h ago`
+          : diffDays < 7  ? `${diffDays}d ago`
+          : d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+        return (
+          <div className="flex flex-col">
+            <span className="text-xs font-medium text-slate-700 dark:text-slate-200">{relative}</span>
+            <span className="text-[10px] text-slate-400">{d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}</span>
+          </div>
+        );
+      }
+    },
     { key: 'action', header: '',
       render: (l) => (
         <div className="flex items-center gap-1">
@@ -369,6 +403,13 @@ const Leads = () => {
           assignableMembers={teamRosterForFilters}
           assigneeFilter={assigneeFilter}
           onAssigneeFilterChange={setAssigneeFilter}
+          datePreset={datePreset}
+          onDatePresetChange={setDatePreset}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateFromChange={setDateFrom}
+          onDateToChange={setDateTo}
+
         />
 
         {/* ── Kanban view ── */}
@@ -406,6 +447,7 @@ const Leads = () => {
                   refreshKey: tableRefreshKey,
                   pipelineId: selectedPipelineId,
                   ...(showAssigneeFilters && assigneeFilter ? { assignedTo: assigneeFilter } : {}),
+                  datePreset, dateFrom, dateTo,
                 }}
                 rowKey="_id"
                 emptyMessage="No leads found."

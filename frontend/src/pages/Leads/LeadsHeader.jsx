@@ -1,7 +1,16 @@
-import { UserPlus, LayoutGrid, GitBranch, Layers, CheckCircle2, KanbanSquare, Table2, User } from 'lucide-react';
+import { UserPlus, LayoutGrid, GitBranch, Layers, CheckCircle2, KanbanSquare, Table2, User, Calendar } from 'lucide-react';
 import { Button, SearchableSelect, UiToolbarTitle } from '../../components/common/ui';
+
 const selectBtn =
   'h-9 w-full rounded-lg border-slate-200/90 bg-white px-2.5 text-xs font-medium dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-100';
+
+const DATE_PRESETS = [
+  { key: 'all',    label: 'All time' },
+  { key: 'today',  label: 'Today' },
+  { key: '7d',     label: 'This Week' },
+  { key: '30d',    label: 'This Month' },
+  { key: 'custom', label: 'Custom' },
+];
 
 const LeadsHeader = ({
   pipelines,
@@ -14,6 +23,12 @@ const LeadsHeader = ({
   assignableMembers = [],
   assigneeFilter = '',
   onAssigneeFilterChange,
+  datePreset = 'all',
+  onDatePresetChange,
+  dateFrom = '',
+  dateTo = '',
+  onDateFromChange,
+  onDateToChange,
 }) => {
   const current      = pipelines.find((p) => p._id === selectedPipeline);
   const totalStages  = current?.stages?.length || 0;
@@ -102,10 +117,11 @@ const LeadsHeader = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-0.5 px-4 overflow-x-auto scrollbar-none">
+      <div className="pipeline-tabs flex items-center gap-0.5 px-4 overflow-x-auto">
         {pipelines.map((pipeline) => {
           const isActive   = pipeline._id === selectedPipeline;
           const stageCount = pipeline.stages?.length || 0;
+          const leadCount  = pipeline.totalLeads ?? stageCount;
           return (
             <button
               key={pipeline._id}
@@ -123,7 +139,7 @@ const LeadsHeader = ({
                   ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400'
                   : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'
               }`}>
-                {stageCount}
+                {leadCount}
               </span>
             </button>
           );
@@ -133,25 +149,66 @@ const LeadsHeader = ({
         )}
       </div>
 
-      {showAssigneeFilter && (
-        <div className="flex flex-wrap items-center gap-3 px-6 py-2.5 border-t border-slate-100 bg-slate-50/90 dark:bg-slate-900/40 dark:border-slate-700">
-          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-            <User size={14} className="flex-shrink-0 opacity-80" />
-            <span className="text-xs font-semibold whitespace-nowrap">Assigned to</span>
-          </div>
-          <SearchableSelect
-            name="assignee"
-            value={assigneeFilter}
-            onChange={(e) => onAssigneeFilterChange?.(e.target.value)}
-            size="sm"
-            buttonClassName={selectBtn}
-            dropdownClassName="!min-w-[min(100vw-2rem,18rem)]"
-            options={[{value: '', label: 'All assignees'}, ...assignableMembers.map((m) => (
-              {value: String(m._id), label: m.name || m.email || m._id}
-            ))]}
-          />
+      {/* ── Date + Assignee filter bar ── */}
+      <div className="flex flex-wrap items-center gap-3 px-6 py-2.5 border-t border-slate-100 bg-white dark:bg-slate-800 dark:border-slate-700">
+        <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+          <Calendar size={13} />
+          <span className="text-[11px] font-semibold uppercase tracking-wide">Date</span>
         </div>
-      )}
+        <div className="flex flex-wrap gap-1">
+          {DATE_PRESETS.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              onClick={() => onDatePresetChange?.(p.key)}
+              className={`whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition ${
+                datePreset === p.key
+                  ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        {datePreset === 'custom' && (
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => onDateFromChange?.(e.target.value)}
+              className="h-7 rounded-lg border border-slate-200 px-2 text-xs text-slate-700 focus:border-indigo-400 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+            />
+            <span className="text-xs text-slate-400">to</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => onDateToChange?.(e.target.value)}
+              className="h-7 rounded-lg border border-slate-200 px-2 text-xs text-slate-700 focus:border-indigo-400 focus:outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+            />
+          </div>
+        )}
+        {showAssigneeFilter && (
+          <>
+            <span className="text-slate-300 dark:text-slate-600">|</span>
+            <div className="flex items-center gap-2">
+              <User size={13} className="text-slate-500 dark:text-slate-400 flex-shrink-0" />
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 whitespace-nowrap">Assigned to</span>
+            </div>
+            <SearchableSelect
+              name="assignee"
+              value={assigneeFilter}
+              onChange={(e) => onAssigneeFilterChange?.(e.target.value)}
+              size="sm"
+              buttonClassName={selectBtn}
+              dropdownClassName="!min-w-[min(100vw-2rem,18rem)]"
+              options={[{value: '', label: 'All assignees'}, ...assignableMembers.map((m) => (
+                {value: String(m._id), label: m.name || m.email || m._id}
+              ))]}
+            />
+          </>
+        )}
+      </div>
     </div>
   );
 };

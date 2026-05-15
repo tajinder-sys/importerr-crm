@@ -22,7 +22,7 @@ const TeamFilters = ({
         <div className="min-w-0 space-y-2">
           <div className="flex items-center gap-2">
             <p className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Role</p>
-            <div className="flex gap-1 overflow-x-auto">
+            <div className="flex flex-wrap gap-1">
               {ROLE_FILTER_OPTIONS.map((role) => {
                 const active = filters.role === role;
                 return (
@@ -43,9 +43,9 @@ const TeamFilters = ({
               })}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <p className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Team</p>
-            <div className="flex gap-1 overflow-x-auto">
+          <div className="flex items-start gap-2">
+            <p className="shrink-0 pt-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Team</p>
+            <div className="flex flex-wrap gap-1">
               <button
                 type="button"
                 disabled={disabled}
@@ -80,7 +80,7 @@ const TeamFilters = ({
           </div>
           <div className="flex items-center gap-2">
             <p className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gray-500">Priority</p>
-            <div className="flex gap-1 overflow-x-auto">
+            <div className="flex flex-wrap gap-1">
               {PRIORITY_FILTER_OPTIONS.map((p) => {
                 const active = filters.priority === p;
                 return (

@@ -251,6 +251,7 @@ const Integrations = () => {
                       <div className="flex shrink-0 items-center gap-1">
                         {account.type === 'gmail' && (
                           <button type="button"
+                            disabled={account.gmailEmail}
                             onClick={async (e) => {
                               e.preventDefault(); e.stopPropagation();
                               try {

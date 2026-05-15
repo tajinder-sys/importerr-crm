@@ -190,3 +190,10 @@
 ::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
 
+/* Pipeline tabs — scrollbar only on hover */
+.pipeline-tabs::-webkit-scrollbar { height: 3px; }
+.pipeline-tabs::-webkit-scrollbar-track { background: transparent; }
+.pipeline-tabs::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; transition: background 0.2s; }
+.pipeline-tabs:hover::-webkit-scrollbar-thumb { background: #cbd5e1; }
+.dark .pipeline-tabs:hover::-webkit-scrollbar-thumb { background: #475569; }
+

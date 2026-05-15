@@ -119,6 +119,8 @@ const getLeads = async (req, res) => {
       sortBy = 'priority',
       sortOrder = 'desc',
       completedOnly,
+      dateFrom,
+      dateTo,
     } = req.query;
 
     const query = { duplicateOf: { $in: [null, undefined] } };
@@ -199,10 +201,17 @@ const getLeads = async (req, res) => {
 
     if (search) {
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
+        { name:  { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } }
+        { phone: { $regex: search, $options: 'i' } },
       ];
+    }
+
+    // date range filter
+    if (dateFrom || dateTo) {
+      query.createdAt = {};
+      if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
+      if (dateTo)   query.createdAt.$lte = new Date(new Date(dateTo).setHours(23, 59, 59, 999));
     }
 
     // Only get leads that have pipelineId and stageId set (unless already scoped by role)

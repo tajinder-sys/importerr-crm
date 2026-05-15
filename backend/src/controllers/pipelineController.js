@@ -1,5 +1,6 @@
 const Pipeline = require('../models/Pipeline');
 const Stage = require('../models/Stage');
+const Lead = require('../models/lead');
 const mongoose = require('mongoose');
 const {
   sendSuccess,
@@ -93,6 +94,16 @@ const getPipelines = async (req, res) => {
       .skip((page - 1) * limit)
       .limit(Number(limit));
 
+    const pipelineIds = pipelines.map((p) => p._id);
+
+    // Count leads per pipeline in one query
+    const leadCounts = await Lead.aggregate([
+      { $match: { pipelineId: { $in: pipelineIds }, duplicateOf: { $in: [null, undefined] } } },
+      { $group: { _id: '$pipelineId', count: { $sum: 1 } } },
+    ]);
+    const leadCountMap = {};
+    leadCounts.forEach((r) => { leadCountMap[String(r._id)] = r.count; });
+
     // Fetch stages for each pipeline
     const pipelinesWithStages = await Promise.all(
       pipelines.map(async (pipeline) => {
@@ -100,7 +111,8 @@ const getPipelines = async (req, res) => {
           .sort({ order: 1 });
         return {
           ...pipeline.toObject(),
-          stages: stages
+          stages,
+          totalLeads: leadCountMap[String(pipeline._id)] || 0,
         };
       })
     );
