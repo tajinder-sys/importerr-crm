@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { UserPerformanceTooltip } from './DashboardChartTooltips';
 import { PerformanceTableSkeleton } from './DashboardSkeletons';
+import { formatStageDuration } from '../../utils/formatSlaRemaining';
 import { RECENT_PERF_CARD_BASE, RECENT_PERF_CARD_HEIGHT } from './dashboardLayout';
 
 function sectionError(msg) {
@@ -32,6 +33,9 @@ export default function DashboardUserPerformanceSection({ userPerf }) {
     lastStageSharePercent: u.lastStageSharePercent ?? 0,
     wonStageLeads: u.convertedLeads ?? u.wonStageLeads ?? 0,
     stageWinRatePercent: u.conversionRatePercent ?? u.stageWinRatePercent ?? 0,
+    avgSlaTimelineSeconds: u.avgSlaTimelineSeconds,
+    avgSlaTimelineLabel:
+      u.avgSlaTimelineSeconds != null ? formatStageDuration(u.avgSlaTimelineSeconds) : null,
   }));
 
   return (
@@ -39,8 +43,8 @@ export default function DashboardUserPerformanceSection({ userPerf }) {
       <CardHeader className="shrink-0 border-slate-100 bg-white dark:border-slate-700 dark:bg-slate-800">
         <UiSectionTitle>User performance</UiSectionTitle>
         <p className="mt-1 font-sans text-xs text-slate-500 dark:text-slate-400">
-          Conversion = assigned leads in a conversion stage with status “converted”. Last stage % = share on the
-          final stage of their pipeline.
+          Conversion = conversion stage + status “converted” (includes completed). Last stage % = active leads on
+          final stage. Avg SLA time = mean total time across stages per active lead.
         </p>
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
@@ -85,6 +89,7 @@ export default function DashboardUserPerformanceSection({ userPerf }) {
                       <th className="px-4 py-2.5 text-right">Converted</th>
                       <th className="px-4 py-2.5 text-right">Last stage</th>
                       <th className="px-4 py-2.5 text-right">Conv. %</th>
+                      <th className="px-4 py-2.5 text-right">Avg SLA time</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -108,6 +113,11 @@ export default function DashboardUserPerformanceSection({ userPerf }) {
                         </td>
                         <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-violet-700 dark:text-violet-400">
                           {row.conversionRatePercent ?? row.stageWinRatePercent ?? 0}%
+                        </td>
+                        <td className="px-4 py-2.5 text-right tabular-nums text-slate-700 dark:text-slate-300">
+                          {row.avgSlaTimelineSeconds != null
+                            ? formatStageDuration(row.avgSlaTimelineSeconds)
+                            : '—'}
                         </td>
                       </tr>
                     ))}

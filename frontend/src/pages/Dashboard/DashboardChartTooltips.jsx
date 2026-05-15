@@ -1,3 +1,5 @@
+import { formatStageDuration } from '../../utils/formatSlaRemaining';
+
 export const ChartTooltip = ({ active, payload, label, valueSuffix = '' }) => {
   if (!active || !payload?.length) return null;
   const row = payload[0];
@@ -33,6 +35,11 @@ export const UserPerformanceTooltip = ({ active, payload }) => {
       <p className="text-slate-600 dark:text-slate-300">
         On last stage: {point.lastStageLeads} ({point.lastStageSharePercent ?? 0}%)
       </p>
+      {point.avgSlaTimelineSeconds != null ? (
+        <p className="text-slate-600 dark:text-slate-300">
+          Avg SLA time: {formatStageDuration(point.avgSlaTimelineSeconds)}
+        </p>
+      ) : null}
     </div>
   );
 };

@@ -2,7 +2,7 @@ import {
   Users,
   Phone,
   CheckCircle,
-  Activity,
+  CheckCircle2,
   Percent,
   Layers
 } from 'lucide-react';
@@ -37,10 +37,19 @@ export default function DashboardKpiSection({ kpis }) {
       key: 'converted',
       title: 'Converted leads',
       value: (d.convertedLeads ?? d.wonStageLeads ?? 0).toLocaleString('en-IN'),
-      subtitle: 'Conversion stage + status “converted”',
+      subtitle: 'Conversion stage + status “converted” (includes completed)',
       icon: CheckCircle,
       accent: 'bg-violet-50 dark:bg-violet-900/20',
       iconWrap: 'bg-violet-100 text-violet-700 ring-violet-200/60'
+    },
+    {
+      key: 'completed',
+      title: 'Completed leads',
+      value: (d.completedLeads ?? 0).toLocaleString('en-IN'),
+      subtitle: 'Marked complete on final stage (same filters)',
+      icon: CheckCircle2,
+      accent: 'bg-amber-50 dark:bg-amber-900/20',
+      iconWrap: 'bg-amber-100 text-amber-800 ring-amber-200/60'
     },
     {
       key: 'conversionRate',

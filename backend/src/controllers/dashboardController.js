@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Lead = require('../models/lead');
+const LeadStageProgress = require('../models/LeadStageProgress');
 const User = require('../models/User');
 const Pipeline = require('../models/Pipeline');
 const Stage = require('../models/Stage');
@@ -13,8 +14,12 @@ const {
   addTerminalStageDocField,
   addDashboardConversionFields,
   addPipelineMetricHitField,
+  lookupLeadStageProgressForLead,
+  addLeadSlaTimelineSecondsField,
   percent,
 } = require('../utils/dashboardConversion');
+
+const LEAD_STAGE_PROGRESS_COLLECTION = LeadStageProgress.collection.name;
 
 const asOid = (id) => {
   if (!id) return null;
@@ -44,9 +49,12 @@ function parseDays(raw) {
 
 /** Base match for dashboard leads (no status-based logic). */
 async function buildLeadMatch(req, query, options = {}) {
-  const { ignoreQueryPipeline = false } = options;
+  const { ignoreQueryPipeline = false, activeOnly = true } = options;
   const { source, pipelineId, userId } = query;
-  const match = { duplicateOf: { $in: [null, undefined] }, isCompleted: { $ne: true } };
+  const match = { duplicateOf: { $in: [null, undefined] } };
+  if (activeOnly) {
+    match.isCompleted = { $ne: true };
+  }
   const days = parseDays(query.days);
 
   if (days) {
@@ -106,9 +114,23 @@ async function buildLeadMatch(req, query, options = {}) {
 
   match.pipelineId = match.pipelineId || { $exists: true, $ne: null };
   match.stageId = { $exists: true, $ne: null };
-  console.log("match", match);
   return { match };
 }
+
+/** Same scope/filters as dashboard, but completed only. */
+async function buildCompletedLeadMatch(req, query, options = {}) {
+  const built = await buildLeadMatch(req, query, { ...options, activeOnly: false });
+  if (built.error) return built;
+  return { match: { ...built.match, isCompleted: true } };
+}
+
+const conversionAggregateStages = [
+  lookupCurrentStageForLead(),
+  unwindCurrentStage(),
+  lookupTerminalStageForLead(),
+  addTerminalStageDocField(),
+  addDashboardConversionFields(),
+];
 
 async function buildTaskMatch(req, query) {
   const base = { deletedAt: { $exists: false } };
@@ -209,39 +231,58 @@ const getDashboardKpis = async (req, res) => {
     }
     const { match } = built;
 
-    const [row] = await Lead.aggregate([
-      { $match: match },
-      lookupCurrentStageForLead(),
-      unwindCurrentStage(),
-      lookupTerminalStageForLead(),
-      addTerminalStageDocField(),
-      addDashboardConversionFields(),
-      {
-        $group: {
-          _id: null,
-          totalLeads: { $sum: 1 },
-          leadsWithStageDoc: { $sum: { $cond: [{ $ifNull: ['$st._id', false] }, 1, 0] } },
-          convertedLeads: { $sum: { $cond: ['$isConvertedLead', 1, 0] } },
-          lastStageLeads: { $sum: { $cond: ['$isOnLastStage', 1, 0] } },
-          zeroProbLeads: { $sum: { $cond: [{ $eq: ['$prob', 0] }, 1, 0] } },
+    const scopeBuilt = await buildLeadMatch(req, req.query, { activeOnly: false });
+    if (scopeBuilt.error === 'forbidden') {
+      return sendForbidden(res, scopeBuilt.message);
+    }
+
+    const [row, convertedRow, completedLeads] = await Promise.all([
+      Lead.aggregate([
+        { $match: match },
+        ...conversionAggregateStages,
+        {
+          $group: {
+            _id: null,
+            totalLeads: { $sum: 1 },
+            leadsWithStageDoc: { $sum: { $cond: [{ $ifNull: ['$st._id', false] }, 1, 0] } },
+            lastStageLeads: { $sum: { $cond: ['$isOnLastStage', 1, 0] } },
+            zeroProbLeads: { $sum: { $cond: [{ $eq: ['$prob', 0] }, 1, 0] } },
+          },
         },
-      },
+      ]).then((rows) => rows[0]),
+      Lead.aggregate([
+        { $match: scopeBuilt.match },
+        ...conversionAggregateStages,
+        {
+          $group: {
+            _id: null,
+            convertedLeads: { $sum: { $cond: ['$isConvertedLead', 1, 0] } },
+          },
+        },
+      ]).then((rows) => rows[0]),
+      (async () => {
+        const completedBuilt = await buildCompletedLeadMatch(req, req.query);
+        if (completedBuilt.error) return 0;
+        return Lead.countDocuments(completedBuilt.match);
+      })(),
     ]);
 
     const totalLeads = row?.totalLeads ?? 0;
-    const convertedLeads = row?.convertedLeads ?? 0;
+    const convertedLeads = convertedRow?.convertedLeads ?? 0;
     const lastStageLeads = row?.lastStageLeads ?? 0;
+    const leadsInFunnel = totalLeads;
 
     sendSuccess(res, 'Dashboard KPIs loaded', {
       totalLeads,
       leadsWithStage: row?.leadsWithStageDoc ?? 0,
       convertedLeads,
-      conversionRatePercent: percent(convertedLeads, totalLeads),
+      conversionRatePercent: percent(convertedLeads, leadsInFunnel),
       lastStageLeads,
       lastStageSharePercent: percent(lastStageLeads, totalLeads),
       wonStageLeads: convertedLeads,
-      wonStageSharePercent: percent(convertedLeads, totalLeads),
+      wonStageSharePercent: percent(convertedLeads, leadsInFunnel),
       zeroProbabilityLeads: row?.zeroProbLeads ?? 0,
+      completedLeads,
     });
   } catch (e) {
     console.error('getDashboardKpis', e);
@@ -358,50 +399,101 @@ const getDashboardUserPerformance = async (req, res) => {
     }
     const { match } = built;
 
-    const memberSelfOnly = req.user.role === USER_ROLES.TEAM_MEMBER;
-    const perfMatch = memberSelfOnly
-      ? { ...match, assignedTo: asOid(req.user.id || req.user._id) }
-      : { ...match, assignedTo: { $exists: true, $ne: null } };
+    const scopeBuilt = await buildLeadMatch(req, req.query, { activeOnly: false });
+    if (scopeBuilt.error === 'forbidden') {
+      return sendForbidden(res, scopeBuilt.message);
+    }
 
-    const rows = await Lead.aggregate([
-      { $match: perfMatch },
-      lookupCurrentStageForLead(),
-      unwindCurrentStage(),
-      lookupTerminalStageForLead(),
-      addTerminalStageDocField(),
-      addDashboardConversionFields(),
-      {
-        $group: {
-          _id: '$assignedTo',
-          leadCount: { $sum: 1 },
-          convertedLeads: { $sum: { $cond: ['$isConvertedLead', 1, 0] } },
-          lastStageLeads: { $sum: { $cond: ['$isOnLastStage', 1, 0] } },
+    const memberSelfOnly = req.user.role === USER_ROLES.TEAM_MEMBER;
+    const assigneeClause = memberSelfOnly
+      ? { assignedTo: asOid(req.user.id || req.user._id) }
+      : { assignedTo: { $exists: true, $ne: null } };
+    const perfMatch = { ...match, ...assigneeClause };
+    const scopePerfMatch = { ...scopeBuilt.match, ...assigneeClause };
+
+    const [activeRows, convertedRows, completedRows] = await Promise.all([
+      Lead.aggregate([
+        { $match: perfMatch },
+        lookupLeadStageProgressForLead(LEAD_STAGE_PROGRESS_COLLECTION),
+        addLeadSlaTimelineSecondsField(),
+        ...conversionAggregateStages,
+        {
+          $group: {
+            _id: '$assignedTo',
+            leadCount: { $sum: 1 },
+            lastStageLeads: { $sum: { $cond: ['$isOnLastStage', 1, 0] } },
+            avgSlaTimelineSeconds: {
+              $avg: {
+                $cond: [
+                  { $gt: [{ $size: { $ifNull: ['$slaProgress', []] } }, 0] },
+                  '$slaTimelineSeconds',
+                  null,
+                ],
+              },
+            },
+          },
         },
-      },
+      ]),
+      Lead.aggregate([
+        { $match: scopePerfMatch },
+        ...conversionAggregateStages,
+        {
+          $group: {
+            _id: '$assignedTo',
+            convertedLeads: { $sum: { $cond: ['$isConvertedLead', 1, 0] } },
+          },
+        },
+      ]),
+      Lead.aggregate([
+        { $match: { ...scopePerfMatch, isCompleted: true } },
+        { $group: { _id: '$assignedTo', completedLeads: { $sum: 1 } } },
+      ]),
     ]);
 
-    const userIds = rows.map((r) => r._id).filter(Boolean);
-    const userDocs = await User.find({ _id: { $in: userIds } }).select('name email role').lean();
+    const convertedByUser = new Map(
+      convertedRows.map((r) => [String(r._id), r.convertedLeads || 0])
+    );
+    const completedByUser = new Map(
+      completedRows.map((r) => [String(r._id), r.completedLeads || 0])
+    );
+    const activeByUser = new Map(activeRows.map((r) => [String(r._id), r]));
+    const allUserIds = [
+      ...new Set(
+        [...activeRows, ...convertedRows, ...completedRows]
+          .map((r) => String(r._id))
+          .filter(Boolean)
+      ),
+    ];
+
+    const userDocs = await User.find({ _id: { $in: allUserIds } }).select('name email role').lean();
     const byId = new Map(userDocs.map((u) => [String(u._id), u]));
 
-    const users = rows
-      .map((r) => {
-        const u = byId.get(String(r._id));
+    const users = allUserIds
+      .map((uid) => {
+        const r = activeByUser.get(uid) || { _id: uid };
+        const u = byId.get(uid);
         const leadCount = r.leadCount || 0;
-        const converted = r.convertedLeads || 0;
+        const converted = convertedByUser.get(uid) || 0;
+        const completed = completedByUser.get(uid) || 0;
+        const leadsInFunnel = leadCount;
         const lastStage = r.lastStageLeads || 0;
+        const avgSlaTimelineSeconds =
+          r.avgSlaTimelineSeconds != null && Number.isFinite(r.avgSlaTimelineSeconds)
+            ? Math.round(r.avgSlaTimelineSeconds)
+            : null;
         return {
-          userId: r._id,
+          userId: r._id || uid,
           name: u?.name || 'Unknown',
           email: u?.email || '',
           role: u?.role,
           leadCount,
           convertedLeads: converted,
           lastStageLeads: lastStage,
-          conversionRatePercent: percent(converted, leadCount),
+          conversionRatePercent: percent(converted, leadsInFunnel),
           lastStageSharePercent: percent(lastStage, leadCount),
           wonStageLeads: converted,
-          stageWinRatePercent: percent(converted, leadCount),
+          stageWinRatePercent: percent(converted, leadsInFunnel),
+          avgSlaTimelineSeconds,
         };
       })
       .sort((a, b) => b.leadCount - a.leadCount);
@@ -501,7 +593,7 @@ const getDashboardLeadTimeline = async (req, res) => {
 /** Per-pipeline: conversion (isConversion stage + converted status) if last stage is conversion; else completed % on last stage. */
 const getDashboardPipelineWinRates = async (req, res) => {
   try {
-    const built = await buildLeadMatch(req, req.query, { ignoreQueryPipeline: true });
+    const built = await buildLeadMatch(req, req.query, { ignoreQueryPipeline: true, activeOnly: false });
     if (built.error === 'forbidden') {
       return sendForbidden(res, built.message);
     }
