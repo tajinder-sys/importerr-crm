@@ -118,4 +118,8 @@ export const API_ROUTES = {
     list: '/seller-assignments',
     upsert: (importerrUserId) => `/seller-assignments/${encodeURIComponent(importerrUserId)}`,
   },
+  export: {
+    config: '/export/config',
+    generate: '/export/generate',
+  },
 };

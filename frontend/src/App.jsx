@@ -25,6 +25,7 @@ import Integrations from './pages/settings/Integrations.jsx';
 import SellerUsers from './pages/settings/SellerUsers.jsx';
 import Leads from './pages/Leads/Lead.jsx';
 import UnassignedLeads from './pages/UnassignedLeads.jsx';
+import ExportReports from './pages/ExportReports.jsx';
 import { cn } from './utils/helpers';
 import { surfaces } from './config/designSystem';
 import { USER_ROLES } from './utils/constants';
@@ -124,6 +125,14 @@ const AuthenticatedShell = () => {
               element={(
                 <AdminRoute>
                   <Templates />
+                </AdminRoute>
+              )}
+            />
+            <Route
+              path="/export-reports"
+              element={(
+                <AdminRoute>
+                  <ExportReports />
                 </AdminRoute>
               )}
             />

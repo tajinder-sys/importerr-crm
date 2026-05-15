@@ -28,4 +28,4 @@ const activitySchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Activity', activitySchema);
+module.exports = mongoose.models.Activity || mongoose.model('Activity', activitySchema);

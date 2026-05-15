@@ -8,7 +8,7 @@ import {
   Home, Users, Users2, Activity, Settings, Globe, FileText,
   Mail, MessageSquare, CreditCard, GitBranch, Store,
   ChevronDown, ChevronRight, ChevronLeft,
-  UserRoundX,
+  UserRoundX, Download,
 } from 'lucide-react';
 import { useState } from 'react';
 import { USER_ROLES } from '../../utils/constants';
@@ -46,6 +46,7 @@ const Sidebar = () => {
     { href: '/settings/pipelines', icon: GitBranch, title: 'Pipelines & Stages' },
     { href: '/templates/email', icon: Mail, title: 'Email templates' },
     { href: '/templates/whatsapp', icon: MessageSquare, title: 'WhatsApp templates' },
+    { href: '/export-reports', icon: Download, title: 'Export Reports' },
   ] : [];
 
   const isActive = (href) => {
@@ -142,6 +143,15 @@ const Sidebar = () => {
                       </a>
                     );
                   })}
+
+                  {isUserAdmin && (
+                    <a href="/export-reports"
+                      onClick={(e) => { e.preventDefault(); navigate('/export-reports'); }}
+                      className={navItemCls(isActive('/export-reports'))}>
+                      <Download className="mr-3 h-4 w-4 shrink-0" />
+                      Export Reports
+                    </a>
+                  )}
 
                   {isUserAdmin && (
                     <div className="rounded-lg bg-white/60 p-1 dark:bg-slate-800/60">

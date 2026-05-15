@@ -35,6 +35,7 @@ app.use('/api/seller-assignments', require('./routes/sellerAssignmentRoutes'));
 app.use('/api/crm', require('./routes/callByImporterr/auth'));
 app.use('/api/crm', require('./routes/callByImporterr/lead'));
 app.use('/api/quote', require('./routes/quote'));
+app.use('/api/export', require('./routes/exportRoutes'));
 
 app.use(errorHandler);
 
