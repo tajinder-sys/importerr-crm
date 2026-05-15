@@ -22,17 +22,39 @@ const greetingForHour = (hour) => {
 
 const emptySection = { loading: true, error: '', data: null };
 
+const SECTION_API = {
+  kpis: API_ROUTES.dashboard.kpis,
+  stages: API_ROUTES.dashboard.stages,
+  sources: API_ROUTES.dashboard.sources,
+  user_performance: API_ROUTES.dashboard.userPerformance,
+  tasks: API_ROUTES.dashboard.tasksSummary,
+  recent_leads: API_ROUTES.dashboard.recentLeads,
+  timeline: API_ROUTES.dashboard.leadTimeline,
+  pipeline_win_rates: API_ROUTES.dashboard.pipelineWinRates,
+};
+
+const PAIR_GRIDS = [
+  ['sources', 'stages'],
+  ['recent_leads', 'user_performance'],
+];
+
 const Dashboard = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === USER_ROLES.ADMIN;
   const showOwnerFilter = isAdmin || user?.role === USER_ROLES.TEAM_MANAGER;
+
+  const [sectionConfig, setSectionConfig] = useState({
+    loading: true,
+    sections: [],
+    visibility: {},
+  });
 
   const [filtersMeta, setFiltersMeta] = useState({ loading: true, error: '', data: null });
   const [filters, setFilters] = useState({
     period: 'all',
     source: 'all',
     pipeline: 'all',
-    owner: 'all'
+    owner: 'all',
   });
 
   const [kpis, setKpis] = useState(emptySection);
@@ -45,6 +67,14 @@ const Dashboard = () => {
   const [pipelineRates, setPipelineRates] = useState(emptySection);
   const [lastUpdated, setLastUpdated] = useState(null);
 
+  const isVisible = useCallback(
+    (key) => {
+      if (sectionConfig.loading) return true;
+      return sectionConfig.visibility[key] !== false;
+    },
+    [sectionConfig.loading, sectionConfig.visibility]
+  );
+
   const buildParams = useCallback(() => {
     const p = { days: filters.period === 'all' ? 'all' : filters.period };
     if (filters.source && filters.source !== 'all') p.source = filters.source;
@@ -52,6 +82,29 @@ const Dashboard = () => {
     if (filters.owner && filters.owner !== 'all') p.userId = filters.owner;
     return p;
   }, [filters.period, filters.source, filters.pipeline, filters.owner]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get(API_ROUTES.dashboard.sections);
+        if (!cancelled && res?.success) {
+          setSectionConfig({
+            loading: false,
+            sections: res.data?.sections || [],
+            visibility: res.data?.visibility || {},
+          });
+        } else if (!cancelled) {
+          setSectionConfig({ loading: false, sections: [], visibility: {} });
+        }
+      } catch {
+        if (!cancelled) setSectionConfig({ loading: false, sections: [], visibility: {} });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,6 +124,8 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
+    if (sectionConfig.loading) return;
+
     const params = buildParams();
     let cancelled = false;
 
@@ -84,16 +139,23 @@ const Dashboard = () => {
       }
     };
 
-    const requests = [
-      run(setKpis, API_ROUTES.dashboard.kpis),
-      run(setStages, API_ROUTES.dashboard.stages),
-      run(setSources, API_ROUTES.dashboard.sources),
-      run(setUserPerf, API_ROUTES.dashboard.userPerformance),
-      run(setTasksSum, API_ROUTES.dashboard.tasksSummary),
-      run(setRecent, API_ROUTES.dashboard.recentLeads),
-      run(setTimeline, API_ROUTES.dashboard.leadTimeline),
-      run(setPipelineRates, API_ROUTES.dashboard.pipelineWinRates),
-    ];
+    const stateByKey = {
+      kpis: [setKpis],
+      stages: [setStages],
+      sources: [setSources],
+      user_performance: [setUserPerf],
+      tasks: [setTasksSum],
+      recent_leads: [setRecent],
+      timeline: [setTimeline],
+      pipeline_win_rates: [setPipelineRates],
+    };
+
+    const requests = [];
+    for (const [key, path] of Object.entries(SECTION_API)) {
+      if (!isVisible(key)) continue;
+      const [setter] = stateByKey[key] || [];
+      if (setter) requests.push(run(setter, path));
+    }
 
     Promise.allSettled(requests).then(() => {
       if (!cancelled) setLastUpdated(Date.now());
@@ -102,7 +164,7 @@ const Dashboard = () => {
     return () => {
       cancelled = true;
     };
-  }, [buildParams]);
+  }, [buildParams, sectionConfig.loading, sectionConfig.visibility, isVisible]);
 
   const handleFilterChange = (event) => {
     const { name, value } = event.target;
@@ -115,8 +177,8 @@ const Dashboard = () => {
       { value: 'all', label: 'All pipelines' },
       ...list.map((p) => ({
         value: String(p._id),
-        label: p.teamId?.name ? `${p.name} (${p.teamId.name})` : p.name
-      }))
+        label: p.teamId?.name ? `${p.name} (${p.teamId.name})` : p.name,
+      })),
     ];
   }, [filtersMeta.data]);
 
@@ -127,8 +189,94 @@ const Dashboard = () => {
 
   const ownerOptions = useMemo(() => {
     const list = filtersMeta.data?.users || [];
-    return [{ value: 'all', label: 'All users' }, ...list.map((u) => ({ value: String(u._id), label: u.name || u.email }))];
+    return [
+      { value: 'all', label: 'All users' },
+      ...list.map((u) => ({ value: String(u._id), label: u.name || u.email })),
+    ];
   }, [filtersMeta.data]);
+
+  const orderedVisible = useMemo(() => {
+    const list = sectionConfig.sections?.length
+      ? [...sectionConfig.sections]
+      : Object.keys(SECTION_API).map((key, i) => ({ key, order: (i + 1) * 10, visible: true }));
+    return list
+      .filter((s) => isVisible(s.key))
+      .sort((a, b) => a.order - b.order || String(a.key).localeCompare(String(b.key)));
+  }, [sectionConfig.sections, isVisible]);
+
+  const renderSection = (key) => {
+    switch (key) {
+      case 'kpis':
+        return <DashboardKpiSection key={key} kpis={kpis} />;
+      case 'sla_alerts':
+        return <DashboardSlaAlertsSection key={key} user={user} filtersMeta={filtersMeta} />;
+      case 'pipeline_win_rates':
+        return <DashboardPipelineWinRatesSection key={key} pipelineRates={pipelineRates} />;
+      case 'tasks':
+        return <DashboardTasksSection key={key} tasksSum={tasksSum} />;
+      case 'timeline':
+        return <DashboardTimelineSection key={key} timeline={timeline} />;
+      case 'sources':
+        return <DashboardSourcesSection key={key} sources={sources} />;
+      case 'stages':
+        return <DashboardStagesSection key={key} stages={stages} />;
+      case 'recent_leads':
+        return <DashboardRecentLeadsSection key={key} recent={recent} />;
+      case 'user_performance':
+        return <DashboardUserPerformanceSection key={key} userPerf={userPerf} />;
+      default:
+        return null;
+    }
+  };
+
+  const sectionBlocks = useMemo(() => {
+    const blocks = [];
+    let i = 0;
+    while (i < orderedVisible.length) {
+      const current = orderedVisible[i].key;
+      let paired = false;
+
+      for (const [a, b] of PAIR_GRIDS) {
+        const nextKey = orderedVisible[i + 1]?.key;
+        if (
+          (current === a && nextKey === b) ||
+          (current === b && nextKey === a)
+        ) {
+          const keys = current === a ? [a, b] : [b, a];
+          const gridClass =
+            keys[0] === 'recent_leads'
+              ? 'grid grid-cols-1 items-stretch gap-6 lg:grid-cols-5'
+              : 'grid grid-cols-1 items-stretch gap-6 xl:grid-cols-2';
+          blocks.push(
+            <div key={`pair-${keys.join('-')}`} className={gridClass}>
+              {keys.map((k) => renderSection(k))}
+            </div>
+          );
+          i += 2;
+          paired = true;
+          break;
+        }
+      }
+
+      if (!paired) {
+        blocks.push(renderSection(current));
+        i += 1;
+      }
+    }
+    return blocks;
+  }, [
+    orderedVisible,
+    kpis,
+    stages,
+    sources,
+    userPerf,
+    tasksSum,
+    recent,
+    timeline,
+    pipelineRates,
+    user,
+    filtersMeta,
+  ]);
 
   const hour = new Date().getHours();
   const greeting = greetingForHour(hour);
@@ -140,48 +288,30 @@ const Dashboard = () => {
       month: 'short',
       hour: '2-digit',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
     });
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-6 dark:bg-slate-900 sm:px-6 md:px-8">
       <div className="mx-auto max-w-full space-y-6">
-          <DashboardFilterBar
-            greeting={greeting}
-            displayName={displayName}
-            isAdmin={isAdmin}
-            filtersMeta={filtersMeta}
-            filters={filters}
-            setFilters={setFilters}
-            handleFilterChange={handleFilterChange}
-            pipelineOptions={pipelineOptions}
-            sourceOptions={sourceOptions}
-            ownerOptions={ownerOptions}
-            showOwnerFilter={showOwnerFilter}
-            updatedLabel={updatedLabel}
-          />
+        <DashboardFilterBar
+          greeting={greeting}
+          displayName={displayName}
+          isAdmin={isAdmin}
+          filtersMeta={filtersMeta}
+          filters={filters}
+          setFilters={setFilters}
+          handleFilterChange={handleFilterChange}
+          pipelineOptions={pipelineOptions}
+          sourceOptions={sourceOptions}
+          ownerOptions={ownerOptions}
+          showOwnerFilter={showOwnerFilter}
+          updatedLabel={updatedLabel}
+        />
 
-          <DashboardKpiSection kpis={kpis} />
-
-          <DashboardSlaAlertsSection user={user} filtersMeta={filtersMeta} />
-
-          <DashboardPipelineWinRatesSection pipelineRates={pipelineRates} />
-
-          <DashboardTasksSection tasksSum={tasksSum} />
-
-          <DashboardTimelineSection timeline={timeline} />
-
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <DashboardSourcesSection sources={sources} />
-            <DashboardStagesSection stages={stages} />
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-            <DashboardRecentLeadsSection recent={recent} />
-            <DashboardUserPerformanceSection userPerf={userPerf} />
-          </div>
-        </div>
+        {sectionBlocks}
       </div>
+    </div>
   );
 };
 

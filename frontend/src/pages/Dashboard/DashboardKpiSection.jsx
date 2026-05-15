@@ -34,40 +34,31 @@ export default function DashboardKpiSection({ kpis }) {
       iconWrap: 'bg-sky-100 text-sky-700 ring-sky-200/60'
     },
     {
-      key: 'wonStage',
-      title: 'Won leads',
-      value: (d.wonStageLeads ?? 0).toLocaleString('en-IN'),
-      subtitle: 'In terminal stage (max order) for their pipeline',
+      key: 'converted',
+      title: 'Converted leads',
+      value: (d.convertedLeads ?? d.wonStageLeads ?? 0).toLocaleString('en-IN'),
+      subtitle: 'Conversion stage + status “converted”',
       icon: CheckCircle,
       accent: 'bg-violet-50 dark:bg-violet-900/20',
       iconWrap: 'bg-violet-100 text-violet-700 ring-violet-200/60'
     },
     {
-      key: 'share',
-      title: 'Conversion',
-      value: `${d.wonStageSharePercent ?? 0}%`,
-      subtitle: 'Won leads ÷ total leads in view',
+      key: 'conversionRate',
+      title: 'Conversion rate',
+      value: `${d.conversionRatePercent ?? d.wonStageSharePercent ?? 0}%`,
+      subtitle: 'Converted leads ÷ total leads in view',
       icon: Percent,
       accent: 'bg-primary-50 dark:bg-primary-900/20',
       iconWrap: 'bg-primary-100 text-primary-800 ring-primary-200/60'
     },
     {
-      key: 'inProgress',
-      title: 'In progress',
-      value: (d.inProgressLeads ?? 0).toLocaleString('en-IN'),
-      subtitle: 'Not terminal; probability between 0–100% or unset',
-      icon: Activity,
-      accent: 'bg-amber-50 dark:bg-amber-900/20',
-      iconWrap: 'bg-amber-100 text-amber-800 ring-amber-200/60'
-    },
-    {
-      key: 'avgProb',
-      title: 'Avg stage probability',
-      value: d.avgStageWinProbability != null ? `${d.avgStageWinProbability}%` : '—',
-      subtitle: 'Mean of stage % (informational)',
+      key: 'lastStage',
+      title: 'On last stage',
+      value: (d.lastStageLeads ?? 0).toLocaleString('en-IN'),
+      subtitle: `${d.lastStageSharePercent ?? 0}% of leads in final pipeline stage`,
       icon: Layers,
-      accent: 'bg-slate-100 dark:bg-slate-700/30',
-      iconWrap: 'bg-slate-100 text-slate-700 ring-slate-200/60'
+      accent: 'bg-indigo-50 dark:bg-indigo-900/20',
+      iconWrap: 'bg-indigo-100 text-indigo-700 ring-indigo-200/60'
     },
     {
       key: 'zero',

@@ -6,6 +6,15 @@ const Stage = require('../models/Stage');
 const Task = require('../models/Task');
 const { sendSuccess, sendBadRequest, sendForbidden } = require('../utils/responseHandler');
 const { USER_ROLES, LEAD_SOURCES } = require('../utils/constants');
+const {
+  lookupTerminalStageForLead,
+  lookupCurrentStageForLead,
+  unwindCurrentStage,
+  addTerminalStageDocField,
+  addDashboardConversionFields,
+  addPipelineMetricHitField,
+  percent,
+} = require('../utils/dashboardConversion');
 
 const asOid = (id) => {
   if (!id) return null;
@@ -31,28 +40,6 @@ function parseDays(raw) {
   const n = parseInt(String(raw), 10);
   if (!Number.isFinite(n) || n < 1) return 30;
   return Math.min(366, n);
-}
-
-/** $lookup subpipeline: terminal “won” stage = highest `order` per pipeline (active stages only). */
-function lookupTerminalStageForLead() {
-  return {
-    $lookup: {
-      from: 'stages',
-      let: { pid: '$pipelineId' },
-      pipeline: [
-        {
-          $match: {
-            $expr: { $eq: ['$pipelineId', '$$pid'] },
-            isActive: true,
-          },
-        },
-        { $sort: { order: -1 } },
-        { $limit: 1 },
-        { $project: { _id: 1, name: 1, order: 1, probabilityPercent: 1 } },
-      ],
-      as: 'terminalStage',
-    },
-  };
 }
 
 /** Base match for dashboard leads (no status-based logic). */
@@ -224,72 +211,37 @@ const getDashboardKpis = async (req, res) => {
 
     const [row] = await Lead.aggregate([
       { $match: match },
-      {
-        $lookup: {
-          from: 'stages',
-          localField: 'stageId',
-          foreignField: '_id',
-          as: 'st',
-        },
-      },
-      { $unwind: { path: '$st', preserveNullAndEmptyArrays: true } },
-      {
-        $addFields: {
-          prob: { $ifNull: ['$st.probabilityPercent', null] },
-          isConversionStage: { $eq: ['$st.isConversion', true] },
-        },
-      },
+      lookupCurrentStageForLead(),
+      unwindCurrentStage(),
+      lookupTerminalStageForLead(),
+      addTerminalStageDocField(),
+      addDashboardConversionFields(),
       {
         $group: {
           _id: null,
           totalLeads: { $sum: 1 },
           leadsWithStageDoc: { $sum: { $cond: [{ $ifNull: ['$st._id', false] }, 1, 0] } },
-          avgStageProbability: { $avg: '$prob' },
-          wonStageLeads: {
-            $sum: { $cond: ['$isConversionStage', 1, 0] },
-          },
-          zeroProbLeads: {
-            $sum: { $cond: [{ $eq: ['$prob', 0] }, 1, 0] },
-          },
-          inProgressLeads: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $eq: ['$isConversionStage', false] },
-                    {
-                      $or: [
-                        { $eq: ['$prob', null] },
-                        { $and: [{ $gt: ['$prob', 0] }, { $lt: ['$prob', 100] }] },
-                      ],
-                    },
-                  ],
-                },
-                1,
-                0,
-              ],
-            },
-          },
+          convertedLeads: { $sum: { $cond: ['$isConvertedLead', 1, 0] } },
+          lastStageLeads: { $sum: { $cond: ['$isOnLastStage', 1, 0] } },
+          zeroProbLeads: { $sum: { $cond: [{ $eq: ['$prob', 0] }, 1, 0] } },
         },
       },
     ]);
 
     const totalLeads = row?.totalLeads ?? 0;
-    const avgProb = row?.avgStageProbability != null ? Math.round(row.avgStageProbability * 10) / 10 : null;
-    const conversionFromStage = totalLeads > 0 && row?.wonStageLeads != null
-      ? Math.round((row.wonStageLeads / totalLeads) * 1000) / 10
-      : 0;
+    const convertedLeads = row?.convertedLeads ?? 0;
+    const lastStageLeads = row?.lastStageLeads ?? 0;
 
     sendSuccess(res, 'Dashboard KPIs loaded', {
       totalLeads,
       leadsWithStage: row?.leadsWithStageDoc ?? 0,
-      avgStageWinProbability: avgProb,
-      /** Conversion: leads sitting in the terminal stage (max `order`) of their pipeline */
-      wonStageSharePercent: conversionFromStage,
-      wonStageLeads: row?.wonStageLeads ?? 0,
-      wonStageDefinition: 'isConversion_flag',
+      convertedLeads,
+      conversionRatePercent: percent(convertedLeads, totalLeads),
+      lastStageLeads,
+      lastStageSharePercent: percent(lastStageLeads, totalLeads),
+      wonStageLeads: convertedLeads,
+      wonStageSharePercent: percent(convertedLeads, totalLeads),
       zeroProbabilityLeads: row?.zeroProbLeads ?? 0,
-      inProgressLeads: row?.inProgressLeads ?? 0,
     });
   } catch (e) {
     console.error('getDashboardKpis', e);
@@ -389,10 +341,8 @@ const getDashboardSources = async (req, res) => {
       { $group: { _id: '$source', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]);
-    console.log("rows", rows);
     sendSuccess(res, 'Sources loaded', {
       sources: rows.map((r) => ({ source: r._id, count: r.count })),
-      leads: await Lead.find(match).lean(),
     });
   } catch (e) {
     console.error('getDashboardSources', e);
@@ -415,27 +365,17 @@ const getDashboardUserPerformance = async (req, res) => {
 
     const rows = await Lead.aggregate([
       { $match: perfMatch },
-      {
-        $lookup: {
-          from: 'stages',
-          localField: 'stageId',
-          foreignField: '_id',
-          as: 'st',
-        },
-      },
-      { $unwind: { path: '$st', preserveNullAndEmptyArrays: true } },
-      {
-        $addFields: {
-          isConversionStage: { $eq: ['$st.isConversion', true] },
-        },
-      },
+      lookupCurrentStageForLead(),
+      unwindCurrentStage(),
+      lookupTerminalStageForLead(),
+      addTerminalStageDocField(),
+      addDashboardConversionFields(),
       {
         $group: {
           _id: '$assignedTo',
           leadCount: { $sum: 1 },
-          wonStageLeads: {
-            $sum: { $cond: ['$isConversionStage', 1, 0] },
-          },
+          convertedLeads: { $sum: { $cond: ['$isConvertedLead', 1, 0] } },
+          lastStageLeads: { $sum: { $cond: ['$isOnLastStage', 1, 0] } },
         },
       },
     ]);
@@ -448,16 +388,20 @@ const getDashboardUserPerformance = async (req, res) => {
       .map((r) => {
         const u = byId.get(String(r._id));
         const leadCount = r.leadCount || 0;
-        const won = r.wonStageLeads || 0;
-        const stageWinRate = leadCount > 0 ? Math.round((won / leadCount) * 1000) / 10 : 0;
+        const converted = r.convertedLeads || 0;
+        const lastStage = r.lastStageLeads || 0;
         return {
           userId: r._id,
           name: u?.name || 'Unknown',
           email: u?.email || '',
           role: u?.role,
           leadCount,
-          wonStageLeads: won,
-          stageWinRatePercent: stageWinRate,
+          convertedLeads: converted,
+          lastStageLeads: lastStage,
+          conversionRatePercent: percent(converted, leadCount),
+          lastStageSharePercent: percent(lastStage, leadCount),
+          wonStageLeads: converted,
+          stageWinRatePercent: percent(converted, leadCount),
         };
       })
       .sort((a, b) => b.leadCount - a.leadCount);
@@ -554,7 +498,7 @@ const getDashboardLeadTimeline = async (req, res) => {
   }
 };
 
-/** Per-pipeline conversion: leads in terminal stage (max order) ÷ leads in pipeline. Ignores pipeline filter so you always see all scoped pipelines. */
+/** Per-pipeline: conversion (isConversion stage + converted status) if last stage is conversion; else completed % on last stage. */
 const getDashboardPipelineWinRates = async (req, res) => {
   try {
     const built = await buildLeadMatch(req, req.query, { ignoreQueryPipeline: true });
@@ -587,28 +531,36 @@ const getDashboardPipelineWinRates = async (req, res) => {
       return sendSuccess(res, 'Pipeline win rates loaded', { pipelines: [] });
     }
 
+    const lastStages = await Stage.aggregate([
+      { $match: { pipelineId: { $in: pipelineIds }, isActive: true } },
+      { $sort: { pipelineId: 1, order: -1 } },
+      {
+        $group: {
+          _id: '$pipelineId',
+          lastStageId: { $first: '$_id' },
+          lastStageName: { $first: '$name' },
+          lastStageIsConversion: { $first: '$isConversion' },
+        },
+      },
+    ]);
+    const lastStageByPipeline = new Map(lastStages.map((s) => [String(s._id), s]));
+
     const agg = await Lead.aggregate([
       { $match: { ...match, pipelineId: { $in: pipelineIds } } },
-      {
-        $lookup: {
-          from: 'stages',
-          localField: 'stageId',
-          foreignField: '_id',
-          as: 'st',
-        },
-      },
-      { $unwind: { path: '$st', preserveNullAndEmptyArrays: true } },
-      {
-        $addFields: {
-          isConversionStage: { $eq: ['$st.isConversion', true] },
-        },
-      },
+      lookupCurrentStageForLead(),
+      unwindCurrentStage(),
+      lookupTerminalStageForLead(),
+      addTerminalStageDocField(),
+      addDashboardConversionFields(),
+      addPipelineMetricHitField(),
       {
         $group: {
           _id: '$pipelineId',
           leadCount: { $sum: 1 },
-          wonLeads: { $sum: { $cond: ['$isConversionStage', 1, 0] } },
-          conversionStageName: { $first: { $cond: ['$isConversionStage', '$st.name', null] } },
+          metricCount: { $sum: { $cond: ['$metricHit', 1, 0] } },
+          convertedLeads: { $sum: { $cond: ['$isConvertedLead', 1, 0] } },
+          lastStageLeads: { $sum: { $cond: ['$isOnLastStage', 1, 0] } },
+          usesConversionMetric: { $max: { $cond: ['$pipelineUsesConversionMetric', 1, 0] } },
         },
       },
     ]);
@@ -617,16 +569,25 @@ const getDashboardPipelineWinRates = async (req, res) => {
 
     const pipelinesOut = pipelines.map((p) => {
       const s = byPl.get(String(p._id));
+      const meta = lastStageByPipeline.get(String(p._id));
       const leadCount = s?.leadCount ?? 0;
-      const wonLeads = s?.wonLeads ?? 0;
-      const winRatePercent = leadCount > 0 ? Math.round((wonLeads / leadCount) * 1000) / 10 : 0;
+      const usesConversion = Boolean(meta?.lastStageIsConversion);
+      const metricType = usesConversion ? 'conversion' : 'completed';
+      const metricCount = usesConversion ? (s?.convertedLeads ?? 0) : (s?.lastStageLeads ?? 0);
+      const winRatePercent = percent(metricCount, leadCount);
+
       return {
         pipelineId: p._id,
         name: p.name,
         teamName: p.teamId?.name || '',
-        terminalStageName: s?.conversionStageName || null,
+        terminalStageName: meta?.lastStageName || null,
+        lastStageIsConversion: usesConversion,
+        metricType,
         leadCount,
-        wonLeads,
+        metricCount,
+        convertedLeads: s?.convertedLeads ?? 0,
+        lastStageLeads: s?.lastStageLeads ?? 0,
+        wonLeads: metricCount,
         winRatePercent,
       };
     });

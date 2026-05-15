@@ -99,6 +99,9 @@ export const API_ROUTES = {
     toggle: (id) => `/stages/${encodeURIComponent(id)}/toggle`
   },
   dashboard: {
+    sections: '/dashboard/sections',
+    sectionsReset: '/dashboard/sections/reset',
+    sectionsVisibility: '/dashboard/sections/visibility',
     filters: '/dashboard/filters',
     kpis: '/dashboard/kpis',
     stages: '/dashboard/stages',

@@ -5,7 +5,7 @@ import { useTheme } from '../../contexts/ThemeContext.jsx';
 import { cn } from '../../utils/helpers';
 import { typography } from '../../config/designSystem';
 import {
-  Home, Users, Users2, Activity, Settings, Globe, FileText,
+  Home, Users, Users2, Activity, Settings, Globe, FileText, LayoutDashboard,
   Mail, MessageSquare, CreditCard, GitBranch, Store,
   ChevronDown, ChevronRight, ChevronLeft,
   UserRoundX, Download,
@@ -44,6 +44,7 @@ const Sidebar = () => {
     { href: '/settings/payment-methods', icon: CreditCard, title: 'Payment Methods' },
     { href: '/settings/teams', icon: Users, title: 'Teams' },
     { href: '/settings/pipelines', icon: GitBranch, title: 'Pipelines & Stages' },
+    { href: '/settings/dashboard-sections', icon: LayoutDashboard, title: 'Dashboard sections' },
     { href: '/templates/email', icon: Mail, title: 'Email templates' },
     { href: '/templates/whatsapp', icon: MessageSquare, title: 'WhatsApp templates' },
     { href: '/export-reports', icon: Download, title: 'Export Reports' },
@@ -175,6 +176,7 @@ const Sidebar = () => {
                             { href: '/settings/payment-methods', icon: CreditCard, label: 'Payment Methods' },
                             { href: '/settings/teams', icon: Users, label: 'Teams' },
                             { href: '/settings/pipelines', icon: GitBranch, label: 'Pipelines & Stages' },
+                            { href: '/settings/dashboard-sections', icon: LayoutDashboard, label: 'Dashboard sections' },
                           ].map(({ href, icon: Icon, label }) => (
                             <a key={href} href={href}
                               onClick={(e) => { e.preventDefault(); navigate(href); }}

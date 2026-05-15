@@ -55,17 +55,21 @@ function SlaRow({ item, showAssignee = false }) {
   );
 }
 
+const SLA_LIST_MAX_HEIGHT = 'max-h-[min(320px,50vh)]';
+
 function SlaList({ items, showAssignee, emptyMessage }) {
   if (!items.length) {
     return <p className="px-5 py-6 text-center text-sm text-slate-500">{emptyMessage}</p>;
   }
   return (
-    <ul className="divide-y divide-slate-100 dark:divide-slate-700">
-      {items.map((item) => {
-        const id = item.lead?._id || item.progressId;
-        return <SlaRow key={String(id)} item={item} showAssignee={showAssignee} />;
-      })}
-    </ul>
+    <div className={`overflow-y-auto overscroll-contain ${SLA_LIST_MAX_HEIGHT}`}>
+      <ul className="divide-y divide-slate-100 dark:divide-slate-700">
+        {items.map((item) => {
+          const id = item.lead?._id || item.progressId;
+          return <SlaRow key={String(id)} item={item} showAssignee={showAssignee} />;
+        })}
+      </ul>
+    </div>
   );
 }
 
@@ -89,7 +93,6 @@ export default function DashboardSlaAlertsSection({ user, filtersMeta }) {
 
   const [due, setDue] = useState({ loading: true, error: '', items: [] });
   const [overdue, setOverdue] = useState({ loading: true, error: '', items: [] });
-  console.log(due, "due", overdue, "overdue");
   const adminTeamIds = useMemo(() => {
     if (!isAdmin || teamId) return [];
     const pipelines = filtersMeta?.data?.pipelines || [];
@@ -184,8 +187,8 @@ export default function DashboardSlaAlertsSection({ user, filtersMeta }) {
   return (
     <div className={`grid grid-cols-1 gap-6 ${showDue && showOverdue ? 'lg:grid-cols-2' : ''}`}>
       {showDue && (
-        <Card className="overflow-hidden rounded-3xl border-slate-200/90 shadow-md ring-1 ring-slate-900/5 dark:border-slate-700 dark:bg-slate-800">
-          <CardHeader className="flex flex-row items-center justify-between border-slate-100 dark:border-slate-700">
+        <Card className="flex max-h-[min(420px,55vh)] flex-col overflow-hidden rounded-3xl border-slate-200/90 shadow-md ring-1 ring-slate-900/5 dark:border-slate-700 dark:bg-slate-800">
+          <CardHeader className="shrink-0 flex flex-row items-center justify-between border-slate-100 dark:border-slate-700">
             <div>
               <UiSectionTitle>Your SLA due soon</UiSectionTitle>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
@@ -200,9 +203,11 @@ export default function DashboardSlaAlertsSection({ user, filtersMeta }) {
               <ExternalLink className="h-3.5 w-3.5" />
             </Link>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="min-h-0 flex-1 overflow-hidden p-0">
             {due.loading ? (
-              <RecentListSkeleton />
+              <div className={SLA_LIST_MAX_HEIGHT}>
+                <RecentListSkeleton />
+              </div>
             ) : due.error ? (
               <div className="px-5 py-6">{sectionError(due.error)}</div>
             ) : (
@@ -217,8 +222,8 @@ export default function DashboardSlaAlertsSection({ user, filtersMeta }) {
       )}
 
       {showOverdue && (
-        <Card className="overflow-hidden rounded-3xl border-slate-200/90 shadow-md ring-1 ring-slate-900/5 dark:border-slate-700 dark:bg-slate-800">
-          <CardHeader className="flex flex-row items-center justify-between border-slate-100 dark:border-slate-700">
+        <Card className="flex max-h-[min(420px,55vh)] flex-col overflow-hidden rounded-3xl border-slate-200/90 shadow-md ring-1 ring-slate-900/5 dark:border-slate-700 dark:bg-slate-800">
+          <CardHeader className="shrink-0 flex flex-row items-center justify-between border-slate-100 dark:border-slate-700">
             <div>
               <UiSectionTitle>Team SLA overdue</UiSectionTitle>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
@@ -233,9 +238,11 @@ export default function DashboardSlaAlertsSection({ user, filtersMeta }) {
               <ExternalLink className="h-3.5 w-3.5" />
             </Link>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="min-h-0 flex-1 overflow-hidden p-0">
             {overdue.loading ? (
-              <RecentListSkeleton />
+              <div className={SLA_LIST_MAX_HEIGHT}>
+                <RecentListSkeleton />
+              </div>
             ) : overdue.error ? (
               <div className="px-5 py-6">{sectionError(overdue.error)}</div>
             ) : (

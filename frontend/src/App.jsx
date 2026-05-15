@@ -13,6 +13,7 @@ import Teams from './pages/Teams';
 // import Leads from './pages/Leads';
 import LeadDetails from './pages/LeadDetails';
 import PaymentMethods from './pages/settings/PaymentMethods';
+import DashboardSections from './pages/settings/DashboardSections';
 import Templates from './pages/Templates';
 import Navbar from './components/layout/Navbar';
 import Sidebar from './components/layout/Sidebar';
@@ -93,6 +94,14 @@ const AuthenticatedShell = () => {
               element={(
                 <AdminRoute>
                   <PaymentMethods />
+                </AdminRoute>
+              )}
+            />
+            <Route
+              path="/settings/dashboard-sections"
+              element={(
+                <AdminRoute>
+                  <DashboardSections />
                 </AdminRoute>
               )}
             />

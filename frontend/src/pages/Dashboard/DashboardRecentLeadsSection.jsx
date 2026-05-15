@@ -5,6 +5,7 @@ import Chip from '../../components/common/ui/Chip';
 import { ExternalLink } from 'lucide-react';
 import { formatDate, formatLabel } from '../../utils/helpers';
 import { RecentListSkeleton } from './DashboardSkeletons';
+import { RECENT_PERF_CARD_BASE, RECENT_PERF_CARD_HEIGHT } from './dashboardLayout';
 
 function sectionError(msg) {
   return msg ? (
@@ -18,8 +19,10 @@ export default function DashboardRecentLeadsSection({ recent }) {
   const leads = recent.data?.leads || [];
 
   return (
-    <Card className="rounded-3xl border-slate-200/90 shadow-md ring-1 ring-slate-900/5 dark:border-slate-700 dark:bg-slate-800 lg:col-span-2">
-      <CardHeader className="flex flex-row items-center justify-between border-slate-100 bg-white dark:border-slate-700 dark:bg-slate-800">
+    <Card
+      className={`${RECENT_PERF_CARD_BASE} ${RECENT_PERF_CARD_HEIGHT} lg:col-span-2`}
+    >
+      <CardHeader className="shrink-0 flex flex-row items-center justify-between border-slate-100 bg-white dark:border-slate-700 dark:bg-slate-800">
         <div>
           <UiSectionTitle>Recent leads</UiSectionTitle>
           <p className="mt-1 font-sans text-xs text-slate-500 dark:text-slate-400">Latest in current filters.</p>
@@ -32,15 +35,19 @@ export default function DashboardRecentLeadsSection({ recent }) {
           <ExternalLink className="h-3.5 w-3.5" />
         </Link>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="min-h-0 flex-1 overflow-hidden p-0">
         {recent.loading ? (
-          <RecentListSkeleton />
+          <div className="h-full overflow-hidden">
+            <RecentListSkeleton />
+          </div>
         ) : recent.error ? (
           <div className="px-5 py-6">{sectionError(recent.error)}</div>
         ) : !leads.length ? (
-          <div className="px-6 py-10 text-center font-sans text-sm text-slate-500">No leads match filters.</div>
+          <div className="flex h-full items-center justify-center px-6 py-10 font-sans text-sm text-slate-500">
+            No leads match filters.
+          </div>
         ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-slate-700">
+          <ul className="h-full divide-y divide-slate-100 overflow-y-auto overscroll-contain dark:divide-slate-700">
             {leads.map((lead) => (
               <li key={lead._id}>
                 <Link

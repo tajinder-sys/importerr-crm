@@ -1,6 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { auth } = require('../middleware/auth');
+const { auth, authorize } = require('../middleware/auth');
+const {
+  getDashboardSections,
+  getDashboardSectionsVisibility,
+  updateDashboardSections,
+  resetDashboardSections,
+} = require('../controllers/dashboardSectionConfigController');
 const {
   getDashboardFilters,
   getDashboardKpis,
@@ -12,6 +18,11 @@ const {
   getDashboardLeadTimeline,
   getDashboardPipelineWinRates,
 } = require('../controllers/dashboardController');
+
+router.get('/sections', auth, getDashboardSections);
+router.get('/sections/visibility', auth, getDashboardSectionsVisibility);
+router.put('/sections', auth, authorize(['admin']), updateDashboardSections);
+router.post('/sections/reset', auth, authorize(['admin']), resetDashboardSections);
 
 router.get('/filters', auth, getDashboardFilters);
 router.get('/kpis', auth, getDashboardKpis);
