@@ -28,15 +28,15 @@ const Sidebar = () => {
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
+    ...(isUserAdmin ? [
+      { name: 'Team Management', href: '/teams', icon: Users2 },
+      { name: 'Seller Assignments', href: '/seller-users', icon: Store }
+    ] : []),
     { name: 'Lead Management', href: '/leads', icon: Users },
     ...(canSeeUnassignedLeads
       ? [{ name: 'Unassigned Leads', href: '/leads/unassigned', icon: UserRoundX }]
       : []),
     { name: 'Task Activities', href: '/activities', icon: Activity },
-    ...(isUserAdmin ? [
-      { name: 'Team Management', href: '/teams', icon: Users2 },
-      { name: 'Seller Assignments', href: '/seller-users', icon: Store }
-    ] : []),
   ];
 
   const adminShortcuts = isUserAdmin ? [
