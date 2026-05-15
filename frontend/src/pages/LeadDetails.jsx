@@ -22,6 +22,7 @@ import QuotesTab from '../components/lead-details/Quote/index';
 import LeadNotes from '../components/common/LeadNotes';
 import LeadTasksTab from '../components/lead-details/LeadTasksTab';
 import PageHeader from '../components/common/ui/PageHeader';
+import LeadStageSlaBar from '../components/leads/LeadStageSlaBar';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -429,6 +430,15 @@ const LeadDetails = () => {
         />
 
         {loading && <LeadDetailsSkeleton />}
+
+        {!loading && lead && lead.stageId && (
+          <LeadStageSlaBar
+            leadId={lead._id}
+            stageId={lead.stageId?._id || lead.stageId}
+            isAdmin={user?.role === 'admin'}
+            onNotify={(msg, type) => (type === 'error' ? showError(msg) : showSuccess(msg))}
+          />
+        )}
 
         {!loading && lead && (
           <div className="rounded-2xl !mt-8">

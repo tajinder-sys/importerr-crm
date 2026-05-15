@@ -9,18 +9,33 @@ const {
   addLeadCommunication,
   deleteLead,
   getLeadStatsOverview,
-  updateLeadStage
 } = require('../controllers/lead');
+const {
+  getLeadStageTimer,
+  overrideLeadStageSLAHandler,
+  getAssignedUserDueLeadsHandler,
+  getOverdueLeadsHandler,
+  moveLeadToStageHandler,
+} = require('../controllers/leadStageProgressController');
 const { getNotes, addNote, updateNote, deleteNote } = require('../controllers/noteController');
 
 router.get('/', auth, getLeads);
 router.get('/stats/overview', auth, getLeadStatsOverview);
 router.get('/unassigned', auth, authorize(['admin', 'team_manager']), getUnassignedLeads);
+router.get('/due/assigned/:userId', auth, getAssignedUserDueLeadsHandler);
+router.get('/overdue/team/:teamId', auth, getOverdueLeadsHandler);
+router.get('/:id/stage-timer', auth, getLeadStageTimer);
+router.patch(
+  '/:leadId/stages/:stageId/sla-override',
+  auth,
+  authorize(['admin']),
+  overrideLeadStageSLAHandler
+);
+router.put('/:id/stage', auth, moveLeadToStageHandler);
 router.get('/:id', auth, getLeadById);
 router.post('/', auth, createOrUpdateLead);
 router.post('/:id/communications', auth, addLeadCommunication);
 router.put('/:id', auth, createOrUpdateLead);
-router.put('/:id/stage', auth, updateLeadStage);
 router.delete('/:id', auth, authorize(['admin']), deleteLead);
 router.get('/:leadId/notes', auth, getNotes);
 router.post('/:leadId/notes', auth, addNote);

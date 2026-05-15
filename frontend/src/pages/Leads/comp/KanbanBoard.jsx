@@ -28,8 +28,29 @@ const KanbanBoard = ({
   onAddLead,
   onNotify,
   isAdmin,
+  slaAdmin = false,
 }) => {
   const [activeLead, setActiveLead] = useState(null);
+
+  const handleStageTimerUpdated = useCallback(
+    (leadId, nextTimer) => {
+      setLeadsByStage((prev) => {
+        const next = { ...prev };
+        for (const sid of Object.keys(next)) {
+          const list = next[sid];
+          const idx = list.findIndex((l) => String(l._id) === String(leadId));
+          if (idx === -1) continue;
+          const fetchedAt = nextTimer?.fetchedAt || new Date().toISOString();
+          next[sid] = list.map((l, i) =>
+            i === idx ? { ...l, stageTimer: { ...nextTimer, fetchedAt } } : l
+          );
+          break;
+        }
+        return next;
+      });
+    },
+    [setLeadsByStage]
+  );
 
   const dragOriginStageId = useRef(null);
   const dragCurrentStageId = useRef(null);
@@ -140,17 +161,30 @@ const KanbanBoard = ({
         onNotify(message, 'error');
       }
 
+      let stageTimerPayload = null;
+      if (success) {
+        try {
+          const timerRes = await api.get(API_ROUTES.leads.stageTimer(leadId));
+          if (timerRes?.data) {
+            stageTimerPayload = { ...timerRes.data, fetchedAt: new Date().toISOString() };
+          }
+        } catch {
+          /* ignore timer refresh */
+        }
+      }
+
       setLeadsByStage((prev) => {
         const targetStage = stages.find((s) => String(s._id) === String(toStageId));
         return {
           ...prev,
           [toStageId]: (prev[toStageId] || []).map((l) =>
-            l._id === leadId
+            String(l._id) === String(leadId)
               ? {
                   ...l,
                   stageId: targetStage
                     ? { ...targetStage }
                     : { ...(typeof l.stageId === 'object' ? l.stageId : {}), _id: toStageId },
+                  ...(stageTimerPayload ? { stageTimer: stageTimerPayload } : {}),
                 }
               : l,
           ),
@@ -224,6 +258,8 @@ const KanbanBoard = ({
               onAddLead={onAddLead}
               onNotify={onNotify}
               isAdmin={isAdmin}
+              slaAdmin={slaAdmin}
+              onStageTimerUpdated={handleStageTimerUpdated}
             />
           );
         })}

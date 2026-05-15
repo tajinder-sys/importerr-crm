@@ -373,6 +373,7 @@ const Leads = () => {
             onEdit={openEditLead}
             onNotify={notify}
             isAdmin={showAssigneeFilters}
+            slaAdmin={isAdmin}
           />
         )}
 

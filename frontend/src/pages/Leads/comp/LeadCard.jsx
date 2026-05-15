@@ -5,6 +5,7 @@ import { formatDateIndian } from '../../../utils/helpers';
 import LeadQuickViewModal from './LeadQuickViewModal';
 import LeadNotes from '../../../components/common/LeadNotes';
 import TaskModal from '../../../components/common/TaskModal';
+import LeadCardStageSla from './LeadCardStageSla';
 
 /* ── helpers ──────────────────────────────────────────────────── */
 const fmtPhone = (phone) => {
@@ -99,6 +100,8 @@ const LeadCard = ({
   onEdit = () => {},
   onNotify = () => {},
   showAssigneeOnCollapsed = false,
+  slaAdmin = false,
+  onStageTimerUpdated,
 }) => {
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
@@ -207,6 +210,15 @@ const LeadCard = ({
             </button>
           </div>
         </div>
+
+        <LeadCardStageSla
+          timer={lead.stageTimer}
+          leadId={lead._id}
+          stageId={lead.stageId?._id || lead.stageId}
+          slaAdmin={slaAdmin}
+          onStageTimerUpdated={onStageTimerUpdated}
+          onNotify={onNotify}
+        />
 
         {!expanded && (
           <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-2 dark:border-slate-700">

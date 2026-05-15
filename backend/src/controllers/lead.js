@@ -11,6 +11,7 @@ const { LEAD_STATUSES, ACTIVITY_TYPES, USER_ROLES, COMMUNICATION_SOURCES, TASK_P
 const Pipeline = require('../models/Pipeline');
 const Stage = require('../models/Stage');
 const Task = require('../models/Task');
+const leadStageProgressService = require('../services/leadStageProgressService');
 
 const isAdminUser = (user) => user?.role === 'admin';
 const isTeamManagerUser = (user) => user?.role === USER_ROLES.TEAM_MANAGER;
@@ -292,8 +293,14 @@ const getLeads = async (req, res) => {
       ...lead,
       tasks: tasksMap[lead._id.toString()] || []
     }));
+    let leadsPayload = leadsWithTasks;
+    try {
+      leadsPayload = await leadStageProgressService.attachStageTimersToLeads(leadsWithTasks);
+    } catch (slaListErr) {
+      console.error('attachStageTimersToLeads:', slaListErr);
+    }
     sendSuccess(res, 'Leads retrieved successfully', {
-      leads: leadsWithTasks,
+      leads: leadsPayload,
       pagination: {
         page: pageNum,
         limit: limitNum,
@@ -653,6 +660,23 @@ const createOrUpdateLead = async (req, res) => {
     lead.lastInteraction = new Date();
     await lead.save();
 
+    const stageOrPipelineChanged =
+      String(snapshot.pipelineId || '') !== String(lead.pipelineId?.toString() || '') ||
+      String(snapshot.stageId || '') !== String(lead.stageId?.toString() || '');
+    if (stageOrPipelineChanged && lead.stageId && lead.pipelineId) {
+      try {
+        await leadStageProgressService.syncLeadStageProgressOnLeadPatch(
+          lead._id,
+          snapshot.stageId,
+          snapshot.pipelineId,
+          lead.pipelineId,
+          lead.stageId
+        );
+      } catch (slaErr) {
+        console.error('Lead SLA sync after save:', slaErr);
+      }
+    }
+
     if (source && message) {
       await createInboundClientCommunication({ leadId: lead._id, source, message });
     }
@@ -878,94 +902,6 @@ const getLeadStatsOverview = async (req, res) => {
   }
 };
 
-const updateLeadStage = async (req, res) => {
-  try {
-    const { id }      = req.params;
-    const { stageId } = req.body;
-
-    if (!stageId) {
-      return sendBadRequest(res, 'stageId is required');
-    }
-
-    const lead = await Lead.findById(id);
-    if (!lead) {
-      return sendNotFound(res, 'Lead not found');
-    }
-
-    if (isTeamManagerUser(req.user)) {
-      const mt = req.user.teamId || req.user.team_id;
-      let ok = await leadPipelineBelongsToTeam(lead, mt);
-      if (!ok && lead?.assignedTo) {
-        const assignee = await User.findById(lead.assignedTo).select('team_id').lean();
-        ok = Boolean(assignee && String(assignee.team_id) === String(mt));
-      }
-      if (!ok) {
-        return sendForbidden(res, 'You can only update leads for your team');
-      }
-    }
-
-    if (lead.stageId?.toString() === stageId) {
-      const populated = await Lead.findById(id)
-        .populate('stageId',    'name color order followUpDays probabilityPercent')
-        .populate('pipelineId', 'name');
-      return sendSuccess(res, 'Lead is already in this stage', populated);
-    }
-
-    const newStage = await Stage.findById(stageId);
-
-    if (!newStage) {
-      return sendBadRequest(res, 'Stage not found');
-    }
-
-    if (!newStage.isActive) {
-      return sendBadRequest(res, 'Cannot move lead to an inactive stage');
-    }
-
-    if (
-      lead.pipelineId &&
-      newStage.pipelineId.toString() !== lead.pipelineId.toString()
-    ) {
-      return sendBadRequest(res, 'Stage does not belong to the lead\'s pipeline');
-    }
-
-    const oldStageId    = lead.stageId?.toString()    || null;
-    const oldPipelineId = lead.pipelineId?.toString() || null;
-    const oldPipelineName = await Pipeline.findById(oldPipelineId).select('name');
-    const newPipelineName = await Pipeline.findById(newStage.pipelineId).select('name');
-
-    lead.stageId         = newStage._id;
-    lead.pipelineId      = newStage.pipelineId; // keep pipeline in sync
-    lead.lastInteraction = new Date();
-
-    await lead.save();
-    const oldStageName = await Stage.findById(oldStageId).select('name');
-    await ActivityService.createActivity({
-      leadId:      lead._id,
-      type:        ACTIVITY_TYPES.STAGE_CHANGED,
-      description: `Stage changed from "${oldStageName?.name || 'none'}" to "${newStage?.name || 'none'}"`,
-      performedBy: req.user.id,
-      metadata: {
-        oldStageName: oldStageName?.name || 'none',
-        newStageId:    newStage._id.toString(),
-        newStageName:  newStage?.name || 'none',
-        oldPipelineName: oldPipelineName?.name || 'none',
-        newPipelineName: newPipelineName?.name || 'none',
-      },
-    });
-
-    const updatedLead = await Lead.findById(lead._id)
-      .populate('assignedTo', 'name email')
-      .populate('pipelineId', 'name')
-      .populate('stageId',    'name color order followUpDays probabilityPercent');
-
-    return sendSuccess(res, `Lead ${lead.name || ''} moved to ${newStage?.name || 'none'}`, updatedLead);
-
-  } catch (error) {
-    console.error('updateLeadStage error:', error);
-    return sendBadRequest(res, 'Failed to update lead stage');
-  }
-};
-
 module.exports = {
   getLeads,
   getUnassignedLeads,
@@ -973,6 +909,5 @@ module.exports = {
   createOrUpdateLead,
   addLeadCommunication,
   deleteLead,
-  getLeadStatsOverview,
-  updateLeadStage
+  getLeadStatsOverview
 };

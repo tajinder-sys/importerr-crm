@@ -7,6 +7,7 @@ const SellerAssignment = require('../models/SellerAssignment');
 const EmailService = require('./EmailService');
 const AiLog = require('../models/AiLog');
 const logger = require('../utils/logger');
+const leadStageProgressService = require('./leadStageProgressService');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -291,8 +292,25 @@ const assignLeadWithAI = async (lead) => {
     if (stageId) update.stageId = stageId;
     if (assignedTo) update.assignedTo = assignedTo;
 
+    const oldStageId = lead.stageId || null;
+    const oldPipelineId = lead.pipelineId || null;
+
     await Lead.findByIdAndUpdate(lead._id, update);
     logger.info(`Lead ${lead._id} final update`, update);
+
+    if (update.pipelineId && update.stageId) {
+      try {
+        await leadStageProgressService.syncLeadStageProgressOnLeadPatch(
+          lead._id,
+          oldStageId,
+          oldPipelineId,
+          update.pipelineId,
+          update.stageId
+        );
+      } catch (slaErr) {
+        logger.error('Lead SLA sync after AI assignment', { error: slaErr.message });
+      }
+    }
 
     // ── Send email to assigned user ──────────────────────────────
     if (assignedTo) {

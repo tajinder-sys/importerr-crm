@@ -37,6 +37,8 @@ const KanbanColumn = ({
   onAddLead,
   onNotify,
   isAdmin,
+  slaAdmin = false,
+  onStageTimerUpdated,
 }) => {
   const { setNodeRef, isOver } = useDroppable({ id: stage._id });
   const panelRef = useRef(null);
@@ -320,6 +322,8 @@ const KanbanColumn = ({
                 onEdit={onEdit}
                 onNotify={onNotify}
                 showAssigneeOnCollapsed={isAdmin}
+                slaAdmin={slaAdmin}
+                onStageTimerUpdated={onStageTimerUpdated}
               />
             ))}
           </SortableContext>
