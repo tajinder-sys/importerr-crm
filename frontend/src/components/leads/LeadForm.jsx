@@ -350,19 +350,6 @@ const LeadForm = ({
               searchable={false}
             />
           </FieldWrapper>
-
-          <FieldWrapper
-            label="Status" icon={CheckCircle2} required
-            touched={touched.status} error={errors.status} value={values.status}
-          >
-            <SearchableSelect
-              name="status" value={values.status || 'new'}
-              onChange={handleChange}
-              options={STATUS_OPTIONS}
-              searchable={false}
-            />
-          </FieldWrapper>
-
         </div>
 
         {/* ── Pipeline assignment ── */}
