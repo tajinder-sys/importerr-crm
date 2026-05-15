@@ -19,9 +19,10 @@ import Button from '../../components/common/ui/Button';
 import { Eye, Pencil } from 'lucide-react';
 
 import LeadsHeader from './LeadsHeader';
+import LeadsSlaDueBanner from './comp/LeadsSlaDueBanner';
 import KanbanBoard from './comp/KanbanBoard';
 import useKanban from './hooks/useKanban';
-import { TASK_PRIORITY_LEVELS } from '../../utils/constants';
+import { TASK_PRIORITY_LEVELS, USER_ROLES } from '../../utils/constants';
 
 const DEFAULT_LEAD_FORM = {
   name: '',
@@ -344,6 +345,14 @@ const Leads = () => {
       <div className="mx-auto max-w-full space-y-4">
 
         {/* Page header */}
+        <LeadsSlaDueBanner
+          userId={
+            user?.role === USER_ROLES.TEAM_MEMBER || user?.role === USER_ROLES.TEAM_MANAGER
+              ? user?._id || user?.id
+              : null
+          }
+        />
+
         <LeadsHeader
           onCreateLead={() => openCreateLead()}
           view={view}

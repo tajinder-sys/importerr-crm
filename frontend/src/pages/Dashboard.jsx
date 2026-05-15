@@ -12,6 +12,7 @@ import DashboardSourcesSection from './Dashboard/DashboardSourcesSection';
 import DashboardStagesSection from './Dashboard/DashboardStagesSection';
 import DashboardRecentLeadsSection from './Dashboard/DashboardRecentLeadsSection';
 import DashboardUserPerformanceSection from './Dashboard/DashboardUserPerformanceSection';
+import DashboardSlaAlertsSection from './Dashboard/DashboardSlaAlertsSection';
 
 const greetingForHour = (hour) => {
   if (hour < 12) return 'Good morning';
@@ -161,6 +162,8 @@ const Dashboard = () => {
           />
 
           <DashboardKpiSection kpis={kpis} />
+
+          <DashboardSlaAlertsSection user={user} filtersMeta={filtersMeta} />
 
           <DashboardPipelineWinRatesSection pipelineRates={pipelineRates} />
 
