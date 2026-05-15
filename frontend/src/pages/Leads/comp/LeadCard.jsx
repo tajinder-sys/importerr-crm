@@ -6,6 +6,7 @@ import LeadQuickViewModal from './LeadQuickViewModal';
 import LeadNotes from '../../../components/common/LeadNotes';
 import TaskModal from '../../../components/common/TaskModal';
 import LeadCardStageSla from './LeadCardStageSla';
+import {  TrendingUp, Zap } from 'lucide-react';
 
 /* ── helpers ──────────────────────────────────────────────────── */
 const fmtPhone = (phone) => {
@@ -59,6 +60,7 @@ const mergeStageMeta = (lead, columnStage) => {
   return { ...columnStage, ...embedded };
 };
 
+
 const StageTargetChips = ({ stageMeta, dense }) => {
   if (!stageMeta) return null;
   const prob = stageMeta.probabilityPercent;
@@ -68,25 +70,36 @@ const StageTargetChips = ({ stageMeta, dense }) => {
   if (!hasProb && !hasDays) return null;
 
   const gap = dense ? 'gap-1' : 'gap-1.5';
-  const text = dense ? 'text-[9px]' : 'text-[10px]';
+  const iconSize = dense ? 10 : 11;
+
+  const chipBase = dense
+    ? 'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium border'
+    : 'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium border';
 
   return (
     <div className={`flex flex-wrap items-center ${gap}`}>
       {hasProb && (
         <span
-          className={`inline-flex items-center gap-0.5 rounded-md bg-violet-50 px-1.5 py-0.5 font-semibold text-violet-700 ring-1 ring-violet-100 ${text}`}
+          className={`${chipBase} bg-violet-50 text-violet-800 border-violet-200 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-800/60`}
           title="Win probability for this pipeline stage"
         >
-          {/* <Percent size={dense ? 9 : 10} className="opacity-80" /> */}
+          <TrendingUp size={iconSize} className="opacity-70 flex-shrink-0" />
           {prob}%
         </span>
       )}
       {hasDays && (
         <span
-          className={`inline-flex items-center gap-0.5 rounded-md bg-amber-50 px-1.5 py-0.5 font-semibold text-amber-900 ring-1 ring-amber-100 ${text}`}
+          className={`${chipBase} ${
+            days === 0
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/60'
+              : 'bg-amber-50 text-amber-900 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/60'
+          }`}
           title="Suggested follow-up interval for this stage"
         >
-          <Timer size={dense ? 9 : 10} className="opacity-80" />
+          {days === 0
+            ? <Zap size={iconSize} className="opacity-70 flex-shrink-0" />
+            : <Timer size={iconSize} className="opacity-70 flex-shrink-0" />
+          }
           {days === 0 ? 'Same day' : `${days}d follow-up`}
         </span>
       )}
