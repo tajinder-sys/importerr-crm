@@ -258,36 +258,29 @@ const StageModal = ({
 
         <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 p-3">
           <div>
-            <p className="text-sm font-medium text-slate-700">
-              Stage Active
-            </p>
-
-            <p className="mt-0.5 text-xs text-slate-400">
-              Inactive stages won't appear in deal flows
-            </p>
+            <p className="text-sm font-medium text-slate-700">Stage Active</p>
+            <p className="mt-0.5 text-xs text-slate-400">Inactive stages won't appear in deal flows</p>
           </div>
-
           <button
             type="button"
-            onClick={() =>
-              setFormData((p) => ({
-                ...p,
-                isActive: !p.isActive
-              }))
-            }
-            className={`relative h-6 w-11 rounded-full transition ${
-              formData.isActive
-                ? 'bg-emerald-500'
-                : 'bg-slate-300'
-            }`}
+            onClick={() => setFormData((p) => ({ ...p, isActive: !p.isActive }))}
+            className={`relative h-6 w-11 rounded-full transition ${formData.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}
           >
-            <span
-              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${
-                formData.isActive
-                  ? 'left-[22px]'
-                  : 'left-0.5'
-              }`}
-            />
+            <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${formData.isActive ? 'left-[22px]' : 'left-0.5'}`} />
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between rounded-xl border border-violet-100 bg-violet-50 p-3">
+          <div>
+            <p className="text-sm font-medium text-violet-800">Count as Conversion</p>
+            <p className="mt-0.5 text-xs text-violet-500">Leads in this stage will be counted in conversion rate</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFormData((p) => ({ ...p, isConversion: !p.isConversion }))}
+            className={`relative h-6 w-11 rounded-full transition ${formData.isConversion ? 'bg-violet-600' : 'bg-slate-300'}`}
+          >
+            <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${formData.isConversion ? 'left-[22px]' : 'left-0.5'}`} />
           </button>
         </div>
       </form>

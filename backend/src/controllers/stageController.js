@@ -152,10 +152,11 @@ const createStage = async (req, res) => {
       color,
       isActive,
       followUpDays,
-      probabilityPercent
+      probabilityPercent,
+      isConversion
     } = req.body;
 
-    if (!name || name.trim() === '') {
+    if (!name?.trim()) {
       return sendBadRequest(res, 'Stage name is required');
     }
 
@@ -169,18 +170,22 @@ const createStage = async (req, res) => {
 
     // Check if pipeline exists
     const pipeline = await Pipeline.findById(pipelineId);
+
     if (!pipeline) {
       return sendNotFound(res, 'Pipeline not found');
     }
 
     // Check if stage with same order exists in this pipeline
-    const existingStage = await Stage.findOne({ 
-      pipelineId, 
-      order 
+    const existingStage = await Stage.findOne({
+      pipelineId,
+      order
     });
 
     if (existingStage) {
-      return sendBadRequest(res, 'Stage with this order already exists in this pipeline');
+      return sendBadRequest(
+        res,
+        'Stage with this order already exists in this pipeline'
+      );
     }
 
     const parsedFollowUp = parseOptionalInt(followUpDays, {
@@ -188,6 +193,7 @@ const createStage = async (req, res) => {
       max: 365,
       label: 'Follow-up days'
     });
+
     if (parsedFollowUp?.error) {
       return sendBadRequest(res, parsedFollowUp.error);
     }
@@ -197,19 +203,25 @@ const createStage = async (req, res) => {
       max: 100,
       label: 'Probability percent'
     });
+
     if (parsedProbability?.error) {
       return sendBadRequest(res, parsedProbability.error);
     }
 
     const stage = new Stage({
       name: name.trim(),
-      description: typeof description === 'string' ? description.trim() : '',
+      description:
+        typeof description === 'string'
+          ? description.trim()
+          : '',
       pipelineId,
       order: Number(order),
       color: color || '#6B7280',
       isActive: isActive !== undefined ? isActive : true,
       followUpDays: parsedFollowUp,
-      probabilityPercent: parsedProbability
+      probabilityPercent: parsedProbability,
+      isConversion:
+        isConversion === true || isConversion === 'true'
     });
 
     await stage.save();
@@ -222,12 +234,12 @@ const createStage = async (req, res) => {
       'Stage created successfully',
       populatedStage
     );
+
   } catch (error) {
     console.error('Create stage error:', error);
     sendBadRequest(res, 'Failed to create stage');
   }
 };
-
 // =========================
 // Update Stage
 // =========================
@@ -242,7 +254,8 @@ const updateStage = async (req, res) => {
       color,
       isActive,
       followUpDays,
-      probabilityPercent
+      probabilityPercent,
+      isConversion
     } = req.body;
 
     const stage = await Stage.findById(stageId);
@@ -318,6 +331,10 @@ const updateStage = async (req, res) => {
 
     if (isActive !== undefined) {
       stage.isActive = isActive;
+    }
+
+    if (isConversion !== undefined) {
+      stage.isConversion = isConversion === true || isConversion === 'true';
     }
 
     await stage.save();

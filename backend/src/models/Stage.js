@@ -47,6 +47,10 @@ const stageSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  isConversion: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

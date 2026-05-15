@@ -224,8 +224,6 @@ const getDashboardKpis = async (req, res) => {
 
     const [row] = await Lead.aggregate([
       { $match: match },
-      lookupTerminalStageForLead(),
-      { $unwind: { path: '$terminalStage', preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
           from: 'stages',
@@ -238,12 +236,7 @@ const getDashboardKpis = async (req, res) => {
       {
         $addFields: {
           prob: { $ifNull: ['$st.probabilityPercent', null] },
-          isWonTerminalStage: {
-            $and: [
-              { $ifNull: ['$terminalStage._id', false] },
-              { $eq: ['$stageId', '$terminalStage._id'] },
-            ],
-          },
+          isConversionStage: { $eq: ['$st.isConversion', true] },
         },
       },
       {
@@ -253,19 +246,17 @@ const getDashboardKpis = async (req, res) => {
           leadsWithStageDoc: { $sum: { $cond: [{ $ifNull: ['$st._id', false] }, 1, 0] } },
           avgStageProbability: { $avg: '$prob' },
           wonStageLeads: {
-            $sum: { $cond: ['$isWonTerminalStage', 1, 0] },
+            $sum: { $cond: ['$isConversionStage', 1, 0] },
           },
           zeroProbLeads: {
-            $sum: {
-              $cond: [{ $eq: ['$prob', 0] }, 1, 0],
-            },
+            $sum: { $cond: [{ $eq: ['$prob', 0] }, 1, 0] },
           },
           inProgressLeads: {
             $sum: {
               $cond: [
                 {
                   $and: [
-                    { $eq: ['$isWonTerminalStage', false] },
+                    { $eq: ['$isConversionStage', false] },
                     {
                       $or: [
                         { $eq: ['$prob', null] },
@@ -296,7 +287,7 @@ const getDashboardKpis = async (req, res) => {
       /** Conversion: leads sitting in the terminal stage (max `order`) of their pipeline */
       wonStageSharePercent: conversionFromStage,
       wonStageLeads: row?.wonStageLeads ?? 0,
-      wonStageDefinition: 'terminal_order',
+      wonStageDefinition: 'isConversion_flag',
       zeroProbabilityLeads: row?.zeroProbLeads ?? 0,
       inProgressLeads: row?.inProgressLeads ?? 0,
     });
@@ -424,16 +415,18 @@ const getDashboardUserPerformance = async (req, res) => {
 
     const rows = await Lead.aggregate([
       { $match: perfMatch },
-      lookupTerminalStageForLead(),
-      { $unwind: { path: '$terminalStage', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'stages',
+          localField: 'stageId',
+          foreignField: '_id',
+          as: 'st',
+        },
+      },
+      { $unwind: { path: '$st', preserveNullAndEmptyArrays: true } },
       {
         $addFields: {
-          isWonTerminalStage: {
-            $and: [
-              { $ifNull: ['$terminalStage._id', false] },
-              { $eq: ['$stageId', '$terminalStage._id'] },
-            ],
-          },
+          isConversionStage: { $eq: ['$st.isConversion', true] },
         },
       },
       {
@@ -441,7 +434,7 @@ const getDashboardUserPerformance = async (req, res) => {
           _id: '$assignedTo',
           leadCount: { $sum: 1 },
           wonStageLeads: {
-            $sum: { $cond: ['$isWonTerminalStage', 1, 0] },
+            $sum: { $cond: ['$isConversionStage', 1, 0] },
           },
         },
       },
@@ -596,24 +589,26 @@ const getDashboardPipelineWinRates = async (req, res) => {
 
     const agg = await Lead.aggregate([
       { $match: { ...match, pipelineId: { $in: pipelineIds } } },
-      lookupTerminalStageForLead(),
-      { $unwind: { path: '$terminalStage', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'stages',
+          localField: 'stageId',
+          foreignField: '_id',
+          as: 'st',
+        },
+      },
+      { $unwind: { path: '$st', preserveNullAndEmptyArrays: true } },
       {
         $addFields: {
-          isWonTerminalStage: {
-            $and: [
-              { $ifNull: ['$terminalStage._id', false] },
-              { $eq: ['$stageId', '$terminalStage._id'] },
-            ],
-          },
+          isConversionStage: { $eq: ['$st.isConversion', true] },
         },
       },
       {
         $group: {
           _id: '$pipelineId',
           leadCount: { $sum: 1 },
-          wonLeads: { $sum: { $cond: ['$isWonTerminalStage', 1, 0] } },
-          terminalStageName: { $first: '$terminalStage.name' },
+          wonLeads: { $sum: { $cond: ['$isConversionStage', 1, 0] } },
+          conversionStageName: { $first: { $cond: ['$isConversionStage', '$st.name', null] } },
         },
       },
     ]);
@@ -629,7 +624,7 @@ const getDashboardPipelineWinRates = async (req, res) => {
         pipelineId: p._id,
         name: p.name,
         teamName: p.teamId?.name || '',
-        terminalStageName: s?.terminalStageName || null,
+        terminalStageName: s?.conversionStageName || null,
         leadCount,
         wonLeads,
         winRatePercent,

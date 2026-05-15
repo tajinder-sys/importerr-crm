@@ -28,6 +28,7 @@ const DEFAULT_STAGE_FORM = {
   order: 0,
   color: '#6366f1',
   isActive: true,
+  isConversion: false,
   followUpDays: '',
   probabilityPercent: '',
 };
@@ -232,6 +233,7 @@ const PipelineStages = () => {
       order: stage.order,
       color: stage.color || '#6366f1',
       isActive: stage.isActive,
+      isConversion: stage.isConversion || false,
       followUpDays: stage.followUpDays ?? '',
       probabilityPercent: stage.probabilityPercent ?? '',
     });
