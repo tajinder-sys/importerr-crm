@@ -2,7 +2,7 @@ const express = require('express');
 const { ingestLeadWebhook, whatsappWebhookVerify, whatsappWebhookMessage } = require('../controllers/channelLeadController');
 const {
   listAccounts, createAccount, updateAccount, toggleAccount, deleteAccount,
-  gmailAuthRedirect, getGmailAuthUrl, gmailAuthCallback, gmailWebhook
+  gmailAuthRedirect, getGmailAuthUrl, gmailAuthCallback
 } = require('../controllers/connectedAccountController');
 const { auth, adminOnly } = require('../middleware/auth');
 const router = express.Router();
@@ -11,9 +11,6 @@ const router = express.Router();
 router.get('/auth/gmail/:accountId/url', auth, adminOnly, getGmailAuthUrl);
 router.get('/auth/gmail/callback', gmailAuthCallback);
 router.get('/auth/gmail/:accountId', auth, adminOnly, gmailAuthRedirect);
-
-// Gmail Pub/Sub webhook
-router.post('/webhook/gmail', gmailWebhook);
 
 // WhatsApp webhook (per account)
 router.get('/webhook/whatsapp/:accountId', whatsappWebhookVerify);
