@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '../../components/common/ui/Card';
-import { Copy, Plus, Trash2, Power, ExternalLink, ArrowLeft } from 'lucide-react';
+import { Copy, Plus, Trash2, Power, ExternalLink, ArrowLeft, Pencil, Users, Search } from 'lucide-react';
 import Modal from '../../components/common/ui/Modal';
 import Snackbar from '../../components/common/ui/Snackbar';
 import Button from '../../components/common/ui/Button';
@@ -11,6 +11,7 @@ import { UiPageTitle, UiPageDescription, UiSectionTitle } from '../../components
 import api from '../../utils/api';
 import { API_ROUTES } from '../../utils/apiRoutes';
 import { useAuth } from '../../hooks/useAuth';
+import { fetchTeamAssignableUsers } from '../../utils/fetchTeamAssignableUsers';
 
 const BASE_URL = import.meta.env.VITE_API_URL + '/channels';
 
@@ -129,6 +130,13 @@ const Integrations = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+  const [viewUsersTarget, setViewUsersTarget] = useState(null);
+  const [teamUsers, setTeamUsers] = useState([]);
+  const [loadingTeamUsers, setLoadingTeamUsers] = useState(false);
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const [userSearch, setUserSearch] = useState('');
+  const [savingAssignees, setSavingAssignees] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', type: 'success' });
 
   const showSnack = (message, type = 'success') => setSnackbar({ open: true, message, type });
@@ -151,6 +159,60 @@ const Integrations = () => {
       .catch(() => { if (!cancelled) showSnack('Failed to load accounts', 'error'); });
     return () => { cancelled = true; };
   }, [source]);
+
+  useEffect(() => {
+    if (!editTarget && !viewUsersTarget) return;
+    let cancelled = false;
+    setLoadingTeamUsers(true);
+    fetchTeamAssignableUsers()
+      .then((users) => { if (!cancelled) setTeamUsers(users); })
+      .catch(() => { if (!cancelled) showSnack('Failed to load team users', 'error'); })
+      .finally(() => { if (!cancelled) setLoadingTeamUsers(false); });
+    return () => { cancelled = true; };
+  }, [editTarget, viewUsersTarget]);
+
+  useEffect(() => {
+    if (!editTarget) return;
+    const ids = (editTarget.assignedUserIds || []).map((id) => String(id));
+    setSelectedUserIds(ids);
+    setUserSearch('');
+  }, [editTarget]);
+
+  const toggleUserSelection = (userId) => {
+    const id = String(userId);
+    setSelectedUserIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleSaveAssignees = async (e) => {
+    e.preventDefault();
+    if (!editTarget) return;
+    setSavingAssignees(true);
+    try {
+      await api.patch(API_ROUTES.connectedAccounts.update(editTarget._id), {
+        assignedUserIds: selectedUserIds
+      });
+      showSnack('Team users updated');
+      setEditTarget(null);
+      await refreshAccounts();
+    } catch {
+      showSnack('Failed to update team users', 'error');
+    } finally {
+      setSavingAssignees(false);
+    }
+  };
+
+  const getAssignedUsersForAccount = (account) => {
+    const ids = (account?.assignedUserIds || []).map((id) => String(id));
+    if (!ids.length) return [];
+    const byId = Object.fromEntries(teamUsers.map((u) => [String(u._id), u]));
+    return ids.map((id) => byId[id] || { _id: id, name: 'Unknown user' });
+  };
+
+  const filteredTeamUsers = teamUsers.filter((u) =>
+    !userSearch.trim() || (u.name || '').toLowerCase().includes(userSearch.trim().toLowerCase())
+  );
 
   const handleAddAccount = async (e) => {
     e.preventDefault();
@@ -269,6 +331,16 @@ const Integrations = () => {
                             {account.gmailEmail ? `✓ ${account.gmailEmail}` : 'Connect Gmail'}
                           </button>
                         )}
+                        <button type="button" onClick={() => setEditTarget(account)}
+                          className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-primary-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-primary-400"
+                          title="Assign team users">
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button type="button" onClick={() => setViewUsersTarget(account)}
+                          className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-primary-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-primary-400"
+                          title="View assigned users">
+                          <Users className="h-4 w-4" />
+                        </button>
                         <button type="button"
                           onClick={() => navigate(`/leads?accountId=${account.accountId}&accountName=${encodeURIComponent(account.name)}`)}
                           className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-primary-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-primary-400" title="View leads">
@@ -322,6 +394,91 @@ const Integrations = () => {
             <Button type="submit" loading={saving}>Connect</Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(editTarget)}
+        onClose={() => setEditTarget(null)}
+        title={editTarget ? `Assign team users — ${editTarget.name}` : 'Assign team users'}
+        size="md"
+      >
+        <form onSubmit={handleSaveAssignees} className="space-y-4">
+          <p className="text-sm text-gray-600 dark:text-slate-400">
+            Select team members who can work with leads from this connected account.
+          </p>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              placeholder="Search team users…"
+              className="w-full rounded-md border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm text-gray-800 placeholder:text-gray-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400/10 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500"
+            />
+          </div>
+          <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-200 dark:border-slate-600">
+            {loadingTeamUsers ? (
+              <p className="p-4 text-sm text-gray-500 dark:text-slate-400">Loading team users…</p>
+            ) : filteredTeamUsers.length === 0 ? (
+              <p className="p-4 text-sm text-gray-500 dark:text-slate-400">No team users found.</p>
+            ) : (
+              <ul className="divide-y divide-gray-100 dark:divide-slate-700">
+                {filteredTeamUsers.map((u) => {
+                  const id = String(u._id);
+                  const checked = selectedUserIds.includes(id);
+                  return (
+                    <li key={id}>
+                      <label className="flex cursor-pointer items-center gap-3 px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleUserSelection(id)}
+                          className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                        />
+                        <span className="text-sm text-gray-900 dark:text-slate-100">{u.name || 'Unnamed'}</span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 dark:text-slate-400">
+            {selectedUserIds.length} user{selectedUserIds.length === 1 ? '' : 's'} selected
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setEditTarget(null)}>Cancel</Button>
+            <Button type="submit" loading={savingAssignees}>Save</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(viewUsersTarget)}
+        onClose={() => setViewUsersTarget(null)}
+        title={viewUsersTarget ? `Assigned users — ${viewUsersTarget.name}` : 'Assigned users'}
+        size="sm"
+      >
+        {loadingTeamUsers ? (
+          <p className="text-sm text-gray-500 dark:text-slate-400">Loading…</p>
+        ) : (() => {
+          const assigned = getAssignedUsersForAccount(viewUsersTarget);
+          if (!assigned.length) {
+            return <p className="text-sm text-gray-500 dark:text-slate-400">No team users assigned to this account.</p>;
+          }
+          return (
+            <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-slate-700 dark:border-slate-600">
+              {assigned.map((u) => (
+                <li key={String(u._id)} className="px-3 py-2.5 text-sm text-gray-900 dark:text-slate-100">
+                  {u.name || 'Unnamed'}
+                </li>
+              ))}
+            </ul>
+          );
+        })()}
+        <div className="mt-4 flex justify-end">
+          <Button type="button" variant="outline" onClick={() => setViewUsersTarget(null)}>Close</Button>
+        </div>
       </Modal>
 
       <ConfirmDialog

@@ -17,7 +17,8 @@ const connectedAccountSchema = new mongoose.Schema({
   pubsubTopic: { type: String, default: null },
   waPhoneNumberId: { type: String, default: null },
   waAccessToken: { type: String, default: null },
-  waVerifyToken: { type: String, default: null }
+  waVerifyToken: { type: String, default: null },
+  assignedUserIds: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] }
 }, { timestamps: true });
 
 module.exports = mongoose.model('ConnectedAccount', connectedAccountSchema);

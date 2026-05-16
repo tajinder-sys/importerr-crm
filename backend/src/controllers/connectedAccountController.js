@@ -1,4 +1,6 @@
 const ConnectedAccount = require('../models/ConnectedAccount');
+const User = require('../models/User');
+const { USER_ROLES } = require('../utils/constants');
 const { ingestLeadFromChannel } = require('../services/channelLeadService');
 const { getAuthUrl, exchangeCode, getEmailAddress, fetchEmailById, parseEmail, getMessagesFromHistory, setupGmailWatch } = require('../services/gmailService');
 const { sendSuccess, sendCreated, sendBadRequest, sendNotFound, sendServerError } = require('../utils/responseHandler');
@@ -31,6 +33,38 @@ const createAccount = async (req, res) => {
     return sendCreated(res, 'Account created', account);
   } catch {
     return sendServerError(res, 'Failed to create account');
+  }
+};
+
+const updateAccount = async (req, res) => {
+  const { assignedUserIds } = req.body;
+  if (assignedUserIds !== undefined && !Array.isArray(assignedUserIds)) {
+    return sendBadRequest(res, 'assignedUserIds must be an array');
+  }
+  try {
+    const account = await ConnectedAccount.findById(req.params.id);
+    if (!account) return sendNotFound(res, 'Account not found');
+
+    if (assignedUserIds !== undefined) {
+      const ids = [...new Set(assignedUserIds.map((id) => String(id).trim()).filter(Boolean))];
+      if (ids.length) {
+        const validUsers = await User.find({
+          _id: { $in: ids },
+          isActive: true,
+          role: { $in: [USER_ROLES.TEAM_MEMBER, USER_ROLES.TEAM_MANAGER] }
+        }).select('_id').lean();
+        if (validUsers.length !== ids.length) {
+          return sendBadRequest(res, 'One or more invalid team user IDs');
+        }
+      }
+      account.assignedUserIds = ids;
+    }
+
+    await account.save();
+    const { accessToken, refreshToken, googleClientSecret, waAccessToken, ...safe } = account.toObject();
+    return sendSuccess(res, 'Account updated', safe);
+  } catch {
+    return sendServerError(res, 'Failed to update account');
   }
 };
 
@@ -156,4 +190,4 @@ const gmailWebhook = async (req, res) => {
   }
 };
 
-module.exports = { listAccounts, createAccount, toggleAccount, deleteAccount, gmailAuthRedirect, getGmailAuthUrl, gmailAuthCallback, gmailWebhook };
+module.exports = { listAccounts, createAccount, updateAccount, toggleAccount, deleteAccount, gmailAuthRedirect, getGmailAuthUrl, gmailAuthCallback, gmailWebhook };

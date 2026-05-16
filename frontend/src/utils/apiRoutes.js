@@ -82,6 +82,7 @@ export const API_ROUTES = {
   connectedAccounts: {
     list: '/channels/accounts',
     create: '/channels/accounts',
+    update: (id) => `/channels/accounts/${encodeURIComponent(id)}`,
     toggle: (id) => `/channels/accounts/${encodeURIComponent(id)}/toggle`,
     delete: (id) => `/channels/accounts/${encodeURIComponent(id)}`
   },

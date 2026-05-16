@@ -1,7 +1,7 @@
 const express = require('express');
 const { ingestLeadWebhook, whatsappWebhookVerify, whatsappWebhookMessage } = require('../controllers/channelLeadController');
 const {
-  listAccounts, createAccount, toggleAccount, deleteAccount,
+  listAccounts, createAccount, updateAccount, toggleAccount, deleteAccount,
   gmailAuthRedirect, getGmailAuthUrl, gmailAuthCallback, gmailWebhook
 } = require('../controllers/connectedAccountController');
 const { auth, adminOnly } = require('../middleware/auth');
@@ -26,6 +26,7 @@ router.post('/webhook/:channel/:accountId', ingestLeadWebhook);
 // Connected accounts CRUD
 router.get('/accounts', auth, adminOnly, listAccounts);
 router.post('/accounts', auth, adminOnly, createAccount);
+router.patch('/accounts/:id', auth, adminOnly, updateAccount);
 router.patch('/accounts/:id/toggle', auth, adminOnly, toggleAccount);
 router.delete('/accounts/:id', auth, adminOnly, deleteAccount);
 
