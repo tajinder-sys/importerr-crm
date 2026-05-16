@@ -225,7 +225,7 @@ const getDashboardFilters = async (req, res) => {
 
 const getDashboardKpis = async (req, res) => {
   try {
-    const built = await buildLeadMatch(req, req.query);
+    const built = await buildLeadMatch(req, req.query, { activeOnly: false });
     if (built.error === 'forbidden') {
       return sendForbidden(res, built.message);
     }
@@ -297,7 +297,7 @@ const getDashboardStageDistribution = async (req, res) => {
       return sendForbidden(res, built.message);
     }
     const { match } = built;
-
+    console.log('match', match);
     const rows = await Lead.aggregate([
       { $match: match },
       {
@@ -393,7 +393,7 @@ const getDashboardSources = async (req, res) => {
 
 const getDashboardUserPerformance = async (req, res) => {
   try {
-    const built = await buildLeadMatch(req, req.query);
+    const built = await buildLeadMatch(req, req.query, { activeOnly: false });
     if (built.error === 'forbidden') {
       return sendForbidden(res, built.message);
     }
