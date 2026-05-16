@@ -22,7 +22,6 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/teams', require('./routes/teamRoutes'));
 app.use('/api/leads', require('./routes/lead'));
-app.use('/api/channels', require('./routes/publicRoutes'));
 app.use('/api/channels', require('./routes/channelLeadRoutes'));
 app.use('/api/templates', require('./routes/templateRoutes'));
 app.use('/api/payment-methods', require('./routes/paymentMethodRoutes'));
