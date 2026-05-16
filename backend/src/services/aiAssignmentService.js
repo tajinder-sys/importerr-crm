@@ -178,6 +178,13 @@ const assignLeadWithAI = async (lead) => {
   try {
     if (!process.env.OPENAI_API_KEY) return;
 
+    // ── Already assigned? Skip AI call entirely ──────────────────
+    const freshLead = await Lead.findById(lead._id).select('assignedTo pipelineId stageId').lean();
+    if (freshLead?.assignedTo) {
+      logger.info(`Lead ${lead._id}: already assigned, skipping AI`);
+      return;
+    }
+
     let assignedTo = null;
     let pipelineId = null;
     let stageId = null;

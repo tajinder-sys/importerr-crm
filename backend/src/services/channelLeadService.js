@@ -134,14 +134,23 @@ const ingestLeadFromChannel = async (channel, payload) => {
     if (!existingLead.userId && leadData.userId) existingLead.userId = leadData.userId;
     await existingLead.save();
     if (leadData.message) {
-      await Communication.create({
+      // Deduplicate: same lead + same message + same source already exists?
+      const commExists = await Communication.findOne({
         lead: existingLead._id,
-        senderType: 'client',
-        senderUser: null,
+        message: leadData.message,
         source: leadData.source,
         direction: 'inbound',
-        message: leadData.message
-      });
+      }).lean();
+      if (!commExists) {
+        await Communication.create({
+          lead: existingLead._id,
+          senderType: 'client',
+          senderUser: null,
+          source: leadData.source,
+          direction: 'inbound',
+          message: leadData.message
+        });
+      }
     }
     return { ok: true, lead: existingLead, isNew: false };
   }
@@ -149,14 +158,22 @@ const ingestLeadFromChannel = async (channel, payload) => {
   const lead = await Lead.create({ ...leadData });
 
   if (leadData.message) {
-    await Communication.create({
+    const commExists = await Communication.findOne({
       lead: lead._id,
-      senderType: 'client',
-      senderUser: null,
+      message: leadData.message,
       source: leadData.source,
       direction: 'inbound',
-      message: leadData.message
-    });
+    }).lean();
+    if (!commExists) {
+      await Communication.create({
+        lead: lead._id,
+        senderType: 'client',
+        senderUser: null,
+        source: leadData.source,
+        direction: 'inbound',
+        message: leadData.message
+      });
+    }
   }
 
   // AI pipeline + member assignment (async, non-blocking)

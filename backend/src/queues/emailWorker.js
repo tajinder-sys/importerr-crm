@@ -1,70 +1,69 @@
 const emailQueue = require('./emailQueue');
 const { ingestLeadFromChannel } = require('../services/channelLeadService');
-const { fetchEmailById, parseEmail, getMessagesFromHistory } = require('../services/gmailService');
-const { assignLeadWithAI } = require('../services/aiAssignmentService');
+const { fetchEmailById, parseEmail } = require('../services/gmailService');
 const ConnectedAccount = require('../models/ConnectedAccount');
 const Lead = require('../models/lead');
 const Communication = require('../models/Communication');
 const logger = require('../utils/logger');
 
-// ── Concurrency: process 3 emails at a time (tune as needed) ─────
 const CONCURRENCY = 3;
 
-emailQueue.process('gmail-pubsub', CONCURRENCY, async (job) => {
-  const { accountId, messageIds, newHistoryId } = job.data;
+// ── Process individual Gmail message ─────────────────────────────
+emailQueue.process('gmail-message', CONCURRENCY, async (job) => {
+  const { accountId, messageId } = job.data;
 
   const account = await ConnectedAccount.findOne({ accountId, isActive: true });
   if (!account) throw new Error(`Account not found: ${accountId}`);
 
-  // Update historyId
-  if (newHistoryId && parseInt(newHistoryId) > parseInt(account.historyId || 0)) {
-    account.historyId = newHistoryId;
-    await account.save();
+  const emailData = await fetchEmailById(account, messageId);
+  const { name, email, body, subject, threadId } = parseEmail(emailData);
+  if (!email) return;
+
+  // Thread reply → add communication to existing lead
+  if (threadId) {
+    const threadLead = await Lead.findOne({ gmailThreadId: threadId }).lean();
+    if (threadLead) {
+      const msg = body || subject || '';
+      const exists = await Communication.findOne({
+        lead: threadLead._id,
+        threadId,
+        message: msg,
+      }).lean();
+
+      if (!exists) {
+        await Communication.create({
+          lead: threadLead._id,
+          senderType: 'client',
+          senderUser: null,
+          source: 'email',
+          direction: 'inbound',
+          message: msg,
+          threadId,
+        });
+        logger.info(`[EmailWorker] Thread reply added to lead ${threadLead._id}`);
+      }
+      return;
+    }
   }
 
-  for (const messageId of messageIds) {
-    try {
-      const emailData = await fetchEmailById(account, messageId);
-      const { name, email, body, subject, threadId } = parseEmail(emailData);
-      if (!email) continue;
+  // New lead
+  const result = await ingestLeadFromChannel('email', {
+    name: name || email.split('@')[0],
+    email,
+    phone: '',
+    message: body || subject || '',
+    _accountId: account.accountId,
+    _threadId: threadId,
+  });
 
-      // Thread reply → add to existing lead communication
-      if (threadId) {
-        const threadLead = await Lead.findOne({ gmailThreadId: threadId }).lean();
-        if (threadLead) {
-          await Communication.create({
-            lead: threadLead._id,
-            senderType: 'client',
-            senderUser: null,
-            source: 'email',
-            direction: 'inbound',
-            message: body || subject || '',
-            threadId,
-          });
-          logger.info(`[EmailWorker] Thread reply added to lead ${threadLead._id}`);
-          continue;
-        }
-      }
-
-      // New lead
-      const result = await ingestLeadFromChannel('email', {
-        name: name || email.split('@')[0],
-        email,
-        phone: '',
-        message: body || subject || '',
-        _accountId: account.accountId,
-        _threadId: threadId,
-      });
-
-      if (result.ok && result.isNew) {
-        logger.info(`[EmailWorker] New lead created: ${result.lead._id} from ${email}`);
-      }
-    } catch (err) {
-      logger.error(`[EmailWorker] Failed to process messageId ${messageId}: ${err.message}`);
-    }
+  if (result.ok) {
+    logger.info(`[EmailWorker] Lead ${result.isNew ? 'created' : 'updated'}: ${result.lead._id} from ${email}`);
+  } else {
+    logger.warn(`[EmailWorker] Ingestion failed for ${email}: ${result.errors?.join(', ')}`);
   }
 });
 
+// ── Process generic channel lead (WhatsApp, Email form, Meta) ────
 emailQueue.process('ingest-lead', CONCURRENCY, async (job) => {
   const { channel, payload } = job.data;
   const result = await ingestLeadFromChannel(channel, payload);
@@ -75,7 +74,7 @@ emailQueue.process('ingest-lead', CONCURRENCY, async (job) => {
   }
 });
 
-// ── Job lifecycle logs ────────────────────────────────────────────
+// ── Job lifecycle ─────────────────────────────────────────────────
 emailQueue.on('completed', (job) => {
   logger.info(`[EmailQueue] Job ${job.id} (${job.name}) completed`);
 });

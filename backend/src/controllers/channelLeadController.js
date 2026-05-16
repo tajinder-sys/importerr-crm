@@ -1,68 +1,99 @@
-const { sendBadRequest, sendCreated, sendSuccess, sendServerError } = require('../utils/responseHandler');
-const { ingestLeadFromChannel } = require('../services/channelLeadService');
+const { sendBadRequest, sendSuccess } = require('../utils/responseHandler');
 const ConnectedAccount = require('../models/ConnectedAccount');
-const Lead = require('../models/lead');
-const Communication = require('../models/Communication');
 const { getMessagesFromHistory } = require('../services/gmailService');
 const emailQueue = require('../queues/emailQueue');
 const logger = require('../utils/logger');
 
 const SUPPORTED_CHANNELS = ['whatsapp', 'email', 'meta', 'gmail'];
 
+// ── Gmail Pub/Sub handler ─────────────────────────────────────────
 const handleGmailPubSub = async (req, res, account) => {
-  res.sendStatus(200); // instant response to Google
+  res.sendStatus(200); // instant ACK to Google
   try {
     const message = req.body?.message;
     if (!message?.data) return;
+
     const decoded = JSON.parse(Buffer.from(message.data, 'base64').toString('utf-8'));
     const { historyId } = decoded;
     if (!historyId) return;
 
-    const startHistoryId = account.historyId || String(parseInt(historyId) - 100);
-    const { messageIds, newHistoryId } = await getMessagesFromHistory(account, startHistoryId);
+    // ── historyId race condition fix ──────────────────────────────
+    // Atomically update historyId only if incoming > stored
+    const updated = await ConnectedAccount.findOneAndUpdate(
+      {
+        _id: account._id,
+        $or: [
+          { historyId: null },
+          { historyId: { $lt: String(parseInt(historyId) - 1) } },
+        ],
+      },
+      { $set: { historyId: String(parseInt(historyId) - 1) } },
+      { new: false } // return old doc to get startHistoryId
+    );
 
+    const startHistoryId = updated
+      ? (updated.historyId || String(parseInt(historyId) - 100))
+      : null;
+
+    // Another concurrent request already handled this historyId
+    if (!startHistoryId) {
+      logger.info(`[GmailWebhook] Skipping duplicate historyId ${historyId} for account ${account.accountId}`);
+      return;
+    }
+
+    const { messageIds, newHistoryId } = await getMessagesFromHistory(account, startHistoryId);
     if (!messageIds.length) return;
 
-    // Push to queue — worker processes in background
-    await emailQueue.add('gmail-pubsub', {
-      accountId: account.accountId,
-      messageIds,
-      newHistoryId,
-    }, {
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 5000 },
-      removeOnComplete: 100,
-      removeOnFail: 50,
-    });
+    // Update to final historyId
+    if (newHistoryId) {
+      await ConnectedAccount.findByIdAndUpdate(account._id, { historyId: newHistoryId });
+    }
 
-    logger.info(`[GmailWebhook] Queued ${messageIds.length} message(s) for account ${account.accountId}`);
+    // ── Each messageId gets its OWN job (fix retry issue) ─────────
+    await Promise.all(
+      messageIds.map((messageId) =>
+        emailQueue.add(
+          'gmail-message',
+          { accountId: account.accountId, messageId },
+          {
+            jobId: `gmail-${account.accountId}-${messageId}`, // dedup by jobId
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 5000 },
+            removeOnComplete: 100,
+            removeOnFail: 50,
+          }
+        )
+      )
+    );
+
+    logger.info(`[GmailWebhook] Queued ${messageIds.length} individual job(s) for account ${account.accountId}`);
   } catch (err) {
     logger.error(`[GmailWebhook] Error: ${err.message}`);
   }
 };
 
-// GET /webhook/whatsapp/:accountId — Meta verification
+// ── WhatsApp webhook verify ───────────────────────────────────────
 const whatsappWebhookVerify = async (req, res) => {
   try {
     const { accountId } = req.params;
     const account = await ConnectedAccount.findOne({ accountId, type: 'whatsapp', isActive: true });
     if (!account) return res.sendStatus(403);
-    const mode = req.query['hub.mode'];
-    const token = req.query['hub.verify_token'];
+    const mode      = req.query['hub.mode'];
+    const token     = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
     if (mode === 'subscribe' && token === account.waVerifyToken) {
       return res.status(200).send(challenge);
     }
     return res.sendStatus(403);
   } catch (err) {
-    console.error('WhatsApp verify error:', err.message);
+    logger.error(`[WhatsApp] Verify error: ${err.message}`);
     return res.sendStatus(500);
   }
 };
 
-// POST /webhook/whatsapp/:accountId — incoming messages
+// ── WhatsApp incoming messages → queue ───────────────────────────
 const whatsappWebhookMessage = async (req, res) => {
-  res.sendStatus(200);
+  res.sendStatus(200); // instant ACK to Meta
   try {
     const { accountId } = req.params;
     const account = await ConnectedAccount.findOne({ accountId, type: 'whatsapp', isActive: true });
@@ -74,46 +105,59 @@ const whatsappWebhookMessage = async (req, res) => {
 
     for (const msg of value.messages) {
       if (msg.type !== 'text') continue;
-      const phone = msg.from;
-      const text = msg.text?.body || '';
-      const contactName = value.contacts?.find(c => c.wa_id === msg.from)?.profile?.name || '';
-      await ingestLeadFromChannel('whatsapp', {
-        name: contactName || phone,
-        phone,
-        message: text,
-        _accountId: account.accountId
-      });
+      const phone       = msg.from;
+      const text        = msg.text?.body || '';
+      const contactName = value.contacts?.find((c) => c.wa_id === msg.from)?.profile?.name || '';
+
+      await emailQueue.add(
+        'ingest-lead',
+        {
+          channel: 'whatsapp',
+          payload: { name: contactName || phone, phone, message: text, _accountId: account.accountId },
+        },
+        {
+          jobId: `wa-${account.accountId}-${msg.id}`, // dedup by WhatsApp message ID
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 3000 },
+          removeOnComplete: 100,
+          removeOnFail: 50,
+        }
+      );
     }
   } catch (err) {
-    console.error('WhatsApp webhook error:', err.message);
+    logger.error(`[WhatsApp] Webhook error: ${err.message}`);
   }
 };
 
+// ── Generic channel webhook → queue ──────────────────────────────
 const ingestLeadWebhook = async (req, res) => {
   const channel = String(req.params.channel || '').toLowerCase();
   if (!SUPPORTED_CHANNELS.includes(channel)) {
     return sendBadRequest(res, 'Unsupported channel. Use whatsapp, email, meta or gmail');
   }
+
   const { accountId } = req.params;
   if (accountId) {
     const account = await ConnectedAccount.findOne({ accountId, isActive: true });
     if (!account) return sendBadRequest(res, 'Invalid or inactive account');
+
+    // Gmail Pub/Sub — special handling
     if (account.type === 'gmail' && req.body?.message?.data) {
       return handleGmailPubSub(req, res, account);
     }
     req.body._accountId = accountId;
   }
 
-  // Queue the ingestion — instant 200 response
-  await emailQueue.add('ingest-lead', {
-    channel,
-    payload: req.body,
-  }, {
-    attempts: 3,
-    backoff: { type: 'exponential', delay: 3000 },
-    removeOnComplete: 100,
-    removeOnFail: 50,
-  });
+  await emailQueue.add(
+    'ingest-lead',
+    { channel, payload: req.body },
+    {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 3000 },
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    }
+  );
 
   return sendSuccess(res, 'Received');
 };

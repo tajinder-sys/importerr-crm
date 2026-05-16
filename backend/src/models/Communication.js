@@ -43,5 +43,6 @@ const communicationSchema = new mongoose.Schema(
 );
 
 communicationSchema.index({ lead: 1, createdAt: 1 });
+communicationSchema.index({ lead: 1, message: 1, source: 1, direction: 1 }); // dedup index
 
 module.exports = mongoose.model('Communication', communicationSchema);
