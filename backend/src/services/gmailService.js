@@ -11,7 +11,9 @@ const getAuthUrl = (account) => {
   return client.generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
-    scope: ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/userinfo.email'],
+    scope: ['https://www.googleapis.com/auth/gmail.readonly',
+      'https://www.googleapis.com/auth/gmail.send',
+      'https://www.googleapis.com/auth/userinfo.email'],
     state: String(account._id)
   });
 };
@@ -125,4 +127,125 @@ const setupGmailWatch = async (account) => {
   }
 };
 
-module.exports = { getAuthUrl, exchangeCode, getEmailAddress, fetchEmailById, parseEmail, getMessagesFromHistory, setupGmailWatch };
+const encodeRawMessage = (lines) =>
+  Buffer.from(lines.join('\n'))
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+const getHeaderFromMessage = (message, name) => {
+  const headers = message.payload?.headers || [];
+  return headers.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value || '';
+};
+
+const sendEmail = async (account, to, subject, message) => {
+  try {
+    const gmail = await getGmailClient(account);
+    const emailLines = [
+      `To: ${to}`,
+      'Content-Type: text/plain; charset=UTF-8',
+      'MIME-Version: 1.0',
+      `Subject: ${subject}`,
+      '',
+      message
+    ];
+
+    const res = await gmail.users.messages.send({
+      userId: 'me',
+      requestBody: { raw: encodeRawMessage(emailLines) }
+    });
+
+    return res.data;
+  } catch (err) {
+    console.error('Send email failed:', err.message);
+    throw err;
+  }
+};
+
+/** Reply in an existing Gmail thread using connected account + thread id. */
+const replyInThread = async (account, { threadId, toEmail, replyMessage }) => {
+  if (!threadId) throw new Error('threadId is required');
+  if (!toEmail) throw new Error('Recipient email is required');
+  if (!replyMessage || !String(replyMessage).trim()) throw new Error('Reply message is required');
+
+  const gmail = await getGmailClient(account);
+  const { data: thread } = await gmail.users.threads.get({
+    userId: 'me',
+    id: threadId,
+    format: 'metadata',
+    metadataHeaders: ['Subject', 'From', 'Message-ID', 'References']
+  });
+
+  const messages = thread.messages || [];
+  if (!messages.length) throw new Error('Email thread not found');
+
+  const accountEmail = (account.gmailEmail || '').toLowerCase();
+  let refMsg = messages[messages.length - 1];
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const from = getHeaderFromMessage(messages[i], 'From').toLowerCase();
+    if (!accountEmail || !from.includes(accountEmail)) {
+      refMsg = messages[i];
+      break;
+    }
+  }
+
+  const subject = getHeaderFromMessage(refMsg, 'Subject') || 'Your inquiry';
+  const messageIdHeader = getHeaderFromMessage(refMsg, 'Message-ID');
+  const references = getHeaderFromMessage(refMsg, 'References');
+  const refChain = [references, messageIdHeader].filter(Boolean).join(' ').trim();
+  const reSubject = /^re:/i.test(subject.trim()) ? subject.trim() : `Re: ${subject.trim()}`;
+
+  const emailLines = [
+    `To: ${toEmail}`,
+    `Subject: ${reSubject}`,
+    ...(messageIdHeader ? [`In-Reply-To: ${messageIdHeader}`] : []),
+    ...(refChain ? [`References: ${refChain}`] : []),
+    'Content-Type: text/plain; charset=UTF-8',
+    'MIME-Version: 1.0',
+    '',
+    String(replyMessage).trim()
+  ];
+
+  const response = await gmail.users.messages.send({
+    userId: 'me',
+    requestBody: {
+      raw: encodeRawMessage(emailLines),
+      threadId
+    }
+  });
+
+  return response.data;
+};
+
+const replyToEmail = async (account, originalMessageId, replyMessage) => {
+  const gmail = await getGmailClient(account);
+  const { data: original } = await gmail.users.messages.get({
+    userId: 'me',
+    id: originalMessageId,
+    format: 'metadata',
+    metadataHeaders: ['Subject', 'From', 'Message-ID']
+  });
+  if (!original.threadId) throw new Error('Original message has no thread');
+  const from = getHeaderFromMessage(original, 'From');
+  const match = from.match(/<(.+?)>/);
+  const toEmail = match ? match[1].trim() : from.trim();
+  return replyInThread(account, {
+    threadId: original.threadId,
+    toEmail,
+    replyMessage
+  });
+};
+
+module.exports = {
+  getAuthUrl,
+  exchangeCode,
+  getEmailAddress,
+  fetchEmailById,
+  parseEmail,
+  getMessagesFromHistory,
+  setupGmailWatch,
+  sendEmail,
+  replyInThread,
+  replyToEmail
+};

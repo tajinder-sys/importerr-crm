@@ -10,6 +10,7 @@ const {
   deleteLead,
   getLeadStatsOverview,
   markLeadCompletedHandler,
+  sendEmailToLead
 } = require('../controllers/lead');
 const {
   getLeadStageTimer,
@@ -45,4 +46,7 @@ router.get('/:leadId/notes', auth, getNotes);
 router.post('/:leadId/notes', auth, addNote);
 router.put('/:leadId/notes/:noteId', auth, updateNote);
 router.delete('/:leadId/notes/:noteId', auth, authorize(['admin']), deleteNote);
+
+//send email to lead
+router.post('/:leadId/send-email', auth, sendEmailToLead);
 module.exports = router;

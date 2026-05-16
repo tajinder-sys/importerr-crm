@@ -14,7 +14,8 @@ const Task = require('../models/Task');
 const leadStageProgressService = require('../services/leadStageProgressService');
 const leadCompletionService = require('../services/leadCompletionService');
 const { applyLeadCompletionFilter } = require('../utils/leadQueryFilters');
-
+const { sendEmail, replyInThread } = require('../services/gmailService');
+const ConnectedAccount = require('../models/ConnectedAccount');
 const isAdminUser = (user) => user?.role === 'admin';
 const isTeamManagerUser = (user) => user?.role === USER_ROLES.TEAM_MANAGER;
 const canAssignOthers = (user) =>
@@ -808,7 +809,9 @@ const createOrUpdateLead = async (req, res) => {
 
 const addLeadCommunication = async (req, res) => {
   try {
-    const lead = await Lead.findById(req.params.id).select('_id source assignedTo phone email');
+    const lead = await Lead.findById(req.params.id).select(
+      '_id source assignedTo phone email accountId gmailThreadId'
+    );
     if (!lead) {
       return sendNotFound(res, 'Lead not found');
     }
@@ -846,13 +849,47 @@ const addLeadCommunication = async (req, res) => {
         `Invalid communication source. Allowed: ${allowedSources.join(', ')}`
       );
     }
+    const trimmedMessage = String(message).trim();
+    const isGmailLeadReply =
+      lead.source === COMMUNICATION_SOURCES.EMAIL &&
+      selectedSource === COMMUNICATION_SOURCES.EMAIL;
 
-    await CommunicationService.sendMessage({
-      source: selectedSource,
-      toPhone: lead.phone || '',
-      toEmail: lead.email || '',
-      message: String(message).trim()
-    });
+    if (isGmailLeadReply) {
+      if (!lead.accountId) {
+        return sendBadRequest(res, 'No Gmail account is linked to this lead');
+      }
+      if (!lead.gmailThreadId) {
+        return sendBadRequest(res, 'No email thread is linked to this lead');
+      }
+      if (!lead.email) {
+        return sendBadRequest(res, 'Lead email is required to send a reply');
+      }
+
+      const account = await ConnectedAccount.findOne({
+        accountId: lead.accountId,
+        type: 'gmail',
+        isActive: true
+      });
+      if (!account) {
+        return sendNotFound(res, 'Gmail account not found');
+      }
+      if (!account.accessToken) {
+        return sendBadRequest(res, 'Gmail account is not connected. Reconnect it in Settings.');
+      }
+
+      await replyInThread(account, {
+        threadId: lead.gmailThreadId,
+        toEmail: lead.email,
+        replyMessage: trimmedMessage
+      });
+    } else {
+      await CommunicationService.sendMessage({
+        source: selectedSource,
+        toPhone: lead.phone || '',
+        toEmail: lead.email || '',
+        message: trimmedMessage
+      });
+    }
 
     const communication = await Communication.create({
       lead: lead._id,
@@ -860,7 +897,8 @@ const addLeadCommunication = async (req, res) => {
       senderUser: req.user.id,
       source: selectedSource,
       direction: 'outbound',
-      message: String(message).trim()
+      message: trimmedMessage,
+      ...(isGmailLeadReply && lead.gmailThreadId ? { threadId: lead.gmailThreadId } : {})
     });
 
     const populatedCommunication = await Communication.findById(communication._id).populate(
@@ -985,7 +1023,41 @@ const getLeadStatsOverview = async (req, res) => {
     console.error('Get lead stats error:', error);
     sendBadRequest(res, 'Failed to retrieve lead statistics');
   }
-};
+}
+
+const sendEmailToLead = async (req, res) => {
+  try {
+    const lead = await Lead.findById(req.params.leadId);
+    if (!lead) {
+      return sendNotFound(res, 'Lead not found');
+    }
+    const { subject, message } = req.body;
+    if (!subject || !message) {
+      return sendBadRequest(res, 'subject and message are required');
+    }
+    const account = await ConnectedAccount.findOne({
+      accountId: lead.accountId,
+      type: 'gmail',
+      isActive: true
+    });
+    if (!account) {
+      return sendNotFound(res, 'Gmail account not found');
+    }
+    if (lead.gmailThreadId) {
+      await replyInThread(account, {
+        threadId: lead.gmailThreadId,
+        toEmail: lead.email,
+        replyMessage: message
+      });
+    } else {
+      await sendEmail(account, lead.email, subject, message);
+    }
+    return sendSuccess(res, 'Email sent successfully');
+  } catch (error) {
+    console.error('sendEmailToLead error:', error);
+    sendBadRequest(res, 'Failed to send email to lead');
+  }
+}
 
 module.exports = {
   getLeads,
@@ -996,4 +1068,5 @@ module.exports = {
   markLeadCompletedHandler,
   deleteLead,
   getLeadStatsOverview,
-};
+  sendEmailToLead
+}

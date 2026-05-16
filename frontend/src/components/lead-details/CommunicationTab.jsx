@@ -65,10 +65,15 @@ const CommunicationTab = ({
               />
             </div>
           ) : (
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-sm text-gray-500 dark:text-slate-400">
               Replies will be sent through <span className="font-medium">{formatLabel(effectiveReplySource)}</span>.
             </p>
           )}
+          {lead?.source === 'email' && (!lead?.gmailThreadId || !lead?.accountId) ? (
+            <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">
+              This lead is missing Gmail thread or account linkage. Replies cannot be sent until a new email is received on the connected inbox.
+            </p>
+          ) : null}
           <div className="mt-3">
             <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">Message</label>
             <textarea
@@ -84,7 +89,11 @@ const CommunicationTab = ({
               type="button"
               onClick={onSendCommunication}
               loading={sendingCommunication}
-              disabled={sendingCommunication || !replyMessage.trim()}
+              disabled={
+                sendingCommunication
+                || !replyMessage.trim()
+                || (lead?.source === 'email' && (!lead?.gmailThreadId || !lead?.accountId))
+              }
             >
               Send Reply
             </Button>

@@ -131,15 +131,21 @@ const ingestLeadFromChannel = async (channel, payload) => {
     }
     if (!existingLead.message && leadData.message) existingLead.message = leadData.message;
     if (!existingLead.userId && leadData.userId) existingLead.userId = leadData.userId;
+    if (leadData.accountId && !existingLead.accountId) existingLead.accountId = leadData.accountId;
+    if (leadData.gmailThreadId && !existingLead.gmailThreadId) {
+      existingLead.gmailThreadId = leadData.gmailThreadId;
+    }
     await existingLead.save();
     if (leadData.message) {
       // Deduplicate: same lead + same message + same source already exists?
-      const commExists = await Communication.findOne({
+      const commQuery = {
         lead: existingLead._id,
         message: leadData.message,
         source: leadData.source,
         direction: 'inbound',
-      }).lean();
+      };
+      if (leadData.gmailThreadId) commQuery.threadId = leadData.gmailThreadId;
+      const commExists = await Communication.findOne(commQuery).lean();
       if (!commExists) {
         await Communication.create({
           lead: existingLead._id,
@@ -147,7 +153,8 @@ const ingestLeadFromChannel = async (channel, payload) => {
           senderUser: null,
           source: leadData.source,
           direction: 'inbound',
-          message: leadData.message
+          message: leadData.message,
+          ...(leadData.gmailThreadId ? { threadId: leadData.gmailThreadId } : {})
         });
       }
     }
@@ -170,7 +177,8 @@ const ingestLeadFromChannel = async (channel, payload) => {
         senderUser: null,
         source: leadData.source,
         direction: 'inbound',
-        message: leadData.message
+        message: leadData.message,
+        ...(leadData.gmailThreadId ? { threadId: leadData.gmailThreadId } : {})
       });
     }
   }

@@ -22,33 +22,6 @@ const SOURCES = [
     iconBg: 'bg-green-50',
     iconColor: 'text-green-500',
     available: true
-  },
-  {
-    key: 'meta',
-    name: 'Meta Ads',
-    description: 'Capture leads from Facebook & Instagram ad forms',
-    icon: Facebook,
-    iconBg: 'bg-blue-50',
-    iconColor: 'text-blue-500',
-    available: false
-  },
-  {
-    key: 'instagram',
-    name: 'Instagram',
-    description: 'Capture leads from Instagram DMs and comments',
-    icon: Instagram,
-    iconBg: 'bg-pink-50',
-    iconColor: 'text-pink-500',
-    available: false
-  },
-  {
-    key: 'website',
-    name: 'Website Form',
-    description: 'Capture leads from your website contact forms via webhook',
-    icon: Globe,
-    iconBg: 'bg-purple-50',
-    iconColor: 'text-purple-500',
-    available: false
   }
 ];
 
