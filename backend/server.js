@@ -73,6 +73,15 @@ async function start() {
     });
   });
 
+  // ── Email Queue Worker ────────────────────────────────────────
+  process.stdout.write(`  ${dot} Email Worker  starting...`);
+  try {
+    require('./src/queues/emailWorker');
+    process.stdout.write(`\r  ${tick} Email Worker  ready           \n`);
+  } catch (err) {
+    process.stdout.write(`\r  ${cross} Email Worker  FAILED — ${err.message}\n`);
+  }
+
   // ── Summary ───────────────────────────────────────────────────
   const total = Date.now() - appStart;
   console.log(`\n  ${c.bold}${c.green}Ready${c.reset} in ${ms(total)}  ${c.gray}[${now()}]${c.reset}`);
