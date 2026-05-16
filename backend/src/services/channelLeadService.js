@@ -9,6 +9,7 @@ const SOURCE_MAP = {
   whatsapp: LEAD_SOURCES.WHATSAPP,
   email: LEAD_SOURCES.EMAIL,
   meta: LEAD_SOURCES.META_ADS,
+  gmail: LEAD_SOURCES.EMAIL,
 };
 
 const pickFirst = (obj, keys) => {
@@ -36,7 +37,8 @@ const normalizeName = (value) => String(value || '').trim();
 const normalizeLeadType = (value) => (value === 'registered' ? 'registered' : 'guest');
 
 const mapPayloadToLeadData = (channel, payload = {}) => {
-  const name = normalizeName(pickFirst(payload, ['name', 'fullName', 'customerName', 'senderName']));
+  const name = normalizeName(pickFirst(payload, ['name', 'fullName', 'customerName', 'senderName'])) 
+  || (payload.email ? payload.email.split('@')[0] : '');
   const phone = normalizePhone(pickFirst(payload, ['phone', 'mobile', 'phoneNumber', 'senderPhone']));
   const email = normalizeEmail(pickFirst(payload, ['email', 'mail', 'senderEmail']));
   const message = pickFirst(payload, ['message', 'text', 'body', 'comment', 'leadMessage']);
@@ -57,8 +59,7 @@ const mapPayloadToLeadData = (channel, payload = {}) => {
 
 const validateInboundLeadData = (leadData) => {
   const errors = [];
-  if (!leadData.name) errors.push('name is required');
-  // Phone required only if email not present
+  if (!leadData.name && !leadData.email) errors.push('name is required');  // Phone required only if email not present
   if (!leadData.phone && !leadData.email) errors.push('phone or email is required');
   if (leadData.phone && !/^\d{10}$/.test(leadData.phone)) errors.push('phone must be a valid 10-digit number');
   if (leadData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadData.email)) {

@@ -5,7 +5,7 @@ const Lead = require('../models/lead');
 const Communication = require('../models/Communication');
 const { fetchEmailById, parseEmail, getMessagesFromHistory } = require('../services/gmailService');
 
-const SUPPORTED_CHANNELS = ['whatsapp', 'email', 'meta'];
+const SUPPORTED_CHANNELS = ['whatsapp', 'email', 'meta', 'gmail'];
 
 const handleGmailPubSub = async (req, res, account) => {
   res.sendStatus(200);

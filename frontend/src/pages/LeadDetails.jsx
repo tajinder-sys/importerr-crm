@@ -461,7 +461,7 @@ const LeadDetails = () => {
           />
         )}
 
-        {!loading && lead && (lead.isCompleted || stageHistory.length > 0) && (
+        {!loading && lead && (lead.isCompleted || stageHistory.length > 0) && (user?.role === 'admin') && (
           <LeadStageTimeline stages={stageHistory} className="!mt-4" />
         )}
 
