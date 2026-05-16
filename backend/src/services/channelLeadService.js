@@ -1,7 +1,6 @@
 const Lead = require('../models/lead');
 const Communication = require('../models/Communication');
 const User = require('../models/User');
-const ConnectedAccount = require('../models/ConnectedAccount');
 const { assignLeadWithAI } = require('./aiAssignmentService');
 const { LEAD_SOURCES, LEAD_STATUSES } = require('../utils/constants');
 

@@ -72,63 +72,6 @@ const handleGmailPubSub = async (req, res, account) => {
   }
 };
 
-// ── WhatsApp webhook verify ───────────────────────────────────────
-const whatsappWebhookVerify = async (req, res) => {
-  try {
-    const { accountId } = req.params;
-    const account = await ConnectedAccount.findOne({ accountId, type: 'whatsapp', isActive: true });
-    if (!account) return res.sendStatus(403);
-    const mode      = req.query['hub.mode'];
-    const token     = req.query['hub.verify_token'];
-    const challenge = req.query['hub.challenge'];
-    if (mode === 'subscribe' && token === account.waVerifyToken) {
-      return res.status(200).send(challenge);
-    }
-    return res.sendStatus(403);
-  } catch (err) {
-    logger.error(`[WhatsApp] Verify error: ${err.message}`);
-    return res.sendStatus(500);
-  }
-};
-
-// ── WhatsApp incoming messages → queue ───────────────────────────
-const whatsappWebhookMessage = async (req, res) => {
-  res.sendStatus(200); // instant ACK to Meta
-  try {
-    const { accountId } = req.params;
-    const account = await ConnectedAccount.findOne({ accountId, type: 'whatsapp', isActive: true });
-    if (!account) return;
-
-    const entry = req.body?.entry?.[0];
-    const value = entry?.changes?.[0]?.value;
-    if (!value?.messages?.length) return;
-
-    for (const msg of value.messages) {
-      if (msg.type !== 'text') continue;
-      const phone       = msg.from;
-      const text        = msg.text?.body || '';
-      const contactName = value.contacts?.find((c) => c.wa_id === msg.from)?.profile?.name || '';
-
-      await emailQueue.add(
-        'ingest-lead',
-        {
-          channel: 'whatsapp',
-          payload: { name: contactName || phone, phone, message: text, _accountId: account.accountId },
-        },
-        {
-          jobId: `wa-${account.accountId}-${msg.id}`, // dedup by WhatsApp message ID
-          attempts: 3,
-          backoff: { type: 'exponential', delay: 3000 },
-          removeOnComplete: 100,
-          removeOnFail: 50,
-        }
-      );
-    }
-  } catch (err) {
-    logger.error(`[WhatsApp] Webhook error: ${err.message}`);
-  }
-};
-
 // ── Generic channel webhook → queue ──────────────────────────────
 const ingestLeadWebhook = async (req, res) => {
   const channel = String(req.params.channel || '').toLowerCase();
@@ -162,4 +105,4 @@ const ingestLeadWebhook = async (req, res) => {
   return sendSuccess(res, 'Received');
 };
 
-module.exports = { ingestLeadWebhook, whatsappWebhookVerify, whatsappWebhookMessage };
+module.exports = { ingestLeadWebhook };
