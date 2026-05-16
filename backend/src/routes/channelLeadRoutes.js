@@ -2,7 +2,7 @@ const express = require('express');
 const { ingestLeadWebhook } = require('../controllers/channelLeadController');
 const {
   listAccounts, createAccount, updateAccount, toggleAccount, deleteAccount,
-  gmailAuthRedirect, getGmailAuthUrl, gmailAuthCallback
+  getGmailAuthUrl, gmailAuthCallback
 } = require('../controllers/connectedAccountController');
 const { auth, adminOnly } = require('../middleware/auth');
 const router = express.Router();
@@ -10,7 +10,6 @@ const router = express.Router();
 // Gmail OAuth
 router.get('/auth/gmail/:accountId/url', auth, adminOnly, getGmailAuthUrl);
 router.get('/auth/gmail/callback', gmailAuthCallback);
-router.get('/auth/gmail/:accountId', auth, adminOnly, gmailAuthRedirect);
 
 // Generic channel webhooks
 router.post('/webhook/:channel', ingestLeadWebhook);

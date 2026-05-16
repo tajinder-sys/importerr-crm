@@ -1,7 +1,6 @@
 const ConnectedAccount = require('../models/ConnectedAccount');
 const User = require('../models/User');
 const { USER_ROLES } = require('../utils/constants');
-const { ingestLeadFromChannel } = require('../services/channelLeadService');
 const { getAuthUrl, exchangeCode, getEmailAddress, fetchEmailById, parseEmail, getMessagesFromHistory, setupGmailWatch } = require('../services/gmailService');
 const { sendSuccess, sendCreated, sendBadRequest, sendNotFound, sendServerError } = require('../utils/responseHandler');
 
@@ -90,18 +89,6 @@ const deleteAccount = async (req, res) => {
   }
 };
 
-// GET /channels/auth/gmail/:accountId — redirect to Google OAuth
-const gmailAuthRedirect = async (req, res) => {
-  try {
-    const account = await ConnectedAccount.findById(req.params.accountId);
-    if (!account || account.type !== 'gmail') return sendNotFound(res, 'Account not found');
-    const url = getAuthUrl(account);
-    return res.redirect(url);
-  } catch {
-    return sendServerError(res, 'Failed to generate auth URL');
-  }
-};
-
 // GET /channels/auth/gmail/:accountId/url — return auth URL (for frontend)
 const getGmailAuthUrl = async (req, res) => {
   try {
@@ -145,4 +132,4 @@ const gmailAuthCallback = async (req, res) => {
   }
 };
 
-module.exports = { listAccounts, createAccount, updateAccount, toggleAccount, deleteAccount, gmailAuthRedirect, getGmailAuthUrl, gmailAuthCallback };
+module.exports = { listAccounts, createAccount, updateAccount, toggleAccount, deleteAccount, getGmailAuthUrl, gmailAuthCallback };
