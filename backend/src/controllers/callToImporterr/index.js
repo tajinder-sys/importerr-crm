@@ -140,6 +140,18 @@ const getImporterrFinalPriceByOfferId = async (req, res) => {
   }
 };
 
+const getImporterrOrderByID = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const config = getRuntimeConfig();
+    const path = toPath(PRODUCT_API_ROUTES.ORDER_BY_ID, { id });
+    const payload = await callImporterrApi({ config, path });
+    sendSuccess(res, 'Importerr order fetched successfully', payload?.data || payload);
+  } catch (error) {
+    console.error('Get importerr order error:', error);
+    sendBadRequest(res, error.message || 'Failed to fetch importerr order');
+  }
+};
 
 module.exports = {
   getImporterrUserByUserId,
@@ -147,4 +159,5 @@ module.exports = {
   getImporterrProductBySku,
   getImporterrProductVariantPriceDetails,
   getImporterrFinalPriceByOfferId,
+  getImporterrOrderByID
 };

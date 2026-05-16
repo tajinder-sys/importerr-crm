@@ -42,7 +42,8 @@ export const API_ROUTES = {
     productVariantPriceDetails: (productRef) =>
       `/importerr/products/${encodeURIComponent(productRef)}/product-details`,
     finalPriceByOfferId: () => `/importerr/products/get-final-price`,
-    sendQuote: () => `/quote/send`
+    sendQuote: () => `/quote/send`,
+    orderById: (id) => `/importerr/orders/${encodeURIComponent(id)}`
   },
   quote: {
     send: () => `/quote/send`,

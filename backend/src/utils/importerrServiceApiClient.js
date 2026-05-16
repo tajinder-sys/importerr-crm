@@ -78,6 +78,7 @@ const callImporterrService = async ({
       controller.abort();
     }, Number(timeoutMs) || DEFAULT_TIMEOUT_MS);
     const start = Date.now();
+    console.log('url', url);
     try {
       const response = await fetch(url, {
         method,
