@@ -49,7 +49,7 @@ function parseDays(raw) {
 
 /** Base match for dashboard leads (no status-based logic). */
 async function buildLeadMatch(req, query, options = {}) {
-  const { ignoreQueryPipeline = false, activeOnly = true } = options;
+  const { ignoreQueryPipeline = false, activeOnly = false } = options;
   const { source, pipelineId, userId } = query;
   const match = { duplicateOf: { $in: [null, undefined] } };
   if (activeOnly) {
