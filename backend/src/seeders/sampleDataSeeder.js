@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const Lead = require('../models/lead');
-const Activity = require('../models/Activity');
+const Activity = require('../models/activity');
 const { LEAD_SOURCES, LEAD_STATUSES, ACTIVITY_TYPES } = require('../utils/constants');
 require('dotenv').config();
 

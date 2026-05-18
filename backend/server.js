@@ -38,21 +38,13 @@ async function start() {
   }
 
   // ── Redis (optional) ─────────────────────────────────────────
-  const redisHost = process.env.REDIS_HOST;
-  const redisUrl  = process.env.REDIS_URL;
-  if (redisHost || redisUrl) {
+  const { getRedisUrl, isRedisConfigured } = require('./src/config/redis');
+  if (isRedisConfigured()) {
     process.stdout.write(`  ${dot} Redis         connecting...`);
     const t0 = Date.now();
     try {
       const redis = require('redis');
-      const client = redis.createClient(
-        redisUrl
-          ? { url: redisUrl }
-          : {
-              socket: { host: redisHost, port: Number(process.env.REDIS_PORT) || 6379 },
-              ...(process.env.REDIS_PASSWORD ? { password: process.env.REDIS_PASSWORD } : {}),
-            }
-      );
+      const client = redis.createClient({ url: getRedisUrl() });
       await client.connect();
       await client.ping();
       process.stdout.write(`\r  ${tick} Redis         connected        ${ms(Date.now() - t0)}\n`);

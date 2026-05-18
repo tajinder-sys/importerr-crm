@@ -1,4 +1,4 @@
-const Activity = require('../models/Activity');
+const Activity = require('../models/activity');
 
 class ActivityService {
   static async createActivity({ leadId, type, description, performedBy, metadata = {} }) {
