@@ -1,11 +1,9 @@
 const Redis = require('ioredis');
+const { getRedisConfig } = require('../config/redis');
 
-const redisConfig = {
-  host: process.env.REDIS_HOST || '127.0.0.1',
-  port: Number(process.env.REDIS_PORT) || 6379,
-  password: process.env.REDIS_PASSWORD || undefined,
+const clientOptions = {
   lazyConnect: true,
-  maxRetriesPerRequest: 2
+  maxRetriesPerRequest: 2,
 };
 
 let redisClient = null;
@@ -20,7 +18,10 @@ const getRedisClient = async () => {
     return connectPromise;
   }
 
-  redisClient = new Redis(redisConfig);
+  const url = process.env.REDIS_URL?.trim();
+  redisClient = url
+    ? new Redis(url, clientOptions)
+    : new Redis({ ...getRedisConfig(), ...clientOptions });
   connectPromise = redisClient
     .connect()
     .then(() => redisClient)
