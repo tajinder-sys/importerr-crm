@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const Lead = require('../models/lead');
-const Activity = require('../models/Activity');
+const Activity = require('../models/activity');
 const Communication = require('../models/Communication');
 const User = require('../models/User');
 const ActivityService = require('../services/ActivityService');
