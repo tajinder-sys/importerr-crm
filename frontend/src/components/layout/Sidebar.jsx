@@ -5,13 +5,28 @@ import { useTheme } from '../../contexts/ThemeContext.jsx';
 import { cn } from '../../utils/helpers';
 import { typography } from '../../config/designSystem';
 import {
-  Home, Users, Users2, Activity, Settings, Globe, FileText, LayoutDashboard,
-  Mail, MessageSquare, CreditCard, GitBranch, Store,
-  ChevronDown, ChevronRight,   ChevronLeft,
-  UserRoundX, Download, FileCheck, Bell, UsersRound,
+  Users,
+  Settings,
+  FileText,
+  ChevronDown,
+  ChevronRight,
+  ChevronLeft,
 } from 'lucide-react';
 import { useState } from 'react';
 import { USER_ROLES } from '../../utils/constants';
+import { ROUTE_PATHS } from '../../routes/paths';
+import {
+  getMainNavigation,
+  getLeadsNavigation,
+  getSettingsSubNavigation,
+  getTemplatesSubNavigation,
+  getAdminShortcuts,
+  getExportReportsNavItem,
+  isNavItemActive,
+  isSettingsSectionActive,
+  isTemplatesSectionActive,
+  isLeadsSectionActive,
+} from '../../config/navigation';
 
 const Sidebar = () => {
   const { user } = useAuth();
@@ -20,61 +35,21 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const appLogo = theme === 'dark' ? '/images/logo_dark.png' : '/images/image.png';
-  const [settingsOpen, setSettingsOpen] = useState(location.pathname.startsWith('/settings'));
-  const [templatesOpen, setTemplatesOpen] = useState(location.pathname.startsWith('/templates'));
+
+  const isUserAdmin = user?.role === USER_ROLES.ADMIN;
+  const mainNavigation = getMainNavigation(user);
+  const leadsNavigation = getLeadsNavigation(user);
+  const adminShortcuts = getAdminShortcuts(user);
+  const settingsSubNav = getSettingsSubNavigation();
+  const templatesSubNav = getTemplatesSubNavigation();
+  const exportReportsItem = getExportReportsNavItem(user);
+
+  const [settingsOpen, setSettingsOpen] = useState(isSettingsSectionActive(location.pathname));
+  const [templatesOpen, setTemplatesOpen] = useState(isTemplatesSectionActive(location.pathname));
   const [leadsOpen, setLeadsOpen] = useState(location.pathname.startsWith('/leads'));
 
-  const isUserAdmin = user?.role === 'admin';
-  const canSeeUnassignedLeads = isUserAdmin || user?.role === USER_ROLES.TEAM_MANAGER;
-  const canSeeMyTeam =
-    !isUserAdmin &&
-    (user?.role === USER_ROLES.TEAM_MANAGER || user?.role === USER_ROLES.TEAM_MEMBER);
-
-  const mainNavigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
-    ...(isUserAdmin
-      ? [
-          { name: 'Team Management', href: '/teams', icon: Users2 },
-          { name: 'Seller Assignments', href: '/seller-users', icon: Store },
-        ]
-      : []),
-    ...(canSeeMyTeam ? [{ name: 'My team', href: '/my-team', icon: UsersRound }] : []),
-    { name: 'Task Activities', href: '/activities', icon: Activity },
-  ];
-
-  const leadsNavigation = [
-    { name: 'Lead Management', href: '/leads', icon: Users },
-    { name: 'Completed Leads', href: '/leads/completed', icon: FileCheck },
-    ...(canSeeUnassignedLeads
-      ? [{ name: 'Unassigned Leads', href: '/leads/unassigned', icon: UserRoundX }]
-      : []),
-  ];
-
-  const adminShortcuts = isUserAdmin ? [
-    { href: '/settings/api-config', icon: Globe, title: 'API Config' },
-    { href: '/settings/payment-methods', icon: CreditCard, title: 'Payment Methods' },
-    { href: '/settings/teams', icon: Users, title: 'Teams' },
-    { href: '/settings/pipelines', icon: GitBranch, title: 'Pipelines & Stages' },
-    { href: '/settings/dashboard-sections', icon: LayoutDashboard, title: 'Dashboard sections' },
-    { href: '/settings/notifications', icon: Bell, title: 'Notifications' },
-    { href: '/templates/email', icon: Mail, title: 'Email templates' },
-    { href: '/templates/whatsapp', icon: MessageSquare, title: 'WhatsApp templates' },
-    { href: '/export-reports', icon: Download, title: 'Export Reports' },
-  ] : [];
-
-  const isActive = (href) => {
-    if (href === '/leads') {
-      return (
-        location.pathname === '/leads' ||
-        (location.pathname.startsWith('/leads/') &&
-          !location.pathname.startsWith('/leads/completed') &&
-          !location.pathname.startsWith('/leads/unassigned'))
-      );
-    }
-    return location.pathname === href || (href !== '/dashboard' && location.pathname.startsWith(`${href}/`));
-  };
-
-  const isLeadsSectionActive = leadsNavigation.some((item) => isActive(item.href));
+  const isActive = (href) => isNavItemActive(location.pathname, href);
+  const isLeadsSectionActiveNow = isLeadsSectionActive(location.pathname, leadsNavigation);
 
   const navItemCls = (active) => cn(
     'group flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors',
@@ -104,7 +79,6 @@ const Sidebar = () => {
       sidebarCollapsed ? 'md:w-16' : 'md:w-64'
     )}>
       <div className="flex flex-grow flex-col overflow-x-hidden overflow-y-auto">
-        {/* Logo + collapse toggle */}
         <div className={cn(
           'flex items-center pb-3 pt-5',
           sidebarCollapsed ? 'flex-col gap-2 px-2' : 'justify-between gap-2 px-4'
@@ -180,7 +154,7 @@ const Sidebar = () => {
                       onClick={() => setLeadsOpen((p) => !p)}
                       className={cn(
                         'group flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm font-medium transition-colors',
-                        isLeadsSectionActive
+                        isLeadsSectionActiveNow
                           ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
                           : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200'
                       )}
@@ -211,21 +185,26 @@ const Sidebar = () => {
                     )}
                   </div>
 
-                  {isUserAdmin && (
-                    <a href="/export-reports"
-                      onClick={(e) => { e.preventDefault(); navigate('/export-reports'); }}
-                      className={navItemCls(isActive('/export-reports'))}>
-                      <Download className="mr-3 h-4 w-4 shrink-0" />
-                      Export Reports
-                    </a>
-                  )}
+                  {exportReportsItem && (() => {
+                    const { href, name, icon: ExportIcon } = exportReportsItem;
+                    return (
+                      <a
+                        href={href}
+                        onClick={(e) => { e.preventDefault(); navigate(href); }}
+                        className={navItemCls(isActive(href))}
+                      >
+                        <ExportIcon className="mr-3 h-4 w-4 shrink-0" />
+                        {name}
+                      </a>
+                    );
+                  })()}
 
                   {isUserAdmin && (
                     <div className="rounded-lg bg-white/60 p-1 dark:bg-slate-800/60">
-                      <button type="button" onClick={() => setSettingsOpen(p => !p)}
+                      <button type="button" onClick={() => setSettingsOpen((p) => !p)}
                         className={cn(
                           'group flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm font-medium transition-colors',
-                          location.pathname.startsWith('/settings')
+                          isSettingsSectionActive(location.pathname)
                             ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
                             : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200'
                         )}>
@@ -237,14 +216,7 @@ const Sidebar = () => {
                       </button>
                       {settingsOpen && (
                         <div className="ml-4 mt-1 space-y-1 pl-3">
-                          {[
-                            { href: '/settings/api-config', icon: Globe, label: 'Lead Sources' },
-                            { href: '/settings/payment-methods', icon: CreditCard, label: 'Payment Methods' },
-                            { href: '/settings/teams', icon: Users, label: 'Teams' },
-                            { href: '/settings/pipelines', icon: GitBranch, label: 'Pipelines & Stages' },
-                            { href: '/settings/dashboard-sections', icon: LayoutDashboard, label: 'Dashboard sections' },
-                            { href: '/settings/notifications', icon: Bell, label: 'Notifications' },
-                          ].map(({ href, icon: Icon, label }) => (
+                          {settingsSubNav.map(({ href, icon: Icon, label }) => (
                             <a key={href} href={href}
                               onClick={(e) => { e.preventDefault(); navigate(href); }}
                               className={subItemCls(isActive(href))}>
@@ -259,10 +231,10 @@ const Sidebar = () => {
 
                   {isUserAdmin && (
                     <div className="rounded-lg bg-white/60 p-1 dark:bg-slate-800/60">
-                      <button type="button" onClick={() => setTemplatesOpen(p => !p)}
+                      <button type="button" onClick={() => setTemplatesOpen((p) => !p)}
                         className={cn(
                           'group flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm font-medium transition-colors',
-                          location.pathname.startsWith('/templates')
+                          isTemplatesSectionActive(location.pathname)
                             ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
                             : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200'
                         )}>
@@ -274,10 +246,7 @@ const Sidebar = () => {
                       </button>
                       {templatesOpen && (
                         <div className="ml-4 mt-1 space-y-1 pl-3">
-                          {[
-                            { href: '/templates/email', icon: Mail, label: 'Email' },
-                            { href: '/templates/whatsapp', icon: MessageSquare, label: 'WhatsApp' },
-                          ].map(({ href, icon: Icon, label }) => (
+                          {templatesSubNav.map(({ href, icon: Icon, label }) => (
                             <a key={href} href={href}
                               onClick={(e) => { e.preventDefault(); navigate(href); }}
                               className={subItemCls(isActive(href))}>
@@ -297,7 +266,7 @@ const Sidebar = () => {
           {!sidebarCollapsed && (
             <div
               className="mx-3 mb-4 mt-4 rounded-xl border border-gray-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
-              onClick={() => navigate('/profile')}
+              onClick={() => navigate(ROUTE_PATHS.PROFILE)}
               title="View profile"
             >
               <div className="flex items-center">
@@ -318,7 +287,7 @@ const Sidebar = () => {
             <div className="mt-auto flex justify-center pb-4 pt-2">
               <div className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900 hover:ring-2 hover:ring-primary-400 transition-all"
                 title={`${user?.name || 'User'} — View profile`}
-                onClick={() => navigate('/profile')}>
+                onClick={() => navigate(ROUTE_PATHS.PROFILE)}>
                 <span className="text-sm font-semibold text-primary-700 dark:text-primary-300">
                   {user?.name?.charAt(0)?.toUpperCase()}
                 </span>

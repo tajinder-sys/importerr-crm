@@ -190,6 +190,12 @@
 ::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
 
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 /* Pipeline tabs — scrollbar only on hover */
 .pipeline-tabs::-webkit-scrollbar { height: 3px; }
 .pipeline-tabs::-webkit-scrollbar-track { background: transparent; }

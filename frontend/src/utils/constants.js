@@ -54,16 +54,8 @@ export const TASK_PRIORITY_OPTIONS = [
   { value: TASK_PRIORITY_LEVELS.URGENT, label: 'Urgent' },
 ];
 
-export const ROUTES = {
-  LOGIN: '/login',
-  DASHBOARD: '/dashboard',
-  ADMIN_DASHBOARD: '/admin/dashboard',
-  TEAM_DASHBOARD: '/team/dashboard',
-  LEADS: '/leads',
-  LEAD_DETAIL: '/leads/:id',
-  TEAMS: '/teams',
-  SETTINGS: '/settings'
-};
+/** @deprecated Use ROUTE_PATHS from routes/paths.js */
+export { ROUTE_PATHS as ROUTES } from '../routes/paths';
 
 export const STATUS_COLORS = {
   [LEAD_STATUSES.NEW]: 'bg-blue-100 text-blue-800',
