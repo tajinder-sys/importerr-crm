@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { ROUTE_PATHS } from '../../routes/paths';
 import Button from '../common/ui/Button';
 import { Home, Users, Users2, Settings, LogOut, Menu, X, PanelLeftOpen, Sun, Moon } from 'lucide-react';
 import { cn } from '../../utils/helpers';
@@ -28,7 +29,10 @@ const Navbar = () => {
     ] : []),
   ];
 
-  const handleLogout = () => { logout(); navigate('/login'); };
+  const handleLogout = () => {
+    logout();
+    navigate(ROUTE_PATHS.LOGIN, { replace: true });
+  };
 
   const isActive = (href) =>
     location.pathname === href || (href !== '/dashboard' && location.pathname.startsWith(href));

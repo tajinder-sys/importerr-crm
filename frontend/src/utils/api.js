@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { ROUTE_PATHS } from '../routes/paths';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 export const IMPORTERR_URL = import.meta.env.VITE_IMPORTERR_URL || 'https://develop.importerr.com';
@@ -32,7 +33,10 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+
+      if (window.location.pathname !== ROUTE_PATHS.LOGIN) {
+        window.location.replace(ROUTE_PATHS.LOGIN);
+      }
     }
     return Promise.reject(error.response?.data || error.message);
   }

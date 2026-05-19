@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { ROUTE_PATHS } from '../../routes/paths';
 import { ShieldCheck, Users, ChartNoAxesCombined, Mail, Lock, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { validateEmail, validateRequired } from '../../utils/helpers';
@@ -10,6 +11,7 @@ const LoginForm = () => {
   const [showPass, setShowPass] = useState(false);
   const { login, isLoading, error, clearError } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -34,7 +36,8 @@ const LoginForm = () => {
     if (!validateForm()) return;
     try {
       await login(formData.email, formData.password);
-      navigate('/dashboard');
+      const redirectTo = location.state?.from?.pathname || ROUTE_PATHS.DASHBOARD;
+      navigate(redirectTo, { replace: true });
     } catch (e){
       console.error('Login failed:', e);
     }

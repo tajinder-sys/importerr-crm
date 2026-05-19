@@ -155,7 +155,6 @@ export const { clearAuthError, updateUser, sessionCleared } = authSlice.actions;
 export const logoutAccount = () => (dispatch) => {
   persistSession(null, null);
   dispatch(sessionCleared());
-  window.location.href = '/login';
 };
 
 export default authSlice.reducer;
