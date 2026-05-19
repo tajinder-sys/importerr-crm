@@ -4,10 +4,10 @@ import { Card, CardContent, CardHeader } from '../common/ui/Card';
 import Button from '../common/ui/Button';
 import Skeleton from '../common/ui/Skeleton';
 import Modal from '../common/ui/Modal';
-import { formatCurrency, formatDateIndian, formatPhone } from '../../utils/helpers';
 import { UiSectionTitle } from '../common/ui/Typography';
 import { IMPORTERR_URL } from '../../utils/api';
 import AddManualProductModal from './AddManualProductModal';
+import LeadQuickFacts from './LeadQuickFacts';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -29,15 +29,6 @@ const flattenVariants = (variants) => {
 const getQty = (row) => Number(row?.quantity ?? row?.qty ?? row?.totalQuantity ?? 0);
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
-
-const LeadInfoRow = ({ label, value, right = false }) => (
-  <div className="flex items-start justify-between gap-4 border-b border-dashed border-gray-100 py-1.5 last:border-b-0 dark:border-slate-700">
-    <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-slate-500">{label}</span>
-    <span className={`text-xs text-gray-800 dark:text-slate-200 ${right ? 'max-w-[70%] text-right' : ''}`}>
-      {value || '-'}
-    </span>
-  </div>
-);
 
 const ProductSkeleton = () => (
   <div className="grid grid-cols-1 gap-4 sm:grid-cols-[120px_1fr]">
@@ -113,182 +104,177 @@ const DetailsTab = ({
 
   const content = (
     <div className={embedded ? 'space-y-4' : 'space-y-4 bg-slate-50/60 dark:bg-slate-900/40'}>
-
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-
-        {/* Lead */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-          <LeadInfoRow label="Email" value={lead?.email} />
-          <LeadInfoRow label="Phone" value={lead?.phone ? formatPhone(lead.phone) : '-'} />
-          <LeadInfoRow label="Submitted" value={lead?.createdAt ? formatDateIndian(lead.createdAt) : '-'} />
-        </div>
 
         {/* Product */}
         <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
           {isFetchingProduct ? (
-            <ProductSkeleton />
-          ) : selectedProduct ? (
-            <div className="space-y-3">
+              <ProductSkeleton />
+            ) : selectedProduct ? (
+              <div className="space-y-3">
 
-              <div className="flex justify-between items-center border-b pb-2 dark:border-slate-700">
-                <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">Product Details</p>
+                <div className="flex justify-between items-center border-b pb-2 dark:border-slate-700">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">Details</p>
 
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  {hasLeadSku ? (
-                    <a
-                      href={`${IMPORTERR_URL}/product-details?ali=1&offer=${lead?.productSku}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-1 text-xs text-blue-600"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      View
-                    </a>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {hasLeadSku ? (
+                      <a
+                        href={`${IMPORTERR_URL}/product-details?ali=1&offer=${lead?.productSku}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1 text-xs text-blue-600"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        View
+                      </a>
+                    ) : null}
+                    {canEditLinkedProduct ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        startIcon={<Pencil className="h-3 w-3" />}
+                        onClick={openManualProductEdit}
+                      >
+                        Edit product
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-[80px_1fr] gap-3">
+                  
+                  {/* Image (click to preview) */}
+                  <button
+                    onClick={() => setPreviewImageUrl(selectedProduct?.imageUrl)}
+                    className="border rounded-lg overflow-hidden bg-white"
+                  >
+                    {selectedProduct?.imageUrl ? (
+                      <img
+                        src={selectedProduct.imageUrl}
+                        className="h-20 w-full object-contain"
+                      />
+                    ) : (
+                      <div className="h-20 flex items-center justify-center text-xs text-gray-400">
+                        No image
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Info */}
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-800 line-clamp-2">
+                      {selectedProduct?.title}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Qty: {lead?.totalQuantity}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <EmptyProduct hasLeadSku={hasLeadSku}>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  {showManualProductCta ? (
+                    <Button type="button" size="sm" variant="primary" onClick={openManualProductAdd}>
+                      Add manual product
+                    </Button>
                   ) : null}
-                  {canEditLinkedProduct ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      startIcon={<Pencil className="h-3 w-3" />}
-                      onClick={openManualProductEdit}
-                    >
-                      Edit product
+                  {canEditLinkedProduct && !selectedProduct ? (
+                    <Button type="button" size="sm" variant="outline" startIcon={<Pencil className="h-3 w-3" />} onClick={openManualProductEdit}>
+                      Edit product & variants
                     </Button>
                   ) : null}
                 </div>
-              </div>
+              </EmptyProduct>
+            )}
+        </div>
 
-              <div className="grid grid-cols-[80px_1fr] gap-3">
-                
-                {/* Image (click to preview) */}
+        <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+            {leadVariantRows.length > 0 && (
+              <div className="rounded-xl border border-gray-200 bg-white overflow-hidden dark:border-slate-700 dark:bg-slate-800">
+
+                {/* Header */}
                 <button
-                  onClick={() => setPreviewImageUrl(selectedProduct?.imageUrl)}
-                  className="border rounded-lg overflow-hidden bg-white"
+                  onClick={() => setVariantsOpen(v => !v)}
+                  className="w-full flex justify-between items-center px-3.5 py-3 bg-gray-50 dark:bg-slate-700"
                 >
-                  {selectedProduct?.imageUrl ? (
-                    <img
-                      src={selectedProduct.imageUrl}
-                      className="h-20 w-full object-contain"
-                    />
-                  ) : (
-                    <div className="h-20 flex items-center justify-center text-xs text-gray-400">
-                      No image
-                    </div>
-                  )}
+                  <span className="text-xs font-semibold text-gray-600 dark:text-slate-300">
+                    Variants Requirement ({leadVariantRows.length})
+                  </span>
+
+                  <svg
+                    className={`w-4 h-4 transition ${variantsOpen ? 'rotate-180' : ''}`}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M19 9l-7 7-7-7" />
+                  </svg>
                 </button>
 
-                {/* Info */}
-                <div className="space-y-1">
-                  <p className="text-sm text-gray-800 line-clamp-2">
-                    {selectedProduct?.title}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Qty: {lead?.totalQuantity}
-                  </p>
-                </div>
+                {/* Body */}
+                {variantsOpen && (
+                  <div className="divide-y max-h-64 overflow-y-auto dark:divide-slate-700">
+                    {leadVariantRows.map((variant, idx) => (
+                      <div
+                        key={getVariantKey(variant, idx)}
+                        className="flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-50 dark:hover:bg-slate-700"
+                      >
+                          <div className="flex items-center gap-3 min-w-0">
+                              {/* Image */}
+                              <div className="h-10 w-10 rounded-md flex items-center justify-center overflow-hidden">
+                                {getVariantImageUrl(variant) ? (
+                                    <button
+                                        onClick={() => setPreviewImageUrl(getVariantImageUrl(variant))}
+                                        className="h-9 w-9 border rounded-md overflow-hidden flex items-center justify-center"
+                                      >
+                                      <img
+                                        src={getVariantImageUrl(variant)}
+                                        alt={variant?.skuId}
+                                        className="h-8 w-8 object-contain"
+                                      />
+                                </button>
+                                ) : (
+                                  <span className="text-[10px] text-gray-400">No</span>
+                                )}
+                              </div>
+
+                              {/* SKU + attributes */}
+                              <div className="min-w-0">
+                                <p className="text-sm text-gray-800 truncate">
+                                  {variant?.label || variant?.skuId || 'Variant'} {variant?.skuId}
+                                </p>
+
+                                {Array.isArray(variant?.attributes) && variant.attributes.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {variant.attributes.slice(0, 2).map((attr, i) => (
+                                      <span
+                                        key={i}
+                                        className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-600"
+                                      >
+                                        {attr?.value || attr?.attributeValue}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                        <span className="text-sm font-medium text-gray-900">
+                          {getQty(variant)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          ) : (
-            <EmptyProduct hasLeadSku={hasLeadSku}>
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                {showManualProductCta ? (
-                  <Button type="button" size="sm" variant="primary" onClick={openManualProductAdd}>
-                    Add manual product
-                  </Button>
-                ) : null}
-                {canEditLinkedProduct && !selectedProduct ? (
-                  <Button type="button" size="sm" variant="outline" startIcon={<Pencil className="h-3 w-3" />} onClick={openManualProductEdit}>
-                    Edit product & variants
-                  </Button>
-                ) : null}
-              </div>
-            </EmptyProduct>
-          )}
+            )}
         </div>
       </div>
 
-      {/* ─── Variants Accordion ─── */}
-      {leadVariantRows.length > 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden dark:border-slate-700 dark:bg-slate-800">
-
-          {/* Header */}
-          <button
-            onClick={() => setVariantsOpen(v => !v)}
-            className="w-full flex justify-between items-center px-3.5 py-3 bg-gray-50 dark:bg-slate-700"
-          >
-            <span className="text-xs font-semibold text-gray-600 dark:text-slate-300">
-              Variants Requirement ({leadVariantRows.length})
-            </span>
-
-            <svg
-              className={`w-4 h-4 transition ${variantsOpen ? 'rotate-180' : ''}`}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-
-          {/* Body */}
-          {variantsOpen && (
-            <div className="divide-y max-h-64 overflow-y-auto dark:divide-slate-700">
-              {leadVariantRows.map((variant, idx) => (
-                <div
-                  key={getVariantKey(variant, idx)}
-                  className="flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-50 dark:hover:bg-slate-700"
-                >
-                    <div className="flex items-center gap-3 min-w-0">
-                        {/* Image */}
-                        <div className="h-10 w-10 rounded-md flex items-center justify-center overflow-hidden">
-                          {getVariantImageUrl(variant) ? (
-                              <button
-                                  onClick={() => setPreviewImageUrl(getVariantImageUrl(variant))}
-                                  className="h-9 w-9 border rounded-md overflow-hidden flex items-center justify-center"
-                                >
-                                <img
-                                  src={getVariantImageUrl(variant)}
-                                  alt={variant?.skuId}
-                                  className="h-8 w-8 object-contain"
-                                />
-                          </button>
-                          ) : (
-                            <span className="text-[10px] text-gray-400">No</span>
-                          )}
-                        </div>
-
-                        {/* SKU + attributes */}
-                        <div className="min-w-0">
-                          <p className="text-sm text-gray-800 truncate">
-                            {variant?.label || variant?.skuId || 'Variant'} {variant?.skuId}
-                          </p>
-
-                          {Array.isArray(variant?.attributes) && variant.attributes.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {variant.attributes.slice(0, 2).map((attr, i) => (
-                                <span
-                                  key={i}
-                                  className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-600"
-                                >
-                                  {attr?.value || attr?.attributeValue}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                  <span className="text-sm font-medium text-gray-900">
-                    {getQty(variant)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+    
     </div>
   );
 

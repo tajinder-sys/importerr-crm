@@ -19,6 +19,7 @@ export const API_ROUTES = {
     unassigned: '/leads/unassigned',
     create: '/leads',
     byId: (leadId) => `/leads/${encodeURIComponent(leadId)}`,
+    related: (leadId) => `/leads/${encodeURIComponent(leadId)}/related`,
     update: (leadId) => `/leads/${encodeURIComponent(leadId)}`,
     updateStage: (leadId) => `/leads/${encodeURIComponent(leadId)}/stage`,
     complete: (leadId) => `/leads/${encodeURIComponent(leadId)}/complete`,

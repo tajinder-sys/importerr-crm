@@ -5,6 +5,7 @@ const {
   getLeads,
   getUnassignedLeads,
   getLeadById,
+  getRelatedLeads,
   createOrUpdateLead,
   addLeadCommunication,
   deleteLead,
@@ -37,6 +38,7 @@ router.patch(
   overrideLeadStageSLAHandler
 );
 router.put('/:id/stage', auth, moveLeadToStageHandler);
+router.get('/:id/related', auth, getRelatedLeads);
 router.get('/:id', auth, getLeadById);
 router.post('/', auth, createOrUpdateLead);
 router.post('/:id/communications', auth, addLeadCommunication);

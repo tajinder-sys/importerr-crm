@@ -495,37 +495,80 @@ const getUnassignedLeads = async (req, res) => {
   }
 };
 
+const assertCanViewLead = async (req, lead) => {
+  const assignedUserId = lead?.assignedTo?._id
+    ? lead.assignedTo._id.toString()
+    : lead?.assignedTo
+      ? lead.assignedTo.toString()
+      : null;
+
+  const myUserId = req.user.id || req.user._id;
+  if (req.user.role === USER_ROLES.TEAM_MEMBER && assignedUserId !== String(myUserId)) {
+    return sendForbidden(res, 'You can only view your assigned leads');
+  }
+
+  if (isTeamManagerUser(req.user)) {
+    const mt = req.user.teamId || req.user.team_id;
+    let ok = await leadPipelineBelongsToTeam(lead, mt);
+    if (!ok && assignedUserId) {
+      const assignee = await User.findById(assignedUserId).select('team_id').lean();
+      ok = Boolean(assignee && String(assignee.team_id) === String(mt));
+    }
+    if (!ok) {
+      return sendForbidden(res, 'You can only view leads for your team');
+    }
+  }
+
+  return null;
+};
+
+const buildRelatedLeadMatchConditions = (lead) => {
+  const conditions = [];
+  const email = lead.email?.trim().toLowerCase();
+  if (email) conditions.push({ email });
+  const phone = lead.phone?.trim();
+  if (phone) conditions.push({ phone });
+  const userId = lead.userId?.trim();
+  if (userId) conditions.push({ userId });
+  const productSku = lead.productSku?.trim();
+  if (productSku) conditions.push({ productSku });
+  return conditions;
+};
+
+const getMatchReasonsForRelatedLead = (anchor, candidate) => {
+  const reasons = [];
+  const anchorEmail = anchor.email?.trim().toLowerCase();
+  const candidateEmail = candidate.email?.trim().toLowerCase();
+  if (anchorEmail && candidateEmail && anchorEmail === candidateEmail) reasons.push('email');
+  if (anchor.phone && candidate.phone && String(anchor.phone) === String(candidate.phone)) {
+    reasons.push('phone');
+  }
+  if (anchor.userId && candidate.userId && String(anchor.userId) === String(candidate.userId)) {
+    reasons.push('userId');
+  }
+  if (
+    anchor.productSku &&
+    candidate.productSku &&
+    String(anchor.productSku) === String(candidate.productSku)
+  ) {
+    reasons.push('productSku');
+  }
+  return reasons;
+};
+
 const getLeadById = async (req, res) => {
   try {
     const lead = await Lead.findById(req.params.id)
       .populate('assignedTo', 'name email')
       .populate('duplicateOf', 'name email')
+      .populate('pipelineId', 'name')
+      .populate('stageId', 'name color')
     if (!lead) {
       return sendNotFound(res, 'Lead not found');
     }
 
-    const assignedUserId = lead?.assignedTo?._id
-      ? lead.assignedTo._id.toString()
-      : lead?.assignedTo
-        ? lead.assignedTo.toString()
-        : null;
-
-    const myUserId = req.user.id || req.user._id;
-    if (req.user.role === USER_ROLES.TEAM_MEMBER && assignedUserId !== String(myUserId)) {
-      return sendForbidden(res, 'You can only view your assigned leads');
-    }
-
-    if (isTeamManagerUser(req.user)) {
-      const mt = req.user.teamId || req.user.team_id;
-      let ok = await leadPipelineBelongsToTeam(lead, mt);
-      if (!ok && assignedUserId) {
-        const assignee = await User.findById(assignedUserId).select('team_id').lean();
-        ok = Boolean(assignee && String(assignee.team_id) === String(mt));
-      }
-      if (!ok) {
-        return sendForbidden(res, 'You can only view leads for your team');
-      }
-    }
+    const forbidden = await assertCanViewLead(req, lead);
+    if (forbidden) return forbidden;
 
     const activities = canViewLeadHistory(req.user)
       ? await Activity.find({ lead: lead._id })
@@ -562,6 +605,61 @@ const getLeadById = async (req, res) => {
   } catch (error) {
     console.error('Get lead error:', error);
     sendBadRequest(res, 'Failed to retrieve lead');
+  }
+};
+
+const getRelatedLeads = async (req, res) => {
+  try {
+    const lead = await Lead.findById(req.params.id).lean();
+    if (!lead) {
+      return sendNotFound(res, 'Lead not found');
+    }
+
+    const forbidden = await assertCanViewLead(req, lead);
+    if (forbidden) return forbidden;
+
+    const matchConditions = buildRelatedLeadMatchConditions(lead);
+    if (!matchConditions.length) {
+      return sendSuccess(res, 'No match fields on this lead', {
+        related: [],
+        matchFields: [],
+      });
+    }
+
+    const matchFields = [
+      ...(lead.email?.trim() ? ['email'] : []),
+      ...(lead.phone?.trim() ? ['phone'] : []),
+      ...(lead.userId?.trim() ? ['userId'] : []),
+      ...(lead.productSku?.trim() ? ['productSku'] : []),
+    ];
+
+    const related = await Lead.find({
+      _id: { $ne: lead._id },
+      $or: matchConditions,
+    })
+      .select(
+        'name email phone userId productSku source status priority createdAt assignedTo pipelineId stageId isCompleted message'
+      )
+      .populate('assignedTo', 'name email')
+      .populate('pipelineId', 'name')
+      .populate('stageId', 'name color')
+      .sort({ createdAt: -1 })
+      .limit(25)
+      .lean();
+
+    const enriched = related.map((item) => ({
+      ...item,
+      matchReasons: getMatchReasonsForRelatedLead(lead, item),
+    }));
+
+    return sendSuccess(res, 'Related leads retrieved successfully', {
+      related: enriched,
+      matchFields,
+      total: enriched.length,
+    });
+  } catch (error) {
+    console.error('getRelatedLeads error:', error);
+    return sendBadRequest(res, 'Failed to retrieve related leads');
   }
 };
 
@@ -1171,6 +1269,7 @@ module.exports = {
   getLeads,
   getUnassignedLeads,
   getLeadById,
+  getRelatedLeads,
   createOrUpdateLead,
   addLeadCommunication,
   markLeadCompletedHandler,

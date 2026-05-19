@@ -32,11 +32,14 @@ import LeadStageSlaBar from '../components/leads/LeadStageSlaBar';
 import LeadMarkCompletedPanel from '../components/leads/LeadMarkCompletedPanel';
 import LeadStageTimeline from '../components/lead-details/LeadStageTimeline';
 import OrderDetailsTab from '../components/lead-details/OrderDetailsTab';
+import RelatedLeadsPanel from '../components/lead-details/RelatedLeadsPanel';
+import LeadQuickFacts from '../components/lead-details/LeadQuickFacts';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const BASE_TABS = [
   { key: 'lead_details',  label: 'Details' },
+  { key: 'related',       label: 'Related' },
   { key: 'notes',         label: 'Notes' },
   { key: 'quotes',        label: 'Quotes' },
   { key: 'tasks',         label: 'Tasks' },
@@ -123,20 +126,7 @@ function LeadHero({ lead, onEdit, onBack }) {
         </div>
       </div>
 
-      {/* Stat strip */}
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {[
-          { label: 'Pipeline', value: lead.pipelineId?.name || lead.pipelineId || '—' },
-          { label: 'Stage',    value: lead.stageId?.name    || lead.stageId    || '—' },
-          { label: 'Assigned', value: lead.assignedTo?.name || lead.assignedTo || 'Unassigned' },
-          { label: 'Lead type',value: lead.leadType         || '—' },
-        ].map(({ label, value }) => (
-          <div key={label} className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-700/40">
-            <p className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
-            <p className="mt-0.5 text-[13px] font-medium text-slate-800 dark:text-slate-200 truncate">{value}</p>
-          </div>
-        ))}
-      </div>
+      <LeadQuickFacts lead={lead} variant="compact" />
     </div>
   );
 }
@@ -209,6 +199,9 @@ const LeadDetails = () => {
   const [sendingCommunication, setSendingCommunication] = useState(false);
 
   const [activeTab, setActiveTab]               = useState('lead_details');
+  const [relatedLeads, setRelatedLeads]         = useState([]);
+  const [relatedMatchFields, setRelatedMatchFields] = useState([]);
+  const [relatedLoading, setRelatedLoading]     = useState(false);
   const [snackbar, setSnackbar]                 = useState({ open: false, message: '', type: 'success' });
 
   const [showEditLeadModal, setShowEditLeadModal] = useState(false);
@@ -239,16 +232,36 @@ const LeadDetails = () => {
 
   // Build tab list — inject Order tab when lead has orderId
   const visibleTabs = useMemo(() => {
-    const base = BASE_TABS.filter((t) => (t.adminOnly ? canViewHistory : true));
+    const base = BASE_TABS.filter((t) => (t.adminOnly ? canViewHistory : true)).map((t) => {
+      if (t.key === 'related' && relatedLeads.length > 0) {
+        return { ...t, label: `Related (${relatedLeads.length})` };
+      }
+      return t;
+    });
     if (lead?.orderId) {
       const commIdx = base.findIndex((t) => t.key === 'communication');
       const orderTab = { key: 'order', label: 'Order', icon: Package };
       base.splice(commIdx === -1 ? base.length : commIdx, 0, orderTab);
     }
     return base;
-  }, [canViewHistory, lead?.orderId]);
+  }, [canViewHistory, lead?.orderId, relatedLeads.length]);
 
   // ─── Fetch ────────────────────────────────────────────────────────────────
+
+  const fetchRelatedLeads = useCallback(async () => {
+    if (!leadId) return;
+    setRelatedLoading(true);
+    try {
+      const { data } = await api.get(API_ROUTES.leads.related(leadId));
+      setRelatedLeads(data?.related || []);
+      setRelatedMatchFields(data?.matchFields || []);
+    } catch {
+      setRelatedLeads([]);
+      setRelatedMatchFields([]);
+    } finally {
+      setRelatedLoading(false);
+    }
+  }, [leadId]);
 
   const fetchLeadDetail = useCallback(async () => {
     if (!leadId) return;
@@ -312,7 +325,13 @@ const LeadDetails = () => {
     loadAssignableForPipeline(leadForm.pipelineId, lead?.assignedTo || null);
   }, [showEditLeadModal, canManageLeadAssignment, leadForm.pipelineId, loadAssignableForPipeline, lead]);
 
-  useEffect(() => { const t = setTimeout(fetchLeadDetail, 0); return () => clearTimeout(t); }, [leadId, fetchLeadDetail]);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      fetchLeadDetail();
+      fetchRelatedLeads();
+    }, 0);
+    return () => clearTimeout(t);
+  }, [leadId, fetchLeadDetail, fetchRelatedLeads]);
 
   useEffect(() => {
     const ref = String(lead?.productId || lead?.productSku || '').trim();
@@ -431,6 +450,14 @@ const LeadDetails = () => {
               <TabBar tabs={visibleTabs} active={activeTab} onChange={setActiveTab} />
 
               <div className="min-h-[60vh]">
+                {activeTab === 'related' && (
+                  <RelatedLeadsPanel
+                    loading={relatedLoading}
+                    related={relatedLeads}
+                    matchFields={relatedMatchFields}
+                  />
+                )}
+
                 {activeTab === 'lead_details' && (
                   <LeadDetailsOverviewCard
                     lead={lead}

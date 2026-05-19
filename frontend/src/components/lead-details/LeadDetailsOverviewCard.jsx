@@ -239,10 +239,6 @@ const LeadDetailsOverviewCard = ({
   return (
     <>
       <Card className="rounded-b-2xl rounded-t-none border-slate-200 shadow-sm">
-        <CardHeader className="border-slate-100 flex items-center justify-between px-4 py-3">
-          <UiSectionTitle>Details</UiSectionTitle>
-        </CardHeader>
-
         <CardContent className="space-y-4 px-4 py-4">
           <DetailsTab
             lead={lead}
