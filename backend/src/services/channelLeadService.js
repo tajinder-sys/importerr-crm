@@ -2,8 +2,10 @@ const Lead = require('../models/lead');
 const Communication = require('../models/Communication');
 const User = require('../models/User');
 const { assignLeadWithAI } = require('./aiAssignmentService');
+const ActivityService = require('./ActivityService');
 const NotificationService = require('./NotificationService');
-const { LEAD_SOURCES, LEAD_STATUSES } = require('../utils/constants');
+const { normalizeGmailBody } = require('./gmailService');
+const { LEAD_SOURCES, LEAD_STATUSES, ACTIVITY_TYPES } = require('../utils/constants');
 
 const SOURCE_MAP = {
   whatsapp: LEAD_SOURCES.WHATSAPP,
@@ -104,10 +106,112 @@ const getAutoAssignableTeamMemberId = async () => {
   return sortedByLoad[0]?._id || null;
 };
 
+/** Single path for Gmail-sourced inbound comms (dedupe by gmailMessageId). */
+const recordGmailInboundCommunication = async ({
+  leadId,
+  gmailMessageId,
+  threadId,
+  message,
+  assignedTo,
+}) => {
+  if (!gmailMessageId) return false;
+
+  const exists = await Communication.findOne({ gmailMessageId }).lean();
+  if (exists) return false;
+
+  const normalized = normalizeGmailBody(message);
+  if (!normalized) return false;
+
+  await Communication.create({
+    lead: leadId,
+    senderType: 'client',
+    senderUser: null,
+    source: LEAD_SOURCES.EMAIL,
+    direction: 'inbound',
+    message: normalized,
+    threadId: threadId || null,
+    gmailMessageId,
+  });
+
+  await ActivityService.logActivity({
+    leadId,
+    type: ACTIVITY_TYPES.COMMUNICATION_RECEIVED,
+    description: 'Inbound email received',
+    preferredUserId: assignedTo,
+    metadata: {
+      source: LEAD_SOURCES.EMAIL,
+      direction: 'inbound',
+      gmailMessageId,
+      threadId: threadId || null,
+    },
+  });
+
+  if (assignedTo) {
+    NotificationService.dispatch({
+      type: 'client_reply',
+      title: 'New client reply',
+      body: normalized.slice(0, 120),
+      assigneeUserId: assignedTo,
+      leadId,
+      actionUrl: `/leads/${leadId}`,
+      dedupeKey: `client_reply:${leadId}:${gmailMessageId}`,
+    }).catch(() => {});
+  }
+
+  return true;
+};
+
+const logInboundChannelActivities = async ({
+  lead,
+  channel,
+  leadData,
+  isNew,
+  hadNewCommunication,
+  previousAssignedTo,
+}) => {
+  const preferredUserId = lead.assignedTo || previousAssignedTo || null;
+
+  if (isNew) {
+    await ActivityService.logActivity({
+      leadId: lead._id,
+      type: ACTIVITY_TYPES.LEAD_CREATED,
+      description: `Lead created from ${channel}`,
+      preferredUserId,
+      metadata: {
+        source: leadData.source,
+        channel,
+        accountId: leadData.accountId || null,
+      },
+    });
+    return;
+  }
+
+  const newAssignedTo = lead.assignedTo ? String(lead.assignedTo) : null;
+  if (previousAssignedTo !== newAssignedTo && newAssignedTo) {
+    await ActivityService.logActivity({
+      leadId: lead._id,
+      type: ACTIVITY_TYPES.LEAD_ASSIGNED,
+      description: 'Lead assigned to agent',
+      preferredUserId: newAssignedTo,
+      metadata: {
+        oldAssignedTo: previousAssignedTo,
+        newAssignedTo,
+        channel,
+        assignmentSource: 'channel_auto',
+      },
+    });
+  }
+};
+
 const ingestLeadFromChannel = async (channel, payload) => {
   const leadData = mapPayloadToLeadData(channel, payload);
   const errors = validateInboundLeadData(leadData);
   if (errors.length > 0) return { ok: false, errors };
+
+  const skipCommunication = Boolean(payload._skipCommunication);
+  const gmailMessageId = payload._gmailMessageId
+    ? String(payload._gmailMessageId).trim()
+    : null;
 
   const duplicateQuery = {
     $or: [
@@ -126,6 +230,11 @@ const ingestLeadFromChannel = async (channel, payload) => {
     '_id phone email status assignedTo message userId leadType'
   );
   if (existingLead) {
+    const previousAssignedTo = existingLead.assignedTo
+      ? String(existingLead.assignedTo)
+      : null;
+    let hadNewCommunication = false;
+
     if (!existingLead.assignedTo) {
       const autoAssignedTo = await getAutoAssignableTeamMemberId();
       if (autoAssignedTo) existingLead.assignedTo = autoAssignedTo;
@@ -137,64 +246,105 @@ const ingestLeadFromChannel = async (channel, payload) => {
       existingLead.gmailThreadId = leadData.gmailThreadId;
     }
     await existingLead.save();
-    if (leadData.message) {
-      // Deduplicate: same lead + same message + same source already exists?
-      const commQuery = {
-        lead: existingLead._id,
+    if (leadData.message && !skipCommunication) {
+      if (gmailMessageId) {
+        hadNewCommunication = await recordGmailInboundCommunication({
+          leadId: existingLead._id,
+          gmailMessageId,
+          threadId: leadData.gmailThreadId,
+          message: leadData.message,
+          assignedTo: existingLead.assignedTo,
+        });
+      } else {
+        const commQuery = {
+          lead: existingLead._id,
+          message: leadData.message,
+          source: leadData.source,
+          direction: 'inbound',
+        };
+        if (leadData.gmailThreadId) commQuery.threadId = leadData.gmailThreadId;
+        const commExists = await Communication.findOne(commQuery).lean();
+        if (!commExists) {
+          hadNewCommunication = true;
+          await Communication.create({
+            lead: existingLead._id,
+            senderType: 'client',
+            senderUser: null,
+            source: leadData.source,
+            direction: 'inbound',
+            message: leadData.message,
+            ...(leadData.gmailThreadId ? { threadId: leadData.gmailThreadId } : {}),
+          });
+
+          if (existingLead.assignedTo) {
+            NotificationService.dispatch({
+              type: 'client_reply',
+              title: 'New client reply',
+              body: String(leadData.message).slice(0, 120),
+              assigneeUserId: existingLead.assignedTo,
+              leadId: existingLead._id,
+              actionUrl: `/leads/${existingLead._id}`,
+              dedupeKey: `client_reply:${existingLead._id}:${String(leadData.message).slice(0, 64)}`,
+            }).catch(() => {});
+          }
+        }
+      }
+    }
+
+    await logInboundChannelActivities({
+      lead: existingLead,
+      channel,
+      leadData,
+      isNew: false,
+      hadNewCommunication,
+      previousAssignedTo,
+    });
+
+    return { ok: true, lead: existingLead, isNew: false };
+  }
+
+  const lead = await Lead.create({ ...leadData });
+  let hadNewCommunication = false;
+
+  if (leadData.message && !skipCommunication) {
+    if (gmailMessageId) {
+      hadNewCommunication = await recordGmailInboundCommunication({
+        leadId: lead._id,
+        gmailMessageId,
+        threadId: leadData.gmailThreadId,
+        message: leadData.message,
+        assignedTo: lead.assignedTo,
+      });
+    } else {
+      const commExists = await Communication.findOne({
+        lead: lead._id,
         message: leadData.message,
         source: leadData.source,
         direction: 'inbound',
-      };
-      if (leadData.gmailThreadId) commQuery.threadId = leadData.gmailThreadId;
-      const commExists = await Communication.findOne(commQuery).lean();
+      }).lean();
       if (!commExists) {
+        hadNewCommunication = true;
         await Communication.create({
-          lead: existingLead._id,
+          lead: lead._id,
           senderType: 'client',
           senderUser: null,
           source: leadData.source,
           direction: 'inbound',
           message: leadData.message,
-          ...(leadData.gmailThreadId ? { threadId: leadData.gmailThreadId } : {})
+          ...(leadData.gmailThreadId ? { threadId: leadData.gmailThreadId } : {}),
         });
-
-        if (existingLead.assignedTo) {
-          NotificationService.dispatch({
-            type: 'client_reply',
-            title: 'New client reply',
-            body: String(leadData.message).slice(0, 120),
-            assigneeUserId: existingLead.assignedTo,
-            leadId: existingLead._id,
-            actionUrl: `/leads/${existingLead._id}`,
-            dedupeKey: `client_reply:${existingLead._id}:${String(leadData.message).slice(0, 64)}`,
-          }).catch(() => {});
-        }
       }
     }
-    return { ok: true, lead: existingLead, isNew: false };
   }
 
-  const lead = await Lead.create({ ...leadData });
-
-  if (leadData.message) {
-    const commExists = await Communication.findOne({
-      lead: lead._id,
-      message: leadData.message,
-      source: leadData.source,
-      direction: 'inbound',
-    }).lean();
-    if (!commExists) {
-      await Communication.create({
-        lead: lead._id,
-        senderType: 'client',
-        senderUser: null,
-        source: leadData.source,
-        direction: 'inbound',
-        message: leadData.message,
-        ...(leadData.gmailThreadId ? { threadId: leadData.gmailThreadId } : {})
-      });
-    }
-  }
+  await logInboundChannelActivities({
+    lead,
+    channel,
+    leadData,
+    isNew: true,
+    hadNewCommunication,
+    previousAssignedTo: null,
+  });
 
   // AI pipeline + member assignment (async, non-blocking)
   assignLeadWithAI(lead).catch(err => console.error('AI assignment failed:', err.message));
@@ -213,5 +363,6 @@ const ingestLeadFromChannel = async (channel, payload) => {
 };
 
 module.exports = {
-  ingestLeadFromChannel
+  ingestLeadFromChannel,
+  recordGmailInboundCommunication,
 };

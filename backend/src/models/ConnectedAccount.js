@@ -18,6 +18,7 @@ const connectedAccountSchema = new mongoose.Schema({
   waPhoneNumberId: { type: String, default: null },
   waAccessToken: { type: String, default: null },
   waVerifyToken: { type: String, default: null },
+  needsResync: { type: Boolean, default: false },
   assignedUserIds: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] }
 }, { timestamps: true });
 

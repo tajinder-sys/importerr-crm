@@ -1,12 +1,30 @@
 const emailQueue = require('./emailQueue');
-const { ingestLeadFromChannel } = require('../services/channelLeadService');
-const { fetchEmailById, parseEmail } = require('../services/gmailService');
+const {
+  ingestLeadFromChannel,
+  recordGmailInboundCommunication,
+} = require('../services/channelLeadService');
+const {
+  fetchEmailById,
+  parseEmail,
+  normalizeGmailBody,
+  isInboundLeadEmail,
+} = require('../services/gmailService');
 const ConnectedAccount = require('../models/ConnectedAccount');
+const GmailProcessedMessage = require('../models/GmailProcessedMessage');
 const Lead = require('../models/lead');
-const Communication = require('../models/Communication');
 const logger = require('../utils/logger');
 
 const CONCURRENCY = 3;
+
+/** Atomically claim a Gmail message so concurrent workers cannot double-process. */
+const claimGmailMessage = async (accountId, messageId) => {
+  const existing = await GmailProcessedMessage.findOneAndUpdate(
+    { accountId, messageId },
+    { $setOnInsert: { processedAt: new Date() } },
+    { upsert: true, new: false }
+  ).lean();
+  return !existing;
+};
 
 // ── Process individual Gmail message ─────────────────────────────
 emailQueue.process('gmail-message', CONCURRENCY, async (job) => {
@@ -15,52 +33,69 @@ emailQueue.process('gmail-message', CONCURRENCY, async (job) => {
   const account = await ConnectedAccount.findOne({ accountId, isActive: true });
   if (!account) throw new Error(`Account not found: ${accountId}`);
 
+  const claimed = await claimGmailMessage(accountId, messageId);
+  if (!claimed) {
+    logger.info(`[EmailWorker] Skip duplicate Gmail message ${messageId}`);
+    return;
+  }
+
   const emailData = await fetchEmailById(account, messageId);
-  const { name, email, body, subject, threadId } = parseEmail(emailData);
+  const parsed = parseEmail(emailData);
+  const { name, email, subject, threadId } = parsed;
+  const messageText = normalizeGmailBody(parsed.body || subject || '');
+
   if (!email) return;
 
-  // Thread reply → add communication to existing lead
-  if (threadId) {
-    const threadLead = await Lead.findOne({ gmailThreadId: threadId }).lean();
-    if (threadLead) {
-      const msg = body || subject || '';
-      const exists = await Communication.findOne({
-        lead: threadLead._id,
-        threadId,
-        message: msg,
-      }).lean();
+  if (!isInboundLeadEmail(account, emailData, parsed)) {
+    logger.info(`[EmailWorker] Skip non-inbound email ${messageId} from ${email}`);
+    return;
+  }
 
-      if (!exists) {
-        await Communication.create({
-          lead: threadLead._id,
-          senderType: 'client',
-          senderUser: null,
-          source: 'email',
-          direction: 'inbound',
-          message: msg,
-          threadId,
-        });
-        logger.info(`[EmailWorker] Thread reply added to lead ${threadLead._id}`);
-      }
+  // Existing thread → record comm only (no second ingest)
+  if (threadId) {
+    const threadLead = await Lead.findOne({ gmailThreadId: threadId })
+      .select('_id assignedTo')
+      .lean();
+    if (threadLead) {
+      await recordGmailInboundCommunication({
+        leadId: threadLead._id,
+        gmailMessageId: messageId,
+        threadId,
+        message: messageText,
+        assignedTo: threadLead.assignedTo,
+      });
+      logger.info(`[EmailWorker] Thread message handled for lead ${threadLead._id}`);
       return;
     }
   }
 
-  // New lead
   const result = await ingestLeadFromChannel('email', {
     name: name || email.split('@')[0],
     email,
     phone: '',
-    message: body || subject || '',
+    message: messageText,
     _accountId: account.accountId,
     _threadId: threadId,
+    _gmailMessageId: messageId,
+    _skipCommunication: true,
   });
 
-  if (result.ok) {
-    logger.info(`[EmailWorker] Lead ${result.isNew ? 'created' : 'updated'}: ${result.lead._id} from ${email}`);
-  } else {
+  if (!result.ok) {
     logger.warn(`[EmailWorker] Ingestion failed for ${email}: ${result.errors?.join(', ')}`);
+    return;
   }
+
+  await recordGmailInboundCommunication({
+    leadId: result.lead._id,
+    gmailMessageId: messageId,
+    threadId,
+    message: messageText,
+    assignedTo: result.lead.assignedTo,
+  });
+
+  logger.info(
+    `[EmailWorker] Lead ${result.isNew ? 'created' : 'updated'}: ${result.lead._id} from ${email}`
+  );
 });
 
 // ── Process generic channel lead (WhatsApp, Email form, Meta) ────

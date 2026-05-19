@@ -227,7 +227,7 @@ async function moveLeadToStageHandler(req, res) {
       return sendSuccess(res, 'Lead is already in this stage', updatedLead);
     }
 
-    await ActivityService.createActivity({
+    await ActivityService.logActivity({
       leadId: lead._id,
       type: ACTIVITY_TYPES.STAGE_CHANGED,
       description: `Stage changed from "${oldStageName?.name || 'none'}" to "${newStage?.name || 'none'}"`,

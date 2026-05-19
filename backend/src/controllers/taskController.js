@@ -309,20 +309,16 @@ const createTask = async (req, res) => {
       .populate('created_by', 'name email')
       .populate('team_id', 'name');
 
-    try {
-      await ActivityService.createActivity({
-        leadId: lead_id,
-        type: ACTIVITY_TYPES.TASK_CREATED,
-        description: `Task created: ${task.title.trim()}`,
-        performedBy: req.user.id,
-        metadata: {
-          taskId: String(task._id),
-          assigned_to: resolvedAssignedTo ? String(resolvedAssignedTo) : null,
-        },
-      });
-    } catch (actErr) {
-      console.error('Task activity log failed', actErr);
-    }
+    await ActivityService.logActivity({
+      leadId: lead_id,
+      type: ACTIVITY_TYPES.TASK_CREATED,
+      description: `Task created: ${task.title.trim()}`,
+      performedBy: req.user.id,
+      metadata: {
+        taskId: String(task._id),
+        assigned_to: resolvedAssignedTo ? String(resolvedAssignedTo) : null,
+      },
+    });
 
     if (resolvedAssignedTo && String(resolvedAssignedTo) !== String(req.user.id)) {
       NotificationService.dispatch({
@@ -438,17 +434,13 @@ const updateTask = async (req, res) => {
     const leadRefAfterSave = task.lead_id;
     const leadIdForActivity = leadRefAfterSave?._id ?? leadRefAfterSave;
     if (leadIdForActivity) {
-      try {
-        await ActivityService.createActivity({
-          leadId: leadIdForActivity,
-          type: ACTIVITY_TYPES.TASK_UPDATED,
-          description: `Task updated: ${task.title || 'Task'}`,
-          performedBy: req.user.id,
-          metadata: { taskId: String(task._id) },
-        });
-      } catch (actErr) {
-        console.error('Task activity log failed', actErr);
-      }
+      await ActivityService.logActivity({
+        leadId: leadIdForActivity,
+        type: ACTIVITY_TYPES.TASK_UPDATED,
+        description: `Task updated: ${task.title || 'Task'}`,
+        performedBy: req.user.id,
+        metadata: { taskId: String(task._id) },
+      });
     }
 
     sendSuccess(res, 'Task updated successfully', populatedTask);
@@ -481,17 +473,13 @@ const deleteTask = async (req, res) => {
     await task.save();
 
     if (leadIdForActivity) {
-      try {
-        await ActivityService.createActivity({
-          leadId: leadIdForActivity,
-          type: ACTIVITY_TYPES.TASK_DELETED,
-          description: `Task deleted: ${taskTitle}`,
-          performedBy: req.user.id,
-          metadata: { taskId: taskIdStr },
-        });
-      } catch (actErr) {
-        console.error('Task activity log failed', actErr);
-      }
+      await ActivityService.logActivity({
+        leadId: leadIdForActivity,
+        type: ACTIVITY_TYPES.TASK_DELETED,
+        description: `Task deleted: ${taskTitle}`,
+        performedBy: req.user.id,
+        metadata: { taskId: taskIdStr },
+      });
     }
 
     sendSuccess(res, 'Task deleted successfully');

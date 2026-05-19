@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Lead = require('../models/lead');
 const Stage = require('../models/Stage');
-const Activity = require('../models/activity');
+const ActivityService = require('./ActivityService');
 const { pauseLeadStageSession } = require('./leadStageProgressService');
 const { ACTIVITY_TYPES } = require('../utils/constants');
 
@@ -103,13 +103,12 @@ async function markLeadCompleted(leadId, { completedNote, performedBy }) {
   await lead.save();
 
   if (performedBy) {
-    const performerOid = resolveObjectId(performedBy);
-    await Activity.create({
-      lead: lead._id,
+    await ActivityService.logActivity({
+      leadId: lead._id,
       type: ACTIVITY_TYPES.LEAD_COMPLETED,
       description: 'Lead marked as completed',
+      performedBy,
       metadata: { completedNote: note, completedAt: now },
-      performedBy: performerOid || performedBy,
     });
   }
 

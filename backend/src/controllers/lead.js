@@ -44,16 +44,40 @@ async function leadPipelineBelongsToTeam(leadDoc, teamId) {
   return pipelineBelongsToTeam(pid, teamId);
 }
 
-const createInboundClientCommunication = async ({ leadId, source, message }) => {
-  if (!message || !String(message).trim()) return;
+const createInboundClientCommunication = async ({
+  leadId,
+  source,
+  message,
+  preferredUserId = null,
+}) => {
+  if (!message || !String(message).trim()) return false;
+  const trimmed = String(message).trim();
+  const commExists = await Communication.findOne({
+    lead: leadId,
+    message: trimmed,
+    source,
+    direction: 'inbound',
+  }).lean();
+  if (commExists) return false;
+
   await Communication.create({
     lead: leadId,
     senderType: 'client',
     senderUser: null,
     source,
     direction: 'inbound',
-    message: String(message).trim()
+    message: trimmed,
   });
+
+  await ActivityService.logActivity({
+    leadId,
+    type: ACTIVITY_TYPES.COMMUNICATION_RECEIVED,
+    description: `Inbound message via ${source}`,
+    preferredUserId,
+    metadata: { source, direction: 'inbound' },
+  });
+
+  return true;
 };
 
 const validateAssignableUser = async (assignedTo, pipelineId = null) => {
@@ -725,7 +749,12 @@ const createOrUpdateLead = async (req, res) => {
     }
 
     if (source && message) {
-      await createInboundClientCommunication({ leadId: lead._id, source, message });
+      await createInboundClientCommunication({
+        leadId: lead._id,
+        source,
+        message,
+        preferredUserId: lead.assignedTo,
+      });
     }
 
     const newAssignedTo = lead.assignedTo?.toString() || null;
@@ -733,42 +762,60 @@ const createOrUpdateLead = async (req, res) => {
       Boolean(newAssignedTo) && (isNewLead || snapshot.assignedTo !== newAssignedTo);
 
     if (isNewLead) {
-      await ActivityService.createActivity({
-        leadId:      lead._id,
-        type:        ACTIVITY_TYPES.LEAD_CREATED,
+      await ActivityService.logActivity({
+        leadId: lead._id,
+        type: ACTIVITY_TYPES.LEAD_CREATED,
         description: `Lead created for ${lead.name}`,
         performedBy: req.user.id,
-        metadata:    { source, pipelineId: resolvedPipelineId, stageId: resolvedStageId },
+        metadata: { source, pipelineId: resolvedPipelineId, stageId: resolvedStageId },
       });
 
       if (newAssignedTo) {
-        await ActivityService.createActivity({
-          leadId:      lead._id,
-          type:        ACTIVITY_TYPES.LEAD_ASSIGNED,
+        await ActivityService.logActivity({
+          leadId: lead._id,
+          type: ACTIVITY_TYPES.LEAD_ASSIGNED,
           description: 'Lead assigned to new agent',
           performedBy: req.user.id,
-          metadata:    { oldAssignedTo: null, newAssignedTo },
+          metadata: { oldAssignedTo: null, newAssignedTo },
         });
       }
-
     } else {
       if (snapshot.status !== lead.status) {
-        await ActivityService.createActivity({
-          leadId:      lead._id,
-          type:        ACTIVITY_TYPES.STATUS_UPDATED,
+        await ActivityService.logActivity({
+          leadId: lead._id,
+          type: ACTIVITY_TYPES.STATUS_UPDATED,
           description: `Status changed from "${snapshot.status}" to "${lead.status}"`,
           performedBy: req.user.id,
-          metadata:    { oldStatus: snapshot.status, newStatus: lead.status },
+          metadata: { oldStatus: snapshot.status, newStatus: lead.status },
         });
       }
 
       if (snapshot.assignedTo !== newAssignedTo) {
-        await ActivityService.createActivity({
-          leadId:      lead._id,
-          type:        ACTIVITY_TYPES.LEAD_ASSIGNED,
+        await ActivityService.logActivity({
+          leadId: lead._id,
+          type: ACTIVITY_TYPES.LEAD_ASSIGNED,
           description: `Lead ${newAssignedTo ? 'assigned to new agent' : 'unassigned'}`,
           performedBy: req.user.id,
-          metadata:    { oldAssignedTo: snapshot.assignedTo, newAssignedTo },
+          metadata: { oldAssignedTo: snapshot.assignedTo, newAssignedTo },
+        });
+      }
+
+      if (String(snapshot.stageId || '') !== String(lead.stageId?.toString() || '')) {
+        const [oldStage, newStage] = await Promise.all([
+          snapshot.stageId ? Stage.findById(snapshot.stageId).select('name').lean() : null,
+          lead.stageId ? Stage.findById(lead.stageId).select('name').lean() : null,
+        ]);
+        await ActivityService.logActivity({
+          leadId: lead._id,
+          type: ACTIVITY_TYPES.STAGE_CHANGED,
+          description: `Stage changed from "${oldStage?.name || 'none'}" to "${newStage?.name || 'none'}"`,
+          performedBy: req.user.id,
+          metadata: {
+            oldStageId: snapshot.stageId,
+            newStageId: lead.stageId?.toString() || null,
+            oldStageName: oldStage?.name || 'none',
+            newStageName: newStage?.name || 'none',
+          },
         });
       }
 
@@ -777,12 +824,12 @@ const createOrUpdateLead = async (req, res) => {
         'priority',
         'leadType',
         'userId',
-        'pipelineId', 'stageId',
+        'pipelineId',
       ];
 
       const changedFields = {};
       TRACKED_FIELDS.forEach((field) => {
-        const oldVal = snapshot[field]       ?? null;
+        const oldVal = snapshot[field] ?? null;
         const newVal = lead[field]?.toString() ?? null;
         if (String(oldVal) !== String(newVal)) {
           changedFields[field] = { oldValue: oldVal, newValue: newVal };
@@ -790,14 +837,14 @@ const createOrUpdateLead = async (req, res) => {
       });
 
       if (Object.keys(changedFields).length > 0) {
-        await ActivityService.createActivity({
-          leadId:      lead._id,
-          type:        ACTIVITY_TYPES.LEAD_UPDATED,
+        await ActivityService.logActivity({
+          leadId: lead._id,
+          type: ACTIVITY_TYPES.LEAD_UPDATED,
           description: isExplicitUpdate
             ? 'Lead details updated'
             : `Existing lead updated for ${lead.name}`,
           performedBy: req.user.id,
-          metadata:    { changedFields },
+          metadata: { changedFields },
         });
       }
     }
@@ -935,12 +982,12 @@ const addLeadCommunication = async (req, res) => {
       'name email role'
     );
 
-    await ActivityService.createActivity({
+    await ActivityService.logActivity({
       leadId: lead._id,
       type: ACTIVITY_TYPES.COMMUNICATION_SENT,
       description: `Communication sent via ${selectedSource}`,
       performedBy: req.user.id,
-      metadata: { source: selectedSource, direction: 'outbound' }
+      metadata: { source: selectedSource, direction: 'outbound' },
     });
 
     sendSuccess(res, 'Communication sent successfully', populatedCommunication);
@@ -996,6 +1043,19 @@ const deleteLead = async (req, res) => {
     if (!lead) {
       return sendNotFound(res, 'Lead not found');
     }
+
+    await ActivityService.logActivity({
+      leadId: lead._id,
+      type: ACTIVITY_TYPES.LEAD_DELETED,
+      description: `Lead deleted: ${lead.name || lead.email || lead.phone || 'Unknown'}`,
+      performedBy: req.user.id,
+      metadata: {
+        name: lead.name,
+        email: lead.email,
+        phone: lead.phone,
+        source: lead.source,
+      },
+    });
 
     await Lead.findByIdAndDelete(req.params.id);
 
@@ -1081,6 +1141,25 @@ const sendEmailToLead = async (req, res) => {
     } else {
       await sendEmail(account, lead.email, subject, message);
     }
+
+    await Communication.create({
+      lead: lead._id,
+      senderType: 'team_member',
+      senderUser: req.user.id,
+      source: COMMUNICATION_SOURCES.EMAIL,
+      direction: 'outbound',
+      message: String(message).trim(),
+      ...(lead.gmailThreadId ? { threadId: lead.gmailThreadId } : {}),
+    });
+
+    await ActivityService.logActivity({
+      leadId: lead._id,
+      type: ACTIVITY_TYPES.COMMUNICATION_SENT,
+      description: `Email sent: ${subject}`,
+      performedBy: req.user.id,
+      metadata: { source: COMMUNICATION_SOURCES.EMAIL, direction: 'outbound', subject },
+    });
+
     return sendSuccess(res, 'Email sent successfully');
   } catch (error) {
     console.error('sendEmailToLead error:', error);

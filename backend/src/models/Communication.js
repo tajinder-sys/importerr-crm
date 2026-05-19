@@ -37,12 +37,24 @@ const communicationSchema = new mongoose.Schema(
       type: String,
       default: null,
       index: true
+    },
+    gmailMessageId: {
+      type: String,
+      default: null,
+      index: true
     }
   },
   { timestamps: true }
 );
 
 communicationSchema.index({ lead: 1, createdAt: 1 });
-communicationSchema.index({ lead: 1, message: 1, source: 1, direction: 1 }); // dedup index
+communicationSchema.index({ lead: 1, message: 1, source: 1, direction: 1 });
+communicationSchema.index(
+  { gmailMessageId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { gmailMessageId: { $type: 'string' } },
+  }
+);
 
 module.exports = mongoose.model('Communication', communicationSchema);

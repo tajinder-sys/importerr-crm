@@ -6,6 +6,8 @@ const {
 
 const Lead = require('../models/lead');
 const User = require('../models/User');
+const ActivityService = require('../services/ActivityService');
+const { ACTIVITY_TYPES } = require('../utils/constants');
 
 // =========================
 // Get Notes for Lead
@@ -82,6 +84,14 @@ const addNote = async (req, res) => {
 
     const createdNote = populatedLead.notes[populatedLead.notes.length - 1];
 
+    await ActivityService.logActivity({
+      leadId,
+      type: ACTIVITY_TYPES.NOTE_ADDED,
+      description: 'Note added',
+      performedBy: req.user.id,
+      metadata: { noteId: String(createdNote._id) },
+    });
+
     sendSuccess(res, 'Note added successfully', createdNote);
   } catch (error) {
     console.error('Add note error:', error);
@@ -126,6 +136,14 @@ const updateNote = async (req, res) => {
     
     const updatedNote = populatedLead.notes.find(n => n._id.toString() === noteId);
 
+    await ActivityService.logActivity({
+      leadId,
+      type: ACTIVITY_TYPES.NOTE_UPDATED,
+      description: 'Note updated',
+      performedBy: req.user.id,
+      metadata: { noteId },
+    });
+
     sendSuccess(res, 'Note updated successfully', updatedNote);
   } catch (error) {
     console.error('Update note error:', error);
@@ -158,6 +176,14 @@ const deleteNote = async (req, res) => {
 
     lead.notes.pull(noteId);
     await lead.save();
+
+    await ActivityService.logActivity({
+      leadId,
+      type: ACTIVITY_TYPES.NOTE_DELETED,
+      description: 'Note deleted',
+      performedBy: req.user.id,
+      metadata: { noteId },
+    });
 
     sendSuccess(res, 'Note deleted successfully');
   } catch (error) {

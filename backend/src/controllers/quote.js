@@ -82,21 +82,21 @@ const sendQuote = async (req, res) => {
     }
 
     const lead = await Lead.findById(req.body.leadId);
-    await ActivityService.createActivity({
-        leadId: req.body.leadId,
-        type: existingQuote === 'send' ? ACTIVITY_TYPES.QUOTE_SENT : ACTIVITY_TYPES.QUOTE_RESENT,
-        description:
-            existingQuote === 'send'
-            ? `Quote ${quoteDoc.referenceId} sent`
-            : `Quote ${quoteDoc.referenceId} resent`,
-        performedBy: req.user?.id || req.body.userId,
-        metadata: {
-            quoteId: quoteDoc._id,
-            referenceId: quoteDoc.referenceId,
-            offerId: quoteDoc.offerId,
-            finalPrice: quoteDoc.amounts?.finalPrice,
-            discountPercent: quoteDoc.amounts?.discountPercent
-        },
+    await ActivityService.logActivity({
+      leadId: req.body.leadId,
+      type: existingQuote === 'send' ? ACTIVITY_TYPES.QUOTE_SENT : ACTIVITY_TYPES.QUOTE_RESENT,
+      description:
+        existingQuote === 'send'
+          ? `Quote ${quoteDoc.referenceId} sent`
+          : `Quote ${quoteDoc.referenceId} resent`,
+      performedBy: req.user?.id || req.body.userId,
+      metadata: {
+        quoteId: quoteDoc._id,
+        referenceId: quoteDoc.referenceId,
+        offerId: quoteDoc.offerId,
+        finalPrice: quoteDoc.amounts?.finalPrice,
+        discountPercent: quoteDoc.amounts?.discountPercent,
+      },
     });
     if (lead?.assignedTo) {
       NotificationService.dispatch({

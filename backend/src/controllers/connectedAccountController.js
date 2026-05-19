@@ -120,7 +120,7 @@ const gmailAuthCallback = async (req, res) => {
     account.isActive = true;
 
     const historyId = await setupGmailWatch(account);
-    if (historyId) account.historyId = historyId;
+    if (historyId) account.historyId = String(historyId);
 
     await account.save();
 

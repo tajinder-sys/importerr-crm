@@ -3,6 +3,11 @@ const ConnectedAccount = require('../models/ConnectedAccount');
 const { getMessagesFromHistory } = require('../services/gmailService');
 const emailQueue = require('../queues/emailQueue');
 const logger = require('../utils/logger');
+const {
+  parseGmailHistoryId,
+  formatGmailHistoryId,
+  gmailHistoryIdBefore,
+} = require('../utils/gmailHistoryId');
 
 const SUPPORTED_CHANNELS = ['whatsapp', 'email', 'meta', 'gmail'];
 
@@ -14,39 +19,52 @@ const handleGmailPubSub = async (req, res, account) => {
     if (!message?.data) return;
 
     const decoded = JSON.parse(Buffer.from(message.data, 'base64').toString('utf-8'));
-    const { historyId } = decoded;
-    if (!historyId) return;
+    const notificationHistoryId = decoded.historyId;
+    if (!notificationHistoryId) return;
 
-    // ── historyId race condition fix ──────────────────────────────
-    // Atomically update historyId only if incoming > stored
-    const updated = await ConnectedAccount.findOneAndUpdate(
-      {
-        _id: account._id,
-        $or: [
-          { historyId: null },
-          { historyId: { $lt: String(parseInt(historyId) - 1) } },
-        ],
-      },
-      { $set: { historyId: String(parseInt(historyId) - 1) } },
-      { new: false } // return old doc to get startHistoryId
-    );
+    const notificationBig = parseGmailHistoryId(notificationHistoryId);
+    if (notificationBig === null) return;
 
-    const startHistoryId = updated
-      ? (updated.historyId || String(parseInt(historyId) - 100))
-      : null;
+    const fresh = await ConnectedAccount.findById(account._id).select('historyId').lean();
+    const checkpointBig = parseGmailHistoryId(fresh?.historyId);
 
-    // Another concurrent request already handled this historyId
-    if (!startHistoryId) {
-      logger.info(`[GmailWebhook] Skipping duplicate historyId ${historyId} for account ${account.accountId}`);
+    // Duplicate Pub/Sub push for an already-synced mailbox state
+    if (checkpointBig !== null && checkpointBig >= notificationBig) {
+      logger.info(
+        `[GmailWebhook] Skipping duplicate notification historyId ${notificationHistoryId} (checkpoint ${fresh.historyId}) for account ${account.accountId}`
+      );
       return;
     }
 
-    const { messageIds, newHistoryId } = await getMessagesFromHistory(account, startHistoryId);
-    if (!messageIds.length) return;
+    const startHistoryId =
+      checkpointBig !== null
+        ? formatGmailHistoryId(checkpointBig)
+        : gmailHistoryIdBefore(notificationHistoryId);
 
-    // Update to final historyId
-    if (newHistoryId) {
-      await ConnectedAccount.findByIdAndUpdate(account._id, { historyId: newHistoryId });
+    logger.info(
+      `[GmailWebhook] Syncing account ${account.accountId} from history ${startHistoryId} (notification ${notificationHistoryId})`
+    );
+
+    const { messageIds, newHistoryId } = await getMessagesFromHistory(account, startHistoryId);
+
+    const newCheckpointBig = parseGmailHistoryId(newHistoryId);
+    const nextCheckpoint =
+      newCheckpointBig !== null && newCheckpointBig >= notificationBig
+        ? formatGmailHistoryId(newCheckpointBig)
+        : formatGmailHistoryId(notificationBig);
+
+    if (nextCheckpoint) {
+      await ConnectedAccount.findByIdAndUpdate(account._id, {
+        historyId: nextCheckpoint,
+        needsResync: false,
+      });
+    }
+
+    if (!messageIds.length) {
+      logger.info(
+        `[GmailWebhook] No new INBOX messages for account ${account.accountId} (notification ${notificationHistoryId})`
+      );
+      return;
     }
 
     // ── Each messageId gets its OWN job (fix retry issue) ─────────

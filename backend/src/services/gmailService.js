@@ -1,5 +1,6 @@
 const { google } = require('googleapis');
-
+const ConnectedAccount = require('../models/ConnectedAccount');
+const logger = require('../utils/logger');
 const getOAuthClient = (account = {}) => new google.auth.OAuth2(
   account.googleClientId || process.env.GOOGLE_CLIENT_ID,
   account.googleClientSecret || process.env.GOOGLE_CLIENT_SECRET,
@@ -87,25 +88,102 @@ const parseEmail = (message) => {
   return { name, email, subject, body, threadId: message.threadId || null };
 };
 
+/** Strip quoted reply blocks so dedup and display use only the new content. */
+const normalizeGmailBody = (body) => {
+  const text = String(body || '').trim();
+  if (!text) return '';
+
+  const cutAt = (idx) => (idx > 0 ? idx : text.length);
+  let end = text.length;
+
+  const onWrote = text.search(/\r?\nOn .+ wrote:\r?\n/i);
+  end = Math.min(end, cutAt(onWrote));
+
+  const original = text.search(/\r?\n-{2,}\s*Original Message\s*-{2,}\r?\n/i);
+  end = Math.min(end, cutAt(original));
+
+  const quoteLine = text.search(/\r?\n>\s/m);
+  end = Math.min(end, cutAt(quoteLine));
+
+  return text.slice(0, end).trim();
+};
+
+const AUTOMATED_FROM_PATTERN =
+  /^(noreply|no-reply|donotreply|mailer-daemon|notifications?|newsletter|bounce)/i;
+
+  const SKIP_GMAIL_LABELS = new Set([
+    'SPAM', 'TRASH', 'DRAFT', 'SENT',
+    'CATEGORY_PROMOTIONS', 'CATEGORY_SOCIAL',
+    'CATEGORY_FORUMS', 'CATEGORY_UPDATES',
+  ]);
+
+/** Inbound INBOX messages that look like real lead inquiries (not self-sent / bulk / automated). */
+const isInboundLeadEmail = (account, message, parsed) => {
+  const labels = message.labelIds || [];
+  if (!labels.includes('INBOX')) return false;
+  // Sent mail in a thread often has both INBOX + SENT — not a client message
+  if (labels.includes('SENT')) return false;
+  if (labels.some((label) => SKIP_GMAIL_LABELS.has(label))) return false;
+
+  const fromEmail = (parsed.email || '').toLowerCase();
+  if (!fromEmail) return false;
+
+  const accountEmail = (account.gmailEmail || '').toLowerCase();
+  if (accountEmail && fromEmail === accountEmail) return false;
+
+  const localPart = fromEmail.split('@')[0] || '';
+  if (AUTOMATED_FROM_PATTERN.test(localPart)) return false;
+
+  const headers = message.payload?.headers || [];
+  const hasListUnsubscribe = headers.some(
+    (h) => h.name.toLowerCase() === 'list-unsubscribe' && h.value
+  );
+  if (hasListUnsubscribe) return false;
+
+  return true;
+};
+
 const getMessagesFromHistory = async (account, startHistoryId) => {
   const gmail = await getGmailClient(account);
+  const seen = new Set();
+  const messages = [];
+  let pageToken = undefined;
+  let newHistoryId;
+
   try {
-    console.log('Fetching history from:', startHistoryId);
-    const { data } = await gmail.users.history.list({
-      userId: 'me',
-      startHistoryId,
-      historyTypes: ['messageAdded'],
-      labelId: 'INBOX'
-    });
-    console.log('History response:', JSON.stringify(data, null, 2));
-    const messages = [];
-    (data.history || []).forEach((h) => {
-      (h.messagesAdded || []).forEach((m) => messages.push(m.message.id));
-    });
-    return { messageIds: messages, newHistoryId: data.historyId };
+    do {
+      const { data } = await gmail.users.history.list({
+        userId: 'me',
+        startHistoryId,
+        historyTypes: ['messageAdded'],
+        labelId: 'INBOX',
+        ...(pageToken ? { pageToken } : {}),
+      });
+
+      (data.history || []).forEach(h =>
+        (h.messagesAdded || []).forEach(m => {
+          const id = m.message?.id;
+          if (id && !seen.has(id)) { seen.add(id); messages.push(id); }
+        })
+      );
+
+      newHistoryId = data.historyId;
+      pageToken = data.nextPageToken;
+    } while (pageToken);
+
+      return {
+        messageIds: messages,
+        newHistoryId: newHistoryId != null ? String(newHistoryId) : null,
+      };
   } catch (err) {
-    console.error('History API error:', err.message, err.code);
-    if (err.code === 404) return { messageIds: [], newHistoryId: startHistoryId };
+    if (err.code === 404) {
+      logger.warn(`[Gmail] historyId expired for account ${account.accountId}, flagging for resync`);
+      await ConnectedAccount.findByIdAndUpdate(account._id, {
+        historyId: null,
+        needsResync: true,
+      });
+      return { messageIds: [], newHistoryId: null };
+    }
     throw err;
   }
 };
@@ -243,6 +321,8 @@ module.exports = {
   getEmailAddress,
   fetchEmailById,
   parseEmail,
+  normalizeGmailBody,
+  isInboundLeadEmail,
   getMessagesFromHistory,
   setupGmailWatch,
   sendEmail,

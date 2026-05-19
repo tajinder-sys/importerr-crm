@@ -46,30 +46,43 @@ const resolveAutoAssignedTeamMember = async () => {
   return selected;
 };
 
-const resolveActivityActor = async (preferredUserId) => {
-  if (preferredUserId) return preferredUserId;
-  const fallbackUser = await User.findOne({
-    role: { $in: [USER_ROLES.ADMIN, USER_ROLES.TEAM_MANAGER, USER_ROLES.TEAM_MEMBER] },
-    isActive: true
-  })
-    .select('_id')
-    .lean();
+const createInboundClientCommunication = async ({
+  leadId,
+  source,
+  message,
+  preferredUserId = null,
+}) => {
+  if (!message || !String(message).trim()) return false;
+  const communicationSource = Object.values(COMMUNICATION_SOURCES).includes(source)
+    ? source
+    : COMMUNICATION_SOURCES.IMPORTERR_INQUIRY;
+  const trimmed = String(message).trim();
+  const commExists = await Communication.findOne({
+    lead: leadId,
+    message: trimmed,
+    source: communicationSource,
+    direction: 'inbound',
+  }).lean();
+  if (commExists) return false;
 
-  return fallbackUser?._id || null;
-};
-
-const createInboundClientCommunication = async ({ leadId, source, message }) => {
-  if (!message || !String(message).trim()) return;
-  const communicationSource =
-    Object.values(COMMUNICATION_SOURCES).includes(source) ? source : COMMUNICATION_SOURCES.IMPORTERR_INQUIRY;
   await Communication.create({
     lead: leadId,
     senderType: 'client',
     senderUser: null,
     source: communicationSource,
     direction: 'inbound',
-    message: String(message).trim()
+    message: trimmed,
   });
+
+  await ActivityService.logActivity({
+    leadId,
+    type: ACTIVITY_TYPES.COMMUNICATION_RECEIVED,
+    description: `Inbound message via ${communicationSource}`,
+    preferredUserId,
+    metadata: { source: communicationSource, direction: 'inbound' },
+  });
+
+  return true;
 };
 
 const createLeadFromImporterr = async (req, res) => {
@@ -142,27 +155,26 @@ const createLeadFromImporterr = async (req, res) => {
         await createInboundClientCommunication({
           leadId: existingLead._id,
           source: existingLead.source,
-          message: resolvedMessage
+          message: resolvedMessage,
+          preferredUserId: existingLead.assignedTo,
         });
 
-        const activityActor = await resolveActivityActor(existingLead.assignedTo || null);
-        if (activityActor) {
-          await ActivityService.createActivity({
-            leadId: existingLead._id,
-            type: ACTIVITY_TYPES.LEAD_UPDATED,
-            description: 'Existing lead refreshed from Importerr inquiry (same user and product)',
-            performedBy: activityActor,
-            metadata: {
-              matchedBy: 'userId+productSku',
-              userId: normalizedUserId,
-              productSku: normalizedProductSku,
-              oldStatus: previousStatus,
-              newStatus: LEAD_STATUSES.NEW,
-              variants: normalizedVariants,
-              totalQuantity: Number(totalQuantity) > 0 ? Number(totalQuantity) : existingLead.totalQuantity || 0
-            }
-          });
-        }
+        await ActivityService.logActivity({
+          leadId: existingLead._id,
+          type: ACTIVITY_TYPES.LEAD_UPDATED,
+          description: 'Existing lead refreshed from Importerr inquiry (same user and product)',
+          preferredUserId: existingLead.assignedTo,
+          metadata: {
+            matchedBy: 'userId+productSku',
+            userId: normalizedUserId,
+            productSku: normalizedProductSku,
+            oldStatus: previousStatus,
+            newStatus: LEAD_STATUSES.NEW,
+            variants: normalizedVariants,
+            totalQuantity:
+              Number(totalQuantity) > 0 ? Number(totalQuantity) : existingLead.totalQuantity || 0,
+          },
+        });
 
         return sendSuccess(
           res,
@@ -195,26 +207,24 @@ const createLeadFromImporterr = async (req, res) => {
     await createInboundClientCommunication({
       leadId: lead._id,
       source: lead.source,
-      message: lead.message
+      message: lead.message,
+      preferredUserId: assignedTo,
     });
 
-    const activityActor = await resolveActivityActor(assignedTo);
-    if (activityActor) {
-      await ActivityService.createActivity({
-        leadId: lead._id,
-        type: ACTIVITY_TYPES.LEAD_CREATED,
-        description: `Lead created from Importerr inquiry${lead.productSku ? ` (${lead.productSku})` : ''}`,
-        performedBy: activityActor,
-        metadata: {
-          source: lead.source,
-          userId: lead.userId || null,
-          productId: lead.productId || null,
-          productSku: lead.productSku || null,
-          variants: lead.variants || null,
-          totalQuantity: lead.totalQuantity || 0
-        }
-      });
-    }
+    await ActivityService.logActivity({
+      leadId: lead._id,
+      type: ACTIVITY_TYPES.LEAD_CREATED,
+      description: `Lead created from Importerr inquiry${lead.productSku ? ` (${lead.productSku})` : ''}`,
+      preferredUserId: assignedTo,
+      metadata: {
+        source: lead.source,
+        userId: lead.userId || null,
+        productId: lead.productId || null,
+        productSku: lead.productSku || null,
+        variants: lead.variants || null,
+        totalQuantity: lead.totalQuantity || 0,
+      },
+    });
     // AI pipeline + priority + user assignment (non-blocking)
     assignLeadWithAI(lead).catch(err => console.error('AI assignment failed:', err.message));
 
