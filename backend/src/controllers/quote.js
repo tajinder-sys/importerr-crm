@@ -3,6 +3,7 @@ const { generateQuoteReferenceId } = require('../helpers/index');
 const { sendSuccess, sendBadRequest, sendNotFound, sendServerError } = require('../utils/responseHandler');
 const Lead = require('../models/lead');
 const ActivityService = require('../services/ActivityService');
+const NotificationService = require('../services/NotificationService');
 const { ACTIVITY_TYPES } = require('../utils/constants');
 const EmailService = require('../services/EmailService');
 const mongoose = require('mongoose');
@@ -97,6 +98,18 @@ const sendQuote = async (req, res) => {
             discountPercent: quoteDoc.amounts?.discountPercent
         },
     });
+    if (lead?.assignedTo) {
+      NotificationService.dispatch({
+        type: 'quote_sent',
+        title: existingQuote ? 'Quote resent' : 'Quote sent',
+        body: `Quote ${quoteDoc.referenceId} for ${lead.name || 'lead'}`,
+        assigneeUserId: lead.assignedTo,
+        leadId: lead._id,
+        actionUrl: `/leads/${lead._id}`,
+        actorUserId: req.user?.id || null,
+        dedupeKey: `quote_sent:${quoteDoc._id}`,
+      }).catch(() => {});
+    }
     if(lead.email){
       try {
           await EmailService.sendTemplateEmail({

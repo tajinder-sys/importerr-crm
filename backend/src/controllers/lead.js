@@ -4,6 +4,7 @@ const Activity = require('../models/activity');
 const Communication = require('../models/Communication');
 const User = require('../models/User');
 const ActivityService = require('../services/ActivityService');
+const NotificationService = require('../services/NotificationService');
 const CommunicationService = require('../services/CommunicationService');
 const { sendSuccess, sendBadRequest, sendNotFound, sendForbidden } = require('../utils/responseHandler');
 const { validateLeadData } = require('../utils/validators');
@@ -727,6 +728,10 @@ const createOrUpdateLead = async (req, res) => {
       await createInboundClientCommunication({ leadId: lead._id, source, message });
     }
 
+    const newAssignedTo = lead.assignedTo?.toString() || null;
+    const shouldNotifyAssignee =
+      Boolean(newAssignedTo) && (isNewLead || snapshot.assignedTo !== newAssignedTo);
+
     if (isNewLead) {
       await ActivityService.createActivity({
         leadId:      lead._id,
@@ -736,9 +741,17 @@ const createOrUpdateLead = async (req, res) => {
         metadata:    { source, pipelineId: resolvedPipelineId, stageId: resolvedStageId },
       });
 
-    } else {
-      const newAssignedTo = lead.assignedTo?.toString() || null;
+      if (newAssignedTo) {
+        await ActivityService.createActivity({
+          leadId:      lead._id,
+          type:        ACTIVITY_TYPES.LEAD_ASSIGNED,
+          description: 'Lead assigned to new agent',
+          performedBy: req.user.id,
+          metadata:    { oldAssignedTo: null, newAssignedTo },
+        });
+      }
 
+    } else {
       if (snapshot.status !== lead.status) {
         await ActivityService.createActivity({
           leadId:      lead._id,
@@ -787,6 +800,22 @@ const createOrUpdateLead = async (req, res) => {
           metadata:    { changedFields },
         });
       }
+    }
+
+    if (shouldNotifyAssignee) {
+      const assignee = await User.findById(newAssignedTo).select('team_id').lean();
+      NotificationService.dispatch({
+        type: 'lead_assigned',
+        title: 'Lead assigned to you',
+        body: `Lead "${lead.name}" has been assigned to you`,
+        assigneeUserId: newAssignedTo,
+        previousAssigneeUserId: snapshot.assignedTo || null,
+        leadId: lead._id,
+        teamId: assignee?.team_id || null,
+        actionUrl: `/leads/${lead._id}`,
+        actorUserId: req.user.id,
+        dedupeKey: `lead_assigned:${lead._id}:${newAssignedTo}`,
+      }).catch(() => {});
     }
 
     // ── 9. Return populated lead ─────────────────────────────────────────────

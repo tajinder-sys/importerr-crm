@@ -131,7 +131,7 @@ export default function TaskCalendarPanel() {
         onClick={() => setOpen((o) => !o)}
         title="Task calendar"
         aria-label="Open task calendar"
-        className="relative flex h-9 w-9 items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-100 md:h-auto md:w-auto md:gap-1.5 md:px-1.5 md:py-1.5 md:text-sm md:font-medium md:hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-700"
+        className="relative flex h-9 w-9 items-center border border-gray-200 justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-100 md:h-auto md:w-auto md:gap-1.5 md:px-1.5 md:py-1.5 md:text-sm md:font-medium md:hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-700"
       >
         <Calendar className="h-5 w-5 md:h-[20px] md:w-[20px]" />
         {todayTasksCount > 0 && (

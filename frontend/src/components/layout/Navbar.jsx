@@ -7,6 +7,7 @@ import { cn } from '../../utils/helpers';
 import { useLayout } from '../../contexts/LayoutContext.jsx';
 import { useTheme } from '../../contexts/ThemeContext.jsx';
 import TaskCalendarPanel from '../common/TaskCalendarPanel';
+import NotificationBell from '../notifications/NotificationBell';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -66,7 +67,8 @@ const Navbar = () => {
             <button type="button" onClick={toggleTheme} className={btnCls} title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}>
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
-            <div className="flex items-center bg-transparent p-1.5 md:p-0">
+            <div className="flex items-center gap-1 bg-transparent p-1.5 md:gap-2 md:p-0">
+              <NotificationBell />
               <TaskCalendarPanel />
             </div>
             <div className="hidden md:flex md:items-center">

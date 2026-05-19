@@ -8,6 +8,7 @@ const EmailService = require('./EmailService');
 const AiLog = require('../models/AiLog');
 const logger = require('../utils/logger');
 const leadStageProgressService = require('./leadStageProgressService');
+const NotificationService = require('./NotificationService');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -323,7 +324,7 @@ const assignLeadWithAI = async (lead) => {
     if (assignedTo) {
       try {
         const assignedUser = await User.findById(assignedTo)
-          .select('name email')
+          .select('name email team_id')
           .lean();
         if (assignedUser?.email) {
           await EmailService.sendTemplateEmail({
@@ -335,6 +336,17 @@ const assignLeadWithAI = async (lead) => {
             },
           });
         }
+
+        NotificationService.dispatch({
+          type: 'lead_assigned',
+          title: 'Lead assigned to you',
+          body: `Lead "${lead.name || 'New lead'}" has been assigned to you`,
+          assigneeUserId: assignedTo,
+          leadId: lead._id,
+          teamId: assignedUser?.team_id || null,
+          actionUrl: `/leads/${lead._id}`,
+          dedupeKey: `lead_assigned:${lead._id}:${assignedTo}`,
+        }).catch(() => {});
       } catch (err) {
         logger.error('Assignment email failed', { error: err.message });
       }

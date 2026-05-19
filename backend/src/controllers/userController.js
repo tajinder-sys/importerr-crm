@@ -2,7 +2,8 @@ const User = require('../models/User');
 const {
   sendSuccess,
   sendBadRequest,
-  sendNotFound
+  sendNotFound,
+  sendForbidden,
 } = require('../utils/responseHandler');
 const { USER_ROLES, TASK_PRIORITY_LEVELS } = require('../utils/constants');
 
@@ -85,16 +86,11 @@ const getUsers = async (req, res) => {
       .select('-password')
       .populate({
         path: 'team_id',
-        select: 'name status',
-        match: { status: 'active' }
+        select: 'name status description',
       })
       .sort(sortSpec)
       .skip((page - 1) * limit)
       .limit(Number(limit));
-
-    const filteredUsers = users.filter(
-      user => !user.team_id || user.team_id.status === 'active'
-    );
 
     const total = await User.countDocuments(query);
 
@@ -110,6 +106,38 @@ const getUsers = async (req, res) => {
   } catch (error) {
     console.error('Get users error:', error);
     sendBadRequest(res, 'Failed to fetch users');
+  }
+};
+
+// =========================
+// My team directory (read-only, manager + member)
+// =========================
+const getMyTeamDirectory = async (req, res) => {
+  try {
+    const role = req.user.role;
+    if (role !== USER_ROLES.TEAM_MANAGER && role !== USER_ROLES.TEAM_MEMBER) {
+      return sendForbidden(res, 'Only team managers and members can view the team directory');
+    }
+
+    const teamId = req.user.teamId || req.user.team_id;
+    if (!teamId) {
+      return sendSuccess(res, 'No team assigned to your account', { team: null, users: [] });
+    }
+
+    const team = await Team.findById(teamId).select('name status description').lean();
+    const users = await User.find({
+      team_id: teamId,
+      isActive: true,
+      role: { $in: [USER_ROLES.TEAM_MANAGER, USER_ROLES.TEAM_MEMBER] },
+    })
+      .select('name email phone role priority lastLogin createdAt')
+      .sort({ role: 1, name: 1 })
+      .lean();
+
+    sendSuccess(res, 'Team directory retrieved', { team, users });
+  } catch (error) {
+    console.error('getMyTeamDirectory error:', error);
+    sendBadRequest(res, 'Failed to load team directory');
   }
 };
 
@@ -470,6 +498,7 @@ const toggleUserActive = async (req, res) => {
 
 module.exports = {
   getUsers,
+  getMyTeamDirectory,
   getUserById,
   getTeamAssignableRoster,
   createUser,

@@ -1,0 +1,2 @@
+{"sessionId":"2ee862","hypothesisId":"C","location":"NotificationService.js:recipients","message":"resolved recipients","data":{"type":"system_integration_error","assigneeUserId":null,"candidatesCount":1,"recipientCount":1,"recipientRoles":["admin"],"policyRoles":{"admin":true,"team_manager":false,"team_member":false}},"timestamp":1779099901338}
+{"sessionId":"2ee862","hypothesisId":"E","location":"NotificationService.js:created","message":"notifications created","data":{"type":"system_integration_error","createdCount":1},"timestamp":1779099901740}

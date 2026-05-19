@@ -2,6 +2,7 @@ const Lead = require('../models/lead');
 const Communication = require('../models/Communication');
 const User = require('../models/User');
 const { assignLeadWithAI } = require('./aiAssignmentService');
+const NotificationService = require('./NotificationService');
 const { LEAD_SOURCES, LEAD_STATUSES } = require('../utils/constants');
 
 const SOURCE_MAP = {
@@ -156,6 +157,18 @@ const ingestLeadFromChannel = async (channel, payload) => {
           message: leadData.message,
           ...(leadData.gmailThreadId ? { threadId: leadData.gmailThreadId } : {})
         });
+
+        if (existingLead.assignedTo) {
+          NotificationService.dispatch({
+            type: 'client_reply',
+            title: 'New client reply',
+            body: String(leadData.message).slice(0, 120),
+            assigneeUserId: existingLead.assignedTo,
+            leadId: existingLead._id,
+            actionUrl: `/leads/${existingLead._id}`,
+            dedupeKey: `client_reply:${existingLead._id}:${String(leadData.message).slice(0, 64)}`,
+          }).catch(() => {});
+        }
       }
     }
     return { ok: true, lead: existingLead, isNew: false };
@@ -185,6 +198,16 @@ const ingestLeadFromChannel = async (channel, payload) => {
 
   // AI pipeline + member assignment (async, non-blocking)
   assignLeadWithAI(lead).catch(err => console.error('AI assignment failed:', err.message));
+
+  NotificationService.dispatch({
+    type: 'new_lead_inbound',
+    title: 'New inbound lead',
+    body: `${leadData.name || leadData.email || 'Lead'} via ${channel}`,
+    assigneeUserId: lead.assignedTo || null,
+    leadId: lead._id,
+    actionUrl: `/leads/${lead._id}`,
+    dedupeKey: `new_lead_inbound:${lead._id}`,
+  }).catch(() => {});
 
   return { ok: true, lead, isNew: true };
 };

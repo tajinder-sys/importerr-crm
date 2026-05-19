@@ -7,8 +7,8 @@ import { typography } from '../../config/designSystem';
 import {
   Home, Users, Users2, Activity, Settings, Globe, FileText, LayoutDashboard,
   Mail, MessageSquare, CreditCard, GitBranch, Store,
-  ChevronDown, ChevronRight, ChevronLeft,
-  UserRoundX, Download, FileCheck,
+  ChevronDown, ChevronRight,   ChevronLeft,
+  UserRoundX, Download, FileCheck, Bell, UsersRound,
 } from 'lucide-react';
 import { useState } from 'react';
 import { USER_ROLES } from '../../utils/constants';
@@ -26,6 +26,9 @@ const Sidebar = () => {
 
   const isUserAdmin = user?.role === 'admin';
   const canSeeUnassignedLeads = isUserAdmin || user?.role === USER_ROLES.TEAM_MANAGER;
+  const canSeeMyTeam =
+    !isUserAdmin &&
+    (user?.role === USER_ROLES.TEAM_MANAGER || user?.role === USER_ROLES.TEAM_MEMBER);
 
   const mainNavigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
@@ -35,6 +38,7 @@ const Sidebar = () => {
           { name: 'Seller Assignments', href: '/seller-users', icon: Store },
         ]
       : []),
+    ...(canSeeMyTeam ? [{ name: 'My team', href: '/my-team', icon: UsersRound }] : []),
     { name: 'Task Activities', href: '/activities', icon: Activity },
   ];
 
@@ -52,6 +56,7 @@ const Sidebar = () => {
     { href: '/settings/teams', icon: Users, title: 'Teams' },
     { href: '/settings/pipelines', icon: GitBranch, title: 'Pipelines & Stages' },
     { href: '/settings/dashboard-sections', icon: LayoutDashboard, title: 'Dashboard sections' },
+    { href: '/settings/notifications', icon: Bell, title: 'Notifications' },
     { href: '/templates/email', icon: Mail, title: 'Email templates' },
     { href: '/templates/whatsapp', icon: MessageSquare, title: 'WhatsApp templates' },
     { href: '/export-reports', icon: Download, title: 'Export Reports' },
@@ -238,6 +243,7 @@ const Sidebar = () => {
                             { href: '/settings/teams', icon: Users, label: 'Teams' },
                             { href: '/settings/pipelines', icon: GitBranch, label: 'Pipelines & Stages' },
                             { href: '/settings/dashboard-sections', icon: LayoutDashboard, label: 'Dashboard sections' },
+                            { href: '/settings/notifications', icon: Bell, label: 'Notifications' },
                           ].map(({ href, icon: Icon, label }) => (
                             <a key={href} href={href}
                               onClick={(e) => { e.preventDefault(); navigate(href); }}

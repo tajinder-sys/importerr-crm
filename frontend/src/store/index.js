@@ -3,6 +3,7 @@ import authReducer from './authSlice';
 import teamsReducer from './teamsSlice';
 import tasksReducer from './tasksSlice';
 import sellerUsersReducer from './sellerUsersSlice';
+import notificationsReducer from './notificationsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -10,5 +11,6 @@ export const store = configureStore({
     teams: teamsReducer,
     tasks: tasksReducer,
     sellerUsers: sellerUsersReducer,
+    notifications: notificationsReducer,
   },
 });

@@ -6,6 +6,7 @@ export const API_ROUTES = {
   },
   users: {
     list: '/users',
+    myTeam: '/users/my-team',
     teamAssignable: '/users/team-assignable',
     create: '/users',
     byId: (userId) => `/users/${encodeURIComponent(userId)}`,
@@ -133,5 +134,13 @@ export const API_ROUTES = {
   export: {
     config: '/export/config',
     generate: '/export/generate',
+  },
+  notifications: {
+    list: '/notifications',
+    unreadCount: '/notifications/unread-count',
+    markRead: (id) => `/notifications/${encodeURIComponent(id)}/read`,
+    markAllRead: '/notifications/read-all',
+    policies: '/notifications/policies',
+    policiesReset: '/notifications/policies/reset',
   },
 };

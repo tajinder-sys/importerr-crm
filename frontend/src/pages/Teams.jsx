@@ -304,8 +304,13 @@ const Teams = () => {
       sortable: false,
       header: 'Team',
       render: (member) => (
-        <span className="text-sm text-gray-600">
-          {member.team_id?.name || '-'}
+        <span className="text-sm text-gray-600 dark:text-slate-400">
+          {member.team_id?.name || '—'}
+          {member.team_id?.status && member.team_id.status !== 'active' ? (
+            <span className="ml-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+              ({member.team_id.status})
+            </span>
+          ) : null}
         </span>
       )
     },
@@ -358,7 +363,10 @@ const Teams = () => {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <UiPageTitle>Teams</UiPageTitle>
-            <UiPageDescription>Manage team managers and team members.</UiPageDescription>
+            <UiPageDescription>
+              View and manage all CRM users (team managers and members). Team column shows each
+              user&apos;s team, including inactive teams.
+            </UiPageDescription>
           </div>
           {admin ? (
             <Button

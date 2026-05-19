@@ -7,6 +7,7 @@ const { validateTaskData } = require('../utils/validators');
 const { USER_ROLES, ACTIVITY_TYPES } = require('../utils/constants');
 const { taskVisibilityMatch } = require('../services/taskQueryVisibility');
 const ActivityService = require('../services/ActivityService');
+const NotificationService = require('../services/NotificationService');
 
 const TASK_TYPES = {
   CALL: 'call',
@@ -321,6 +322,21 @@ const createTask = async (req, res) => {
       });
     } catch (actErr) {
       console.error('Task activity log failed', actErr);
+    }
+
+    if (resolvedAssignedTo && String(resolvedAssignedTo) !== String(req.user.id)) {
+      NotificationService.dispatch({
+        type: 'task_assigned',
+        title: 'Task assigned to you',
+        body: task.title.trim(),
+        assigneeUserId: resolvedAssignedTo,
+        taskId: task._id,
+        leadId: lead_id,
+        teamId: resolvedTeamId || null,
+        actionUrl: `/leads/${lead_id}`,
+        actorUserId: req.user.id,
+        dedupeKey: `task_assigned:${task._id}:${resolvedAssignedTo}`,
+      }).catch(() => {});
     }
 
     sendSuccess(res, 'Task created successfully', populatedTask);

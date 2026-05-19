@@ -19,8 +19,24 @@ const emailQueue = new Bull(
     : { redis: getRedisConfig() }
 );
 
+let lastQueueErrorAt = 0;
+
 emailQueue.on('error', (err) => {
   console.error('[EmailQueue] Error:', err.message);
+  const now = Date.now();
+  if (now - lastQueueErrorAt < 300000) return;
+  lastQueueErrorAt = now;
+  try {
+    const NotificationService = require('../services/NotificationService');
+    NotificationService.dispatch({
+      type: 'system_integration_error',
+      title: 'Email queue error',
+      body: err.message,
+      dedupeKey: `system_integration_error:email_queue:${Math.floor(now / 300000)}`,
+    }).catch(() => {});
+  } catch (_) {
+    // ignore
+  }
 });
 
 module.exports = emailQueue;

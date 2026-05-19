@@ -31,6 +31,8 @@ import { USER_ROLES } from './utils/constants';
 import UnassignedLeads from './pages/Leads/UnassignedLeads.jsx';
 import Leads from './pages/Leads/LeadsManagement/Lead.jsx';
 import CompletedLeads from './pages/Leads/CompletedLeads.jsx';
+import NotificationSettings from './pages/settings/NotificationSettings.jsx';
+import MyTeam from './pages/MyTeam.jsx';
 
 const AdminRoute = ({ children }) => {
   const { user } = useAuth();
@@ -73,6 +75,7 @@ const AuthenticatedShell = () => {
             <Route path="/leads/completed" element={<CompletedLeads />} />
             <Route path="/leads/:id" element={<LeadDetails />} />
             <Route path="/activities" element={<Activities />} />
+            <Route path="/my-team" element={<MyTeam />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/teams" element={<Teams />} />
             <Route
@@ -104,6 +107,14 @@ const AuthenticatedShell = () => {
               element={(
                 <AdminRoute>
                   <DashboardSections />
+                </AdminRoute>
+              )}
+            />
+            <Route
+              path="/settings/notifications"
+              element={(
+                <AdminRoute>
+                  <NotificationSettings />
                 </AdminRoute>
               )}
             />
