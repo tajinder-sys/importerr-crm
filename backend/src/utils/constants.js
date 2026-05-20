@@ -35,6 +35,16 @@ const LEAD_SOURCES = {
   IMPORTERR_INQUIRY: 'importerr_inquiry',
   IMPORTERR_TICKET: 'importerr_ticket',
   IMPORTERR_CONTACT: 'importerr_contact',
+  ABANDONED_CART: 'abandoned_cart',
+  ABANDONED_PAYMENT: 'abandoned_payment',
+};
+
+/** CrmAbandonedLead queue statuses (Importerr sync uses open / converted / cancelled). */
+const ABANDONED_QUEUE_STATUSES = {
+  OPEN: 'open',
+  CONVERTED: 'converted',
+  CANCELLED: 'cancelled',
+  PROCESSED: 'processed',
 };
 
 const LEAD_STATUSES = {
@@ -117,6 +127,7 @@ module.exports = {
   TEAM_STATUS,
   TASK_PRIORITY_LEVELS,
   LEAD_SOURCES,
+  ABANDONED_QUEUE_STATUSES,
   LEAD_STATUSES,
   ASSIGNMENT_TYPES,
   ACTIVITY_TYPES,

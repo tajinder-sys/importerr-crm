@@ -1,6 +1,6 @@
-import { Route } from 'react-router-dom';
+import { Route, Navigate } from 'react-router-dom';
 import { ROUTE_PATHS } from './paths';
-import { TeamManagerRoute, TeamMemberRoute } from './guards';
+import { AdminRoute, TeamManagerRoute, TeamMemberRoute } from './guards';
 import {
   LazyActivities,
   LazyCompletedLeads,
@@ -11,10 +11,13 @@ import {
   LazyProfile,
   LazyTeams,
   LazyUnassignedLeads,
+  LazyAbandonedQueue,
+  LazyAbandonedSettings,
 } from './lazyPages';
 
 export const appRoutes = (
   <>
+    <Route path="/leads/abandoned-queue" element={<Navigate to={ROUTE_PATHS.ABANDONED_QUEUE} replace />} />
     <Route path={ROUTE_PATHS.DASHBOARD} element={<LazyDashboard />} />
     <Route
       path={ROUTE_PATHS.LEADS_UNASSIGNED}
@@ -25,6 +28,22 @@ export const appRoutes = (
       )}
     />
     <Route path={ROUTE_PATHS.LEADS_COMPLETED} element={<LazyCompletedLeads />} />
+    <Route
+      path={ROUTE_PATHS.ABANDONED_QUEUE}
+      element={(
+        <AdminRoute>
+          <LazyAbandonedQueue />
+        </AdminRoute>
+      )}
+    />
+    <Route
+      path={ROUTE_PATHS.ABANDONED_SETTINGS}
+      element={(
+        <AdminRoute>
+          <LazyAbandonedSettings />
+        </AdminRoute>
+      )}
+    />
     <Route path={ROUTE_PATHS.LEADS} element={<LazyLeads />} />
     <Route path={ROUTE_PATHS.LEAD_DETAIL} element={<LazyLeadDetails />} />
     <Route path={ROUTE_PATHS.ACTIVITIES} element={<LazyActivities />} />

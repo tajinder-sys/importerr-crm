@@ -7,6 +7,7 @@ import {
   LazyExportReports,
   LazyIntegrations,
   LazyNotificationSettings,
+  LazySystemCrons,
   LazyPaymentMethods,
   LazyPipelineStages,
   LazySellerUsers,
@@ -53,6 +54,14 @@ export const adminRoutes = (
       element={(
         <AdminRoute>
           <LazyNotificationSettings />
+        </AdminRoute>
+      )}
+    />
+    <Route
+      path={ROUTE_PATHS.SETTINGS_CRONS}
+      element={(
+        <AdminRoute>
+          <LazySystemCrons />
         </AdminRoute>
       )}
     />

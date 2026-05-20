@@ -11,9 +11,12 @@ import {
   GitBranch,
   Store,
   UserRoundX,
+  ShoppingCart,
+  SlidersHorizontal,
   Download,
   FileCheck,
   Bell,
+  Timer,
   UsersRound,
 } from 'lucide-react';
 import { ROUTE_PATHS } from '../routes/paths';
@@ -52,6 +55,19 @@ export function isTemplatesSectionActive(pathname) {
 
 export function isLeadsSectionActive(pathname, leadsNav) {
   return leadsNav.some((item) => isNavItemActive(pathname, item.href));
+}
+
+export function getAbandonedNavigation(user) {
+  if (user?.role !== USER_ROLES.ADMIN) return [];
+  return [
+    { name: 'Queues', href: ROUTE_PATHS.ABANDONED_QUEUE, icon: ShoppingCart, roles: [USER_ROLES.ADMIN] },
+    { name: 'Settings', href: ROUTE_PATHS.ABANDONED_SETTINGS, icon: SlidersHorizontal, roles: [USER_ROLES.ADMIN] },
+  ];
+}
+
+export function isAbandonedSectionActive(pathname, abandonedNav) {
+  if (!pathname.startsWith('/abandoned')) return false;
+  return abandonedNav.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
 }
 
 export function getMainNavigation(user) {
@@ -115,6 +131,7 @@ export function getSettingsSubNavigation() {
     { href: ROUTE_PATHS.SETTINGS_PIPELINES, icon: GitBranch, label: 'Pipelines & Stages' },
     { href: ROUTE_PATHS.SETTINGS_DASHBOARD_SECTIONS, icon: LayoutDashboard, label: 'Dashboard sections' },
     { href: ROUTE_PATHS.SETTINGS_NOTIFICATIONS, icon: Bell, label: 'Notifications' },
+    { href: ROUTE_PATHS.SETTINGS_CRONS, icon: Timer, label: 'Scheduled crons' },
   ];
 }
 
@@ -135,6 +152,7 @@ export function getAdminShortcuts(user) {
     { href: ROUTE_PATHS.SETTINGS_PIPELINES, icon: GitBranch, title: 'Pipelines & Stages' },
     { href: ROUTE_PATHS.SETTINGS_DASHBOARD_SECTIONS, icon: LayoutDashboard, title: 'Dashboard sections' },
     { href: ROUTE_PATHS.SETTINGS_NOTIFICATIONS, icon: Bell, title: 'Notifications' },
+    { href: ROUTE_PATHS.SETTINGS_CRONS, icon: Timer, title: 'Scheduled crons' },
     { href: ROUTE_PATHS.TEMPLATES_EMAIL, icon: Mail, title: 'Email templates' },
     { href: ROUTE_PATHS.TEMPLATES_WHATSAPP, icon: MessageSquare, title: 'WhatsApp templates' },
     { href: ROUTE_PATHS.EXPORT_REPORTS, icon: Download, title: 'Export Reports' },

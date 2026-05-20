@@ -113,6 +113,13 @@ const leadSchema = new mongoose.Schema({
     trim: true,
     default: null
   },
+  abandonedQueueRef: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CrmAbandonedLead',
+    default: null,
+    sparse: true,
+    index: true,
+  },
   notes: [noteSchema],
   accountId: { type: String, default: null, index: true },
   priority: { type: String, enum: ['high', 'medium', 'low','urgent'], default: 'medium' },

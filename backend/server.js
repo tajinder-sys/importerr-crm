@@ -74,6 +74,16 @@ async function start() {
     process.stdout.write(`\r  ${cross} Email Worker  FAILED — ${err.message}\n`);
   }
 
+  // ── Scheduled crons (dynamic intervals from DB) ─────────────
+  process.stdout.write(`  ${dot} Cron scheduler starting...`);
+  try {
+    const { startCronScheduler } = require('./src/cron/cronScheduler');
+    startCronScheduler();
+    process.stdout.write(`\r  ${tick} Cron scheduler ready          \n`);
+  } catch (err) {
+    process.stdout.write(`\r  ${cross} Cron scheduler FAILED — ${err.message}\n`);
+  }
+
   // ── Summary ───────────────────────────────────────────────────
   const total = Date.now() - appStart;
   console.log(`\n  ${c.bold}${c.green}Ready${c.reset} in ${ms(total)}  ${c.gray}[${now()}]${c.reset}`);

@@ -8,6 +8,7 @@ import {
   Users,
   Settings,
   FileText,
+  ShoppingBag,
   ChevronDown,
   ChevronRight,
   ChevronLeft,
@@ -18,6 +19,7 @@ import { ROUTE_PATHS } from '../../routes/paths';
 import {
   getMainNavigation,
   getLeadsNavigation,
+  getAbandonedNavigation,
   getSettingsSubNavigation,
   getTemplatesSubNavigation,
   getAdminShortcuts,
@@ -26,6 +28,7 @@ import {
   isSettingsSectionActive,
   isTemplatesSectionActive,
   isLeadsSectionActive,
+  isAbandonedSectionActive,
 } from '../../config/navigation';
 
 const Sidebar = () => {
@@ -39,6 +42,7 @@ const Sidebar = () => {
   const isUserAdmin = user?.role === USER_ROLES.ADMIN;
   const mainNavigation = getMainNavigation(user);
   const leadsNavigation = getLeadsNavigation(user);
+  const abandonedNavigation = getAbandonedNavigation(user);
   const adminShortcuts = getAdminShortcuts(user);
   const settingsSubNav = getSettingsSubNavigation();
   const templatesSubNav = getTemplatesSubNavigation();
@@ -47,9 +51,11 @@ const Sidebar = () => {
   const [settingsOpen, setSettingsOpen] = useState(isSettingsSectionActive(location.pathname));
   const [templatesOpen, setTemplatesOpen] = useState(isTemplatesSectionActive(location.pathname));
   const [leadsOpen, setLeadsOpen] = useState(location.pathname.startsWith('/leads'));
+  const [abandonedOpen, setAbandonedOpen] = useState(location.pathname.startsWith('/abandoned'));
 
   const isActive = (href) => isNavItemActive(location.pathname, href);
   const isLeadsSectionActiveNow = isLeadsSectionActive(location.pathname, leadsNavigation);
+  const isAbandonedSectionActiveNow = isAbandonedSectionActive(location.pathname, abandonedNavigation);
 
   const navItemCls = (active) => cn(
     'group flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors',
@@ -124,6 +130,16 @@ const Sidebar = () => {
                     </a>
                   );
                 })}
+                {abandonedNavigation.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <a key={item.name} href={item.href} title={item.name}
+                      onClick={(e) => { e.preventDefault(); navigate(item.href); }}
+                      className={iconItemCls(isActive(item.href))}>
+                      <Icon className="h-5 w-5 shrink-0" />
+                    </a>
+                  );
+                })}
                 {adminShortcuts.map(({ href, icon: Icon, title }) => (
                   <a key={href} href={href} title={title}
                     onClick={(e) => { e.preventDefault(); navigate(href); }}
@@ -184,6 +200,45 @@ const Sidebar = () => {
                       </div>
                     )}
                   </div>
+
+                  {abandonedNavigation.length > 0 && (
+                    <div className="rounded-lg bg-white/60 p-1 dark:bg-slate-800/60">
+                      <button
+                        type="button"
+                        onClick={() => setAbandonedOpen((p) => !p)}
+                        className={cn(
+                          'group flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm font-medium transition-colors',
+                          isAbandonedSectionActiveNow
+                            ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200'
+                        )}
+                      >
+                        <span className="flex items-center">
+                          <ShoppingBag className="mr-2.5 h-4 w-4 shrink-0" />
+                          Abandoned
+                        </span>
+                        {abandonedOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      </button>
+                      {abandonedOpen && (
+                        <div className="ml-4 mt-1 space-y-1 pl-3">
+                          {abandonedNavigation.map(({ href, icon: Icon, name: label }) => (
+                            <a
+                              key={href}
+                              href={href}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                navigate(href);
+                              }}
+                              className={subItemCls(isActive(href))}
+                            >
+                              <Icon className="h-3 w-3" />
+                              {label}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {exportReportsItem && (() => {
                     const { href, name, icon: ExportIcon } = exportReportsItem;

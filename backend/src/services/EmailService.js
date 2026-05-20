@@ -8,43 +8,36 @@ class EmailService {
       service: 'gmail',
       auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
+        pass: process.env.EMAIL_PASS,
+      },
     });
   }
 
-replacePlaceholders(template, data = {}) {
-  let subject = template.subject || '';
-  let body = template.body || '';
+  replacePlaceholders(template, data = {}) {
+    let subject = template.subject || '';
+    let body = template.body || '';
 
-  // only replace if placeholders exist
-  if (template.placeholders?.length) {
-    template.placeholders.forEach((key) => {
-      const value = data[key] ?? '';
-      const regex = new RegExp(`{{${key}}}`, 'g');
+    if (template.placeholders?.length) {
+      template.placeholders.forEach((key) => {
+        const value = data[key] ?? '';
+        const regex = new RegExp(`{{${key}}}`, 'g');
 
-      body = body.replace(regex, value);
+        body = body.replace(regex, value);
 
-      if (subject.includes(`{{${key}}}`)) {
-        subject = subject.replace(regex, value);
-      }
-    });
+        if (subject.includes(`{{${key}}}`)) {
+          subject = subject.replace(regex, value);
+        }
+      });
+    }
+
+    return { subject, body };
   }
 
-  return { subject, body };
-}
-
-  // 🔹 Send using template slug
-  async sendTemplateEmail({
-    to,
-    slug,
-    data = {},
-    metadata = {}
-  }) {
-    let historyPayload = {
+  async sendTemplateEmail({ to, slug, data = {}, metadata = {} }) {
+    const historyPayload = {
       to,
       templateSlug: slug,
-      metadata
+      metadata,
     };
 
     try {
@@ -60,7 +53,7 @@ replacePlaceholders(template, data = {}) {
         from: process.env.SMTP_FROM,
         to,
         subject,
-        html: body
+        html: body,
       });
 
       await EmailHistory.create({
@@ -68,7 +61,7 @@ replacePlaceholders(template, data = {}) {
         templateId: template._id,
         subject,
         body,
-        status: 'sent'
+        status: 'sent',
       });
 
       return true;
@@ -78,9 +71,41 @@ replacePlaceholders(template, data = {}) {
         subject: 'FAILED',
         body: '',
         status: 'failed',
-        error: error.message
+        error: error.message,
       });
 
+      throw error;
+    }
+  }
+
+  async sendHtmlEmail({ to, subject, html, templateId = null, metadata = {} }) {
+    const payload = {
+      to,
+      subject,
+      body: html,
+      templateId: templateId || undefined,
+      status: 'sent',
+      metadata: metadata && typeof metadata === 'object' ? metadata : {},
+    };
+    try {
+      await this.transporter.sendMail({
+        from: process.env.SMTP_FROM || process.env.EMAIL_USER,
+        to,
+        subject,
+        html,
+      });
+      await EmailHistory.create({ ...payload, status: 'sent' });
+      return true;
+    } catch (error) {
+      await EmailHistory.create({
+        to,
+        subject: 'FAILED',
+        body: '',
+        templateId: templateId || undefined,
+        status: 'failed',
+        error: error.message,
+        metadata: payload.metadata,
+      });
       throw error;
     }
   }

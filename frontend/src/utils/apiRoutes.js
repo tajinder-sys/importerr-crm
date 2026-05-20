@@ -14,6 +14,20 @@ export const API_ROUTES = {
     updatePassword: (userId) => `/users/${encodeURIComponent(userId)}/password`,
     toggle: (userId) => `/users/${encodeURIComponent(userId)}/toggle`
   },
+  abandonedLeads: {
+    list: '/abandoned-leads',
+    processBatch: '/abandoned-leads/process-batch',
+    processReminderBatch: '/abandoned-leads/process-reminder-batch',
+    byId: (id) => `/abandoned-leads/${encodeURIComponent(id)}`,
+  },
+  settings: {
+    list: '/settings',
+    abandonedQueue: '/settings/abandoned-queue',
+    systemCrons: '/settings/system-crons',
+    systemCronUpdate: (jobId) => `/settings/system-crons/${encodeURIComponent(jobId)}`,
+    systemCronRun: (jobId) => `/settings/system-crons/${encodeURIComponent(jobId)}/run`,
+    update: (key) => `/settings/${encodeURIComponent(key)}`,
+  },
   leads: {
     list: '/leads',
     unassigned: '/leads/unassigned',
