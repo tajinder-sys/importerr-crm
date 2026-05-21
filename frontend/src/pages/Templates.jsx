@@ -135,7 +135,7 @@ function EmailBuilderModal({ isOpen, onClose, editingTemplate, onSave, isSaving 
         parsedBlocks = Array.isArray(p) ? p.map((b) => ({ ...b, id: b.id || uid() })) : [];
       } catch { parsedBlocks = []; }
       setName(generated?.name || '');
-      setSlug(generated?.slug || '');
+      setSlug(toSlug(generated?.name || generated?.slug || ''));
       setSubject(generated?.subject || '');
       setBlocks(parsedBlocks);
     } catch (err) {
@@ -314,7 +314,7 @@ function EmailBuilderModal({ isOpen, onClose, editingTemplate, onSave, isSaving 
             </div>
             <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
               <p style={{ margin: 0, fontSize: 13, color: '#64748b', fontFamily: 'system-ui, sans-serif', lineHeight: 1.6 }}>
-                Describe the email you need — AI will generate blocks instantly. Same description returns cached result.
+                Describe the email you need — AI will fill the builder. Click Create when you are ready to save.
               </p>
               <textarea
                 rows={4}
