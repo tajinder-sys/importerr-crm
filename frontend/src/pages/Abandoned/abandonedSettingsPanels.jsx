@@ -26,7 +26,11 @@ const REMINDER_FLOW_ORDER = [
   'abandoned_reminder_repeat_interval_hours',
 ];
 
-const LEAD_AUTOMATION_ORDER = ['abandoned_cron_batch_size', 'abandoned_lead_create_grace_after_reminder_minutes'];
+const LEAD_AUTOMATION_ORDER = [
+  'abandoned_cron_batch_size',
+  'abandoned_lead_create_after_max_reminders',
+  'abandoned_lead_create_grace_after_reminder_minutes',
+];
 
 function sortByKeyOrder(settings, order) {
   const rank = (k) => {

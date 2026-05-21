@@ -24,7 +24,7 @@ const Navbar = () => {
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Lead Management', href: '/leads', icon: Users },
     ...(isUserAdmin ? [
-      { name: 'Teams', href: '/teams', icon: Users2 },
+      { name: 'User Management', href: '/user-management', icon: Users2 },
       { name: 'Settings', href: '/settings', icon: Settings }
     ] : []),
   ];

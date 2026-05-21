@@ -689,6 +689,7 @@ const createOrUpdateLead = async (req, res) => {
       productSku,
       variants,
       totalQuantity,
+      totalAmount,
     } = req.body;
 
     let resolvedPipelineId = pipelineId || null;
@@ -824,6 +825,10 @@ const createOrUpdateLead = async (req, res) => {
       if (totalQuantity !== undefined) {
         lead.totalQuantity = Number(totalQuantity) >= 0 ? Number(totalQuantity) : 0;
       }
+    }
+    if (totalAmount !== undefined) {
+      const n = Number(totalAmount);
+      lead.totalAmount = Number.isFinite(n) && n >= 0 ? n : 0;
     }
 
     lead.lastInteraction = new Date();

@@ -264,8 +264,8 @@ const Integrations = () => {
   if (!config) return <Navigate to="/settings/api-config" replace />;
 
   return (
-    <div className="px-4 py-6 sm:px-6 md:px-8 min-h-screen dark:bg-slate-900">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <div className="min-h-screen bg-slate-50 px-4 py-6 dark:bg-slate-900 sm:px-6 md:px-8">
+      <div className="mx-auto max-w-full space-y-6">
         <div className="flex items-start gap-3">
           <Button type="button" variant="ghost" size="sm" iconOnly className="shrink-0"
             onClick={() => navigate('/settings/api-config')} aria-label="Back"

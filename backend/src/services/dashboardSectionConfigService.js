@@ -1,6 +1,9 @@
 const DashboardSectionConfig = require('../models/DashboardSectionConfig');
 const { DASHBOARD_SECTION_DEFAULTS } = require('../utils/dashboardSectionDefaults');
 
+/** Retired sections — hidden from dashboard and admin layout list. */
+const HIDDEN_DASHBOARD_SECTION_KEYS = new Set(['recent_leads', 'tasks']);
+
 async function ensureDefaults() {
   const existing = await DashboardSectionConfig.find().lean();
   const byKey = new Map(existing.map((r) => [r.key, r]));
@@ -24,12 +27,21 @@ async function ensureDefaults() {
       );
     }
   }
+
+  if (HIDDEN_DASHBOARD_SECTION_KEYS.size) {
+    await DashboardSectionConfig.updateMany(
+      { key: { $in: [...HIDDEN_DASHBOARD_SECTION_KEYS] } },
+      { $set: { visible: false } }
+    );
+  }
 }
 
 async function getSectionsForDashboard() {
   await ensureDefaults();
   const rows = await DashboardSectionConfig.find().sort({ order: 1, key: 1 }).lean();
-  return rows.map((r) => ({
+  return rows
+    .filter((r) => !HIDDEN_DASHBOARD_SECTION_KEYS.has(r.key))
+    .map((r) => ({
     key: r.key,
     label: r.label,
     description: r.description || '',
@@ -45,6 +57,9 @@ function buildVisibilityMap(sections) {
   }
   for (const def of DASHBOARD_SECTION_DEFAULTS) {
     if (map[def.key] === undefined) map[def.key] = true;
+  }
+  for (const key of HIDDEN_DASHBOARD_SECTION_KEYS) {
+    map[key] = false;
   }
   return map;
 }

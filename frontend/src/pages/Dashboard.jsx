@@ -5,12 +5,10 @@ import { API_ROUTES } from '../utils/apiRoutes';
 import { USER_ROLES } from '../utils/constants';
 import DashboardFilterBar from './Dashboard/DashboardFilterBar';
 import DashboardKpiSection from './Dashboard/DashboardKpiSection';
-import DashboardTasksSection from './Dashboard/DashboardTasksSection';
 import DashboardTimelineSection from './Dashboard/DashboardTimelineSection';
 import DashboardPipelineWinRatesSection from './Dashboard/DashboardPipelineWinRatesSection';
 import DashboardSourcesSection from './Dashboard/DashboardSourcesSection';
 import DashboardStagesSection from './Dashboard/DashboardStagesSection';
-import DashboardRecentLeadsSection from './Dashboard/DashboardRecentLeadsSection';
 import DashboardUserPerformanceSection from './Dashboard/DashboardUserPerformanceSection';
 import DashboardSlaAlertsSection from './Dashboard/DashboardSlaAlertsSection';
 
@@ -27,16 +25,11 @@ const SECTION_API = {
   stages: API_ROUTES.dashboard.stages,
   sources: API_ROUTES.dashboard.sources,
   user_performance: API_ROUTES.dashboard.userPerformance,
-  tasks: API_ROUTES.dashboard.tasksSummary,
-  recent_leads: API_ROUTES.dashboard.recentLeads,
   timeline: API_ROUTES.dashboard.leadTimeline,
   pipeline_win_rates: API_ROUTES.dashboard.pipelineWinRates,
 };
 
-const PAIR_GRIDS = [
-  ['sources', 'stages'],
-  ['recent_leads', 'user_performance'],
-];
+const PAIR_GRIDS = [['sources', 'stages']];
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -54,15 +47,16 @@ const Dashboard = () => {
     period: 'all',
     source: 'all',
     pipeline: 'all',
+    stage: 'all',
     owner: 'all',
   });
+  const [stageOptions, setStageOptions] = useState([{ value: 'all', label: 'All stages' }]);
+  const [stagesLoading, setStagesLoading] = useState(false);
 
   const [kpis, setKpis] = useState(emptySection);
   const [stages, setStages] = useState(emptySection);
   const [sources, setSources] = useState(emptySection);
   const [userPerf, setUserPerf] = useState(emptySection);
-  const [tasksSum, setTasksSum] = useState(emptySection);
-  const [recent, setRecent] = useState(emptySection);
   const [timeline, setTimeline] = useState(emptySection);
   const [pipelineRates, setPipelineRates] = useState(emptySection);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -79,9 +73,10 @@ const Dashboard = () => {
     const p = { days: filters.period === 'all' ? 'all' : filters.period };
     if (filters.source && filters.source !== 'all') p.source = filters.source;
     if (filters.pipeline && filters.pipeline !== 'all') p.pipelineId = filters.pipeline;
+    if (filters.stage && filters.stage !== 'all') p.stageId = filters.stage;
     if (filters.owner && filters.owner !== 'all') p.userId = filters.owner;
     return p;
-  }, [filters.period, filters.source, filters.pipeline, filters.owner]);
+  }, [filters.period, filters.source, filters.pipeline, filters.stage, filters.owner]);
 
   useEffect(() => {
     let cancelled = false;
@@ -124,6 +119,37 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
+    if (!filters.pipeline || filters.pipeline === 'all') {
+      setStageOptions([{ value: 'all', label: 'All stages' }]);
+      setStagesLoading(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    (async () => {
+      setStagesLoading(true);
+      try {
+        const res = await api.get(API_ROUTES.stages.list, { params: { pipelineId: filters.pipeline } });
+        const list = (res?.data?.stages || []).filter((s) => s.isActive !== false);
+        if (!cancelled) {
+          setStageOptions([
+            { value: 'all', label: 'All stages' },
+            ...list.map((s) => ({ value: String(s._id), label: s.name || 'Stage' })),
+          ]);
+        }
+      } catch {
+        if (!cancelled) setStageOptions([{ value: 'all', label: 'All stages' }]);
+      } finally {
+        if (!cancelled) setStagesLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filters.pipeline]);
+
+  useEffect(() => {
     if (sectionConfig.loading) return;
 
     const params = buildParams();
@@ -144,8 +170,6 @@ const Dashboard = () => {
       stages: [setStages],
       sources: [setSources],
       user_performance: [setUserPerf],
-      tasks: [setTasksSum],
-      recent_leads: [setRecent],
       timeline: [setTimeline],
       pipeline_win_rates: [setPipelineRates],
     };
@@ -168,7 +192,13 @@ const Dashboard = () => {
 
   const handleFilterChange = (event) => {
     const { name, value } = event.target;
-    setFilters((prev) => ({ ...prev, [name]: value }));
+    setFilters((prev) => {
+      const next = { ...prev, [name]: value };
+      if (name === 'pipeline') {
+        next.stage = 'all';
+      }
+      return next;
+    });
   };
 
   const pipelineOptions = useMemo(() => {
@@ -212,16 +242,12 @@ const Dashboard = () => {
         return <DashboardSlaAlertsSection key={key} user={user} filtersMeta={filtersMeta} />;
       case 'pipeline_win_rates':
         return <DashboardPipelineWinRatesSection key={key} pipelineRates={pipelineRates} />;
-      case 'tasks':
-        return <DashboardTasksSection key={key} tasksSum={tasksSum} />;
       case 'timeline':
         return <DashboardTimelineSection key={key} timeline={timeline} />;
       case 'sources':
         return <DashboardSourcesSection key={key} sources={sources} />;
       case 'stages':
         return <DashboardStagesSection key={key} stages={stages} />;
-      case 'recent_leads':
-        return <DashboardRecentLeadsSection key={key} recent={recent} />;
       case 'user_performance':
         return <DashboardUserPerformanceSection key={key} userPerf={userPerf} />;
       default:
@@ -243,10 +269,7 @@ const Dashboard = () => {
           (current === b && nextKey === a)
         ) {
           const keys = current === a ? [a, b] : [b, a];
-          const gridClass =
-            keys[0] === 'recent_leads'
-              ? 'grid grid-cols-1 items-stretch gap-6 lg:grid-cols-5'
-              : 'grid grid-cols-1 items-stretch gap-6 xl:grid-cols-2';
+          const gridClass = 'grid grid-cols-1 items-stretch gap-6 xl:grid-cols-2';
           blocks.push(
             <div key={`pair-${keys.join('-')}`} className={gridClass}>
               {keys.map((k) => renderSection(k))}
@@ -270,8 +293,6 @@ const Dashboard = () => {
     stages,
     sources,
     userPerf,
-    tasksSum,
-    recent,
     timeline,
     pipelineRates,
     user,
@@ -303,6 +324,9 @@ const Dashboard = () => {
           setFilters={setFilters}
           handleFilterChange={handleFilterChange}
           pipelineOptions={pipelineOptions}
+          stageOptions={stageOptions}
+          stagesLoading={stagesLoading}
+          showStageFilter={filters.pipeline !== 'all'}
           sourceOptions={sourceOptions}
           ownerOptions={ownerOptions}
           showOwnerFilter={showOwnerFilter}

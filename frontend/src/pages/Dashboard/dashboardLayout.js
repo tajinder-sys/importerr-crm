@@ -1,4 +1,4 @@
-/** Shared height for Recent leads + User performance side-by-side cards */
+/** Shared height for full-width User performance card */
 export const RECENT_PERF_CARD_HEIGHT = 'h-[min(520px,65vh)]';
 
 export const RECENT_PERF_CARD_BASE =

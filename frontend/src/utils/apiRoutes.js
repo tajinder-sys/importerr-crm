@@ -23,6 +23,7 @@ export const API_ROUTES = {
   settings: {
     list: '/settings',
     abandonedQueue: '/settings/abandoned-queue',
+    leadAssignmentStrategies: '/settings/lead-assignment-strategies',
     systemCrons: '/settings/system-crons',
     systemCronUpdate: (jobId) => `/settings/system-crons/${encodeURIComponent(jobId)}`,
     systemCronRun: (jobId) => `/settings/system-crons/${encodeURIComponent(jobId)}/run`,

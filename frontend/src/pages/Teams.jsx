@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '../components/common/ui/Card';
 import Input from '../components/common/ui/Input';
 import Button from '../components/common/ui/Button';
@@ -10,7 +10,8 @@ import Modal from '../components/common/ui/Modal';
 import ConfirmationModal from '../components/common/ui/ConfirmationModal';
 import Chip from '../components/common/ui/Chip';
 import SearchableSelect from '../components/common/ui/SearchableSelect';
-import { UserPlus, Pencil, Trash2 } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, Users } from 'lucide-react';
+import { ROUTE_PATHS } from '../routes/paths';
 import { formatPhone, validatePhone } from '../utils/helpers';
 import { UiPageTitle, UiPageDescription, UiSectionTitle } from '../components/common/ui';
 import api from '../utils/api';
@@ -21,6 +22,7 @@ import TeamFilters from '../components/teams/TeamFilters';
 import { TASK_PRIORITY_OPTIONS, TASK_PRIORITY_LEVELS } from '../utils/constants';
 
 const Teams = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -362,13 +364,22 @@ const Teams = () => {
       <div className="mx-auto max-w-full space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <UiPageTitle>Teams</UiPageTitle>
+            <UiPageTitle>User Management</UiPageTitle>
             <UiPageDescription>
               View and manage all CRM users (team managers and members). Team column shows each
               user&apos;s team, including inactive teams.
             </UiPageDescription>
           </div>
           {admin ? (
+            <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => navigate(ROUTE_PATHS.TEAMS_SETTINGS)}
+              startIcon={<Users className="h-4 w-4" />}
+            >
+              Manage teams
+            </Button>
             <Button
               size="sm"
               onClick={() => {
@@ -381,6 +392,7 @@ const Teams = () => {
               <span className="hidden sm:inline">Create</span>
               <span className="sm:hidden">New</span>
             </Button>
+            </div>
           ) : null}
         </div>
 

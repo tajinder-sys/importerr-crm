@@ -11,6 +11,8 @@ const {
 const { buildEligibleOpenQueueFilter } = require('../utils/abandonedQueueQuery');
 const {
   getAbandonedQueueCronSettings,
+  getAbandonedReminderCronSettings,
+  getLeadCreateRequiresMaxReminders,
   getLeadCreateGraceAfterReminderMinutes,
 } = require('../utils/abandonedQueueSettings');
 const logger = require('../utils/logger');
@@ -135,33 +137,40 @@ const processAbandonedQueueBatch = async () => {
 
   const { filter } = await buildEligibleOpenQueueFilter();
   const batchLimit = cronSettings.batchSize;
+  const requiresMaxReminders = await getLeadCreateRequiresMaxReminders();
   const graceMinutes = await getLeadCreateGraceAfterReminderMinutes();
+  const usesReminderGates = requiresMaxReminders || graceMinutes > 0;
 
-  const graceFilter =
-    graceMinutes > 0
-      ? {
-          crmReminderCount: { $gt: 0 },
-          lastCrmReminderSentAt: { $lte: new Date(Date.now() - graceMinutes * 60 * 1000) },
-        }
-      : {};
+  const reminderEligibilityFilter = {};
+  if (requiresMaxReminders) {
+    const reminderCfg = await getAbandonedReminderCronSettings();
+    reminderEligibilityFilter.crmReminderCount = { $gte: reminderCfg.maxPerRow };
+  } else if (graceMinutes > 0) {
+    reminderEligibilityFilter.crmReminderCount = { $gt: 0 };
+  }
+
+  if (graceMinutes > 0) {
+    reminderEligibilityFilter.lastCrmReminderSentAt = {
+      $lte: new Date(Date.now() - graceMinutes * 60 * 1000),
+    };
+  }
 
   const baseMatch = {
     ...filter,
-    ...graceFilter,
+    ...(Object.keys(reminderEligibilityFilter).length ? reminderEligibilityFilter : {}),
     crmLeadId: { $in: [null, undefined] },
   };
 
   const recentReminderCutoff = new Date(Date.now() - POST_CRM_REMINDER_LEAD_COOLDOWN_MS);
-  const excludeRecentCrmReminder =
-    graceMinutes === 0
-      ? {
-          $or: [
-            { lastCrmReminderSentAt: { $exists: false } },
-            { lastCrmReminderSentAt: null },
-            { lastCrmReminderSentAt: { $lte: recentReminderCutoff } },
-          ],
-        }
-      : null;
+  const excludeRecentCrmReminder = !usesReminderGates
+    ? {
+        $or: [
+          { lastCrmReminderSentAt: { $exists: false } },
+          { lastCrmReminderSentAt: null },
+          { lastCrmReminderSentAt: { $lte: recentReminderCutoff } },
+        ],
+      }
+    : null;
 
   const query =
     excludeRecentCrmReminder != null

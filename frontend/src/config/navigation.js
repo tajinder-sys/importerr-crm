@@ -13,6 +13,7 @@ import {
   UserRoundX,
   ShoppingCart,
   SlidersHorizontal,
+  Sparkles,
   Download,
   FileCheck,
   Bell,
@@ -83,13 +84,14 @@ export function getMainNavigation(user) {
 
   if (isAdmin) {
     items.splice(1, 0,
-      { name: 'Team Management', href: ROUTE_PATHS.TEAMS, icon: Users2, roles: [USER_ROLES.ADMIN] },
+      { name: 'User Management', href: ROUTE_PATHS.USER_MANAGEMENT, icon: Users2, roles: [USER_ROLES.ADMIN] },
+      { name: 'Teams', href: ROUTE_PATHS.TEAMS_SETTINGS, icon: Users, roles: [USER_ROLES.ADMIN] },
       { name: 'Seller Assignments', href: ROUTE_PATHS.SELLER_USERS, icon: Store, roles: [USER_ROLES.ADMIN] }
     );
   }
 
   if (canSeeMyTeam) {
-    const insertAt = isAdmin ? 3 : 1;
+    const insertAt = isAdmin ? 4 : 1;
     items.splice(insertAt, 0, {
       name: 'My team',
       href: ROUTE_PATHS.MY_TEAM,
@@ -127,9 +129,9 @@ export function getSettingsSubNavigation() {
   return [
     { href: ROUTE_PATHS.SETTINGS_API_CONFIG, icon: Globe, label: 'Lead Sources' },
     { href: ROUTE_PATHS.SETTINGS_PAYMENT_METHODS, icon: CreditCard, label: 'Payment Methods' },
-    { href: ROUTE_PATHS.SETTINGS_TEAMS, icon: Users, label: 'Teams' },
     { href: ROUTE_PATHS.SETTINGS_PIPELINES, icon: GitBranch, label: 'Pipelines & Stages' },
     { href: ROUTE_PATHS.SETTINGS_DASHBOARD_SECTIONS, icon: LayoutDashboard, label: 'Dashboard sections' },
+    { href: ROUTE_PATHS.SETTINGS_LEAD_ASSIGNMENT_STRATEGIES, icon: Sparkles, label: 'Assignment strategies' },
     { href: ROUTE_PATHS.SETTINGS_NOTIFICATIONS, icon: Bell, label: 'Notifications' },
     { href: ROUTE_PATHS.SETTINGS_CRONS, icon: Timer, label: 'Scheduled crons' },
   ];
@@ -148,9 +150,9 @@ export function getAdminShortcuts(user) {
   return [
     { href: ROUTE_PATHS.SETTINGS_API_CONFIG, icon: Globe, title: 'API Config' },
     { href: ROUTE_PATHS.SETTINGS_PAYMENT_METHODS, icon: CreditCard, title: 'Payment Methods' },
-    { href: ROUTE_PATHS.SETTINGS_TEAMS, icon: Users, title: 'Teams' },
     { href: ROUTE_PATHS.SETTINGS_PIPELINES, icon: GitBranch, title: 'Pipelines & Stages' },
     { href: ROUTE_PATHS.SETTINGS_DASHBOARD_SECTIONS, icon: LayoutDashboard, title: 'Dashboard sections' },
+    { href: ROUTE_PATHS.SETTINGS_LEAD_ASSIGNMENT_STRATEGIES, icon: Sparkles, title: 'Assignment strategies' },
     { href: ROUTE_PATHS.SETTINGS_NOTIFICATIONS, icon: Bell, title: 'Notifications' },
     { href: ROUTE_PATHS.SETTINGS_CRONS, icon: Timer, title: 'Scheduled crons' },
     { href: ROUTE_PATHS.TEMPLATES_EMAIL, icon: Mail, title: 'Email templates' },

@@ -56,6 +56,14 @@ export const appRoutes = (
       )}
     />
     <Route path={ROUTE_PATHS.PROFILE} element={<LazyProfile />} />
-    <Route path={ROUTE_PATHS.TEAMS} element={<LazyTeams />} />
+    <Route path={ROUTE_PATHS.TEAMS} element={<Navigate to={ROUTE_PATHS.USER_MANAGEMENT} replace />} />
+    <Route
+      path={ROUTE_PATHS.USER_MANAGEMENT}
+      element={(
+        <AdminRoute>
+          <LazyTeams />
+        </AdminRoute>
+      )}
+    />
   </>
 );

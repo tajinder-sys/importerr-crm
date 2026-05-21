@@ -100,6 +100,11 @@ const leadSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  totalAmount: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

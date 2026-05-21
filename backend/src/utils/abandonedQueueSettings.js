@@ -21,11 +21,13 @@ const ABANDONED_SETTING_KEYS = {
   REMINDER_CRON_BATCH_SIZE: 'abandoned_reminder_cron_batch_size',
   REMINDER_MAX_PER_ROW: 'abandoned_reminder_max_per_row',
   REMINDER_REPEAT_INTERVAL_HOURS: 'abandoned_reminder_repeat_interval_hours',
-  /**
-   * Minutes after the last CRM reminder send before a row may be turned into a lead (no explicit reply tracking).
-   * 0 = do not wait for reminders; lead cron uses queue age only.
-   */
+  /** Minutes after the last CRM reminder before a row may become a lead (0 = no extra wait). */
   LEAD_CREATE_GRACE_AFTER_REMINDER_MINUTES: 'abandoned_lead_create_grace_after_reminder_minutes',
+  /**
+   * When true, lead-creation cron only picks rows that have received the max CRM reminder count.
+   * When false, eligible rows may become leads from queue age alone (see lead cron cooldown).
+   */
+  LEAD_CREATE_AFTER_MAX_REMINDERS: 'abandoned_lead_create_after_max_reminders',
 };
 
 /** Not shown on Abandoned → Settings (cron toggles live under Settings → Crons; min ages use code defaults if unset). */
@@ -34,6 +36,7 @@ const ABANDONED_SETTINGS_HIDDEN_FROM_UI = new Set([
   ABANDONED_SETTING_KEYS.REMINDER_CRON_ENABLED,
   ABANDONED_SETTING_KEYS.CART_MIN_AGE_MINUTES,
   ABANDONED_SETTING_KEYS.PAYMENT_MIN_AGE_MINUTES,
+
 ]);
 
 const DEFAULT_ABANDONED_SETTINGS = [
@@ -106,12 +109,21 @@ const DEFAULT_ABANDONED_SETTINGS = [
     group: ABANDONED_SETTINGS_GROUP,
   },
   {
+    key: ABANDONED_SETTING_KEYS.LEAD_CREATE_AFTER_MAX_REMINDERS,
+    value: 'true',
+    type: 'boolean',
+    label: 'Create lead only after max reminder emails',
+    description:
+      'When enabled, lead creation waits until the row has received the maximum number of CRM reminder emails (see “Max CRM reminder emails per queue row” in the reminder section). Can be combined with the wait-minutes setting below.',
+    group: ABANDONED_SETTINGS_GROUP,
+  },
+  {
     key: ABANDONED_SETTING_KEYS.LEAD_CREATE_GRACE_AFTER_REMINDER_MINUTES,
     value: '2880',
     type: 'number',
     label: 'Wait after last CRM reminder before creating a lead (minutes)',
     description:
-      'Lead-creation cron only picks rows at least this long after the last CRM reminder send (approximates “no reply”). Set to 0 to ignore and create leads from queue age alone. If greater than 0, enable the abandoned reminder job under Settings → Crons so rows receive reminders first.',
+      'After the last reminder email is sent, wait at least this many minutes before the row is eligible for lead creation (approximates “no reply”). Set to 0 to skip this wait. When “Create lead only after max reminder emails” is on, this delay starts after the final (max) reminder is sent.',
     group: ABANDONED_SETTINGS_GROUP,
   },
 ];
@@ -213,9 +225,24 @@ const getAbandonedReminderCronSettings = async () => {
   };
 };
 
+const truthySetting = (raw, fallback = false) =>
+  ['true', '1', 'yes', 'on'].includes(String(raw ?? (fallback ? 'true' : 'false')).toLowerCase());
+
+/** Whether lead cron requires crmReminderCount >= maxPerRow before creating a lead. */
+const getLeadCreateRequiresMaxReminders = async () => {
+  await ensureAbandonedQueueSettings();
+  const row = await CrmSetting.findOne({ key: ABANDONED_SETTING_KEYS.LEAD_CREATE_AFTER_MAX_REMINDERS }).lean();
+  if (row) {
+    return truthySetting(row.value, true);
+  }
+  return true;
+};
+
 const getLeadCreateGraceAfterReminderMinutes = async () => {
   await ensureAbandonedQueueSettings();
-  const row = await CrmSetting.findOne({ key: ABANDONED_SETTING_KEYS.LEAD_CREATE_GRACE_AFTER_REMINDER_MINUTES }).lean();
+  const row = await CrmSetting.findOne({
+    key: ABANDONED_SETTING_KEYS.LEAD_CREATE_GRACE_AFTER_REMINDER_MINUTES,
+  }).lean();
   return parseSettingNumber(row?.value, 2880);
 };
 
@@ -229,6 +256,7 @@ module.exports = {
   getAbandonedReminderCronSettings,
   getAbandonedReminderEmailTemplateIds,
   getAbandonedReminderFirstDelayMinutes,
+  getLeadCreateRequiresMaxReminders,
   getLeadCreateGraceAfterReminderMinutes,
   parseSettingNumber,
   ABANDONED_SETTINGS_HIDDEN_FROM_UI,

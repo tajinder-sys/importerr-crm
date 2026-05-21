@@ -50,7 +50,7 @@ function parseDays(raw) {
 /** Base match for dashboard leads (no status-based logic). */
 async function buildLeadMatch(req, query, options = {}) {
   const { ignoreQueryPipeline = false, activeOnly = false } = options;
-  const { source, pipelineId, userId } = query;
+  const { source, pipelineId, userId, stageId } = query;
   const match = { duplicateOf: { $in: [null, undefined] } };
   if (activeOnly) {
     match.isCompleted = { $ne: true };
@@ -69,6 +69,8 @@ async function buildLeadMatch(req, query, options = {}) {
     !ignoreQueryPipeline && pipelineId && String(pipelineId).toLowerCase() !== 'all'
       ? asOid(pipelineId)
       : null;
+  const sid =
+    stageId && String(stageId).trim() && String(stageId).toLowerCase() !== 'all' ? asOid(stageId) : null;
   const uid = userId && String(userId).toLowerCase() !== 'all' ? asOid(userId) : null;
 
   const role = req.user.role;
@@ -112,8 +114,24 @@ async function buildLeadMatch(req, query, options = {}) {
     match._id = { $in: [] };
   }
 
-  match.pipelineId = match.pipelineId || { $exists: true, $ne: null };
-  match.stageId = { $exists: true, $ne: null };
+  if (sid) {
+    const stage = await Stage.findById(sid).select('pipelineId isActive').lean();
+    if (!stage?.isActive) {
+      return { error: 'forbidden', message: 'Invalid stage' };
+    }
+    const stagePipelineId = String(stage.pipelineId);
+    if (pid && stagePipelineId !== String(pid)) {
+      return { error: 'forbidden', message: 'Stage does not belong to selected pipeline' };
+    }
+    if (!pid) {
+      match.pipelineId = stage.pipelineId;
+    }
+    match.stageId = sid;
+  } else {
+    match.pipelineId = match.pipelineId || { $exists: true, $ne: null };
+    match.stageId = { $exists: true, $ne: null };
+  }
+
   return { match };
 }
 
@@ -246,7 +264,6 @@ const getDashboardKpis = async (req, res) => {
             totalLeads: { $sum: 1 },
             leadsWithStageDoc: { $sum: { $cond: [{ $ifNull: ['$st._id', false] }, 1, 0] } },
             lastStageLeads: { $sum: { $cond: ['$isOnLastStage', 1, 0] } },
-            zeroProbLeads: { $sum: { $cond: [{ $eq: ['$prob', 0] }, 1, 0] } },
           },
         },
       ]).then((rows) => rows[0]),
@@ -257,6 +274,15 @@ const getDashboardKpis = async (req, res) => {
           $group: {
             _id: null,
             convertedLeads: { $sum: { $cond: ['$isConvertedLead', 1, 0] } },
+            convertedRevenue: {
+              $sum: {
+                $cond: [
+                  '$isConvertedLead',
+                  { $ifNull: ['$totalAmount', 0] },
+                  0,
+                ],
+              },
+            },
           },
         },
       ]).then((rows) => rows[0]),
@@ -269,6 +295,7 @@ const getDashboardKpis = async (req, res) => {
 
     const totalLeads = row?.totalLeads ?? 0;
     const convertedLeads = convertedRow?.convertedLeads ?? 0;
+    const convertedRevenue = Number(convertedRow?.convertedRevenue) || 0;
     const lastStageLeads = row?.lastStageLeads ?? 0;
     const leadsInFunnel = totalLeads;
 
@@ -276,12 +303,12 @@ const getDashboardKpis = async (req, res) => {
       totalLeads,
       leadsWithStage: row?.leadsWithStageDoc ?? 0,
       convertedLeads,
+      convertedRevenue,
       conversionRatePercent: percent(convertedLeads, leadsInFunnel),
       lastStageLeads,
       lastStageSharePercent: percent(lastStageLeads, totalLeads),
       wonStageLeads: convertedLeads,
       wonStageSharePercent: percent(convertedLeads, leadsInFunnel),
-      zeroProbabilityLeads: row?.zeroProbLeads ?? 0,
       completedLeads,
     });
   } catch (e) {
@@ -399,104 +426,40 @@ const getDashboardUserPerformance = async (req, res) => {
     }
     const { match } = built;
 
-    const scopeBuilt = await buildLeadMatch(req, req.query, { activeOnly: false });
-    if (scopeBuilt.error === 'forbidden') {
-      return sendForbidden(res, scopeBuilt.message);
-    }
-
     const memberSelfOnly = req.user.role === USER_ROLES.TEAM_MEMBER;
     const assigneeClause = memberSelfOnly
       ? { assignedTo: asOid(req.user.id || req.user._id) }
       : { assignedTo: { $exists: true, $ne: null } };
     const perfMatch = { ...match, ...assigneeClause };
-    const scopePerfMatch = { ...scopeBuilt.match, ...assigneeClause };
 
-    const [activeRows, convertedRows, completedRows] = await Promise.all([
-      Lead.aggregate([
-        { $match: perfMatch },
-        lookupLeadStageProgressForLead(LEAD_STAGE_PROGRESS_COLLECTION),
-        addLeadSlaTimelineSecondsField(),
-        ...conversionAggregateStages,
-        {
-          $group: {
-            _id: '$assignedTo',
-            leadCount: { $sum: 1 },
-            lastStageLeads: { $sum: { $cond: ['$isOnLastStage', 1, 0] } },
-            avgSlaTimelineSeconds: {
-              $avg: {
-                $cond: [
-                  { $gt: [{ $size: { $ifNull: ['$slaProgress', []] } }, 0] },
-                  '$slaTimelineSeconds',
-                  null,
-                ],
-              },
-            },
-          },
+    const rows = await Lead.aggregate([
+      { $match: perfMatch },
+      ...conversionAggregateStages,
+      {
+        $group: {
+          _id: '$assignedTo',
+          convertedLeads: { $sum: { $cond: ['$isConvertedLead', 1, 0] } },
         },
-      ]),
-      Lead.aggregate([
-        { $match: scopePerfMatch },
-        ...conversionAggregateStages,
-        {
-          $group: {
-            _id: '$assignedTo',
-            convertedLeads: { $sum: { $cond: ['$isConvertedLead', 1, 0] } },
-          },
-        },
-      ]),
-      Lead.aggregate([
-        { $match: { ...scopePerfMatch, isCompleted: true } },
-        { $group: { _id: '$assignedTo', completedLeads: { $sum: 1 } } },
-      ]),
+      },
+      { $match: { convertedLeads: { $gt: 0 } } },
+      { $sort: { convertedLeads: -1 } },
     ]);
 
-    const convertedByUser = new Map(
-      convertedRows.map((r) => [String(r._id), r.convertedLeads || 0])
-    );
-    const completedByUser = new Map(
-      completedRows.map((r) => [String(r._id), r.completedLeads || 0])
-    );
-    const activeByUser = new Map(activeRows.map((r) => [String(r._id), r]));
-    const allUserIds = [
-      ...new Set(
-        [...activeRows, ...convertedRows, ...completedRows]
-          .map((r) => String(r._id))
-          .filter(Boolean)
-      ),
-    ];
-
-    const userDocs = await User.find({ _id: { $in: allUserIds } }).select('name email role').lean();
+    const userIds = rows.map((r) => r._id).filter(Boolean);
+    const userDocs = await User.find({ _id: { $in: userIds } }).select('name email role').lean();
     const byId = new Map(userDocs.map((u) => [String(u._id), u]));
 
-    const users = allUserIds
-      .map((uid) => {
-        const r = activeByUser.get(uid) || { _id: uid };
-        const u = byId.get(uid);
-        const leadCount = r.leadCount || 0;
-        const converted = convertedByUser.get(uid) || 0;
-        const completed = completedByUser.get(uid) || 0;
-        const leadsInFunnel = leadCount;
-        const lastStage = r.lastStageLeads || 0;
-        const avgSlaTimelineSeconds =
-          r.avgSlaTimelineSeconds != null && Number.isFinite(r.avgSlaTimelineSeconds)
-            ? Math.round(r.avgSlaTimelineSeconds)
-            : null;
-        return {
-          userId: r._id || uid,
-          name: u?.name || 'Unknown',
-          email: u?.email || '',
-          role: u?.role,
-          leadCount,
-          convertedLeads: converted,
-          lastStageLeads: lastStage,
-          conversionRatePercent: percent(converted, leadsInFunnel),
-          lastStageSharePercent: percent(lastStage, leadCount),
-          wonStageLeads: converted,
-          stageWinRatePercent: percent(converted, leadsInFunnel),
-          avgSlaTimelineSeconds,
-        };
-      })
-      .sort((a, b) => b.leadCount - a.leadCount);
+    const users = rows.map((r) => {
+      const uid = String(r._id);
+      const u = byId.get(uid);
+      return {
+        userId: r._id,
+        name: u?.name || 'Unknown',
+        email: u?.email || '',
+        role: u?.role,
+        convertedLeads: r.convertedLeads || 0,
+      };
+    });
 
     sendSuccess(res, 'Performance loaded', { users });
   } catch (e) {

@@ -16,6 +16,9 @@ export default function DashboardFilterBar({
   setFilters,
   handleFilterChange,
   pipelineOptions,
+  stageOptions,
+  stagesLoading,
+  showStageFilter,
   sourceOptions,
   ownerOptions,
   showOwnerFilter,
@@ -106,6 +109,19 @@ export default function DashboardFilterBar({
                 dropdownClassName="!min-w-[min(100vw-2rem,18rem)]"
                 options={pipelineOptions}
               />
+              {showStageFilter ? (
+                <SearchableSelect
+                  name="stage"
+                  value={filters.stage}
+                  onChange={handleFilterChange}
+                  disabled={stagesLoading}
+                  placeholder={stagesLoading ? 'Loading stages…' : 'All stages'}
+                  className="min-w-0 flex-1 basis-[6rem] sm:max-w-[10rem] sm:basis-auto"
+                  buttonClassName={selectBtn}
+                  dropdownClassName="!min-w-[min(100vw-2rem,16rem)]"
+                  options={stageOptions}
+                />
+              ) : null}
               <SearchableSelect
                 name="source"
                 value={filters.source}
@@ -133,7 +149,9 @@ export default function DashboardFilterBar({
             type="button"
             title="Reset filters"
             aria-label="Reset filters"
-            onClick={() => setFilters({ period: 'all', source: 'all', pipeline: 'all', owner: 'all' })}
+            onClick={() =>
+              setFilters({ period: 'all', source: 'all', pipeline: 'all', stage: 'all', owner: 'all' })
+            }
             className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200/90 bg-white text-slate-500 transition-colors hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:border-violet-500/40 dark:hover:bg-violet-950/40 dark:hover:text-violet-300"
           >
             <RotateCcw className="h-3.5 w-3.5" strokeWidth={2} />

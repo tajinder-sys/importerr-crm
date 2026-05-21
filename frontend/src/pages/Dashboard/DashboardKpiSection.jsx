@@ -1,12 +1,12 @@
 import {
   Users,
-  Phone,
   CheckCircle,
   CheckCircle2,
   Percent,
-  Layers
+  Layers,
+  IndianRupee,
 } from 'lucide-react';
-import { cn } from '../../utils/helpers';
+import { cn, formatCurrency } from '../../utils/helpers';
 import { KpiGridSkeleton } from './DashboardSkeletons';
 
 function sectionError(msg) {
@@ -43,6 +43,15 @@ export default function DashboardKpiSection({ kpis }) {
       iconWrap: 'bg-violet-100 text-violet-700 ring-violet-200/60'
     },
     {
+      key: 'convertedRevenue',
+      title: 'Total revenue',
+      value: formatCurrency(d.convertedRevenue ?? 0),
+      subtitle: 'Sum of total amount on converted leads (current filters)',
+      icon: IndianRupee,
+      accent: 'bg-teal-50 dark:bg-teal-900/20',
+      iconWrap: 'bg-teal-100 text-teal-700 ring-teal-200/60'
+    },
+    {
       key: 'completed',
       title: 'Completed leads',
       value: (d.completedLeads ?? 0).toLocaleString('en-IN'),
@@ -69,15 +78,6 @@ export default function DashboardKpiSection({ kpis }) {
       accent: 'bg-indigo-50 dark:bg-indigo-900/20',
       iconWrap: 'bg-indigo-100 text-indigo-700 ring-indigo-200/60'
     },
-    {
-      key: 'zero',
-      title: 'Zero-probability stages',
-      value: (d.zeroProbabilityLeads ?? 0).toLocaleString('en-IN'),
-      subtitle: 'Stages marked 0% probability',
-      icon: Phone,
-      accent: 'bg-emerald-50 dark:bg-emerald-900/20',
-      iconWrap: 'bg-emerald-100 text-emerald-700 ring-emerald-200/60'
-    }
   ];
 
   return (

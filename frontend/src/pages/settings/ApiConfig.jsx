@@ -33,8 +33,8 @@ const ApiConfig = () => {
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   return (
-    <div className="px-4 py-6 sm:px-6 md:px-8 min-h-screen dark:bg-slate-900">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <div className="min-h-screen bg-slate-50 px-4 py-6 dark:bg-slate-900 sm:px-6 md:px-8">
+      <div className="mx-auto max-w-full space-y-6">
         <PageHeader
           title="Integrations"
           description="Connect your lead sources to automatically capture and manage leads."

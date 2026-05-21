@@ -11,7 +11,11 @@ const AiLog = require('../models/AiLog');
 const logger = require('../utils/logger');
 const leadStageProgressService = require('./leadStageProgressService');
 const NotificationService = require('./NotificationService');
-const { ACTIVITY_TYPES } = require('../utils/constants');
+const { ACTIVITY_TYPES, TASK_PRIORITY_LEVELS } = require('../utils/constants');
+const {
+  getAssignmentStrategyOrder,
+  STRATEGY_IDS,
+} = require('../utils/leadAssignmentStrategySettings');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -114,7 +118,8 @@ Reply in this exact JSON format only, no explanation:
 {"priority": "<urgent|high|medium|low>"}`;
 
   const parsed = await callOpenAI(lead, 'getPriority', prompt, 20);
-  return ['urgent', 'high', 'medium', 'low'].includes(parsed.priority) ? parsed.priority : 'medium';
+  const valid = Object.values(TASK_PRIORITY_LEVELS);
+  return valid.includes(parsed.priority) ? parsed.priority : TASK_PRIORITY_LEVELS.MEDIUM;
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -265,11 +270,7 @@ const trySellerAssignment = async (lead) => {
   if (!assignment?.assignedCrmUserId) return null;
 
   const pipelines = await Pipeline.find({ isActive: true }).lean();
-  const { pipelineId, priority } = await resolvePipelineAndPriority(
-    lead,
-    pipelines,
-    getDefaultPipeline
-  );
+  const { pipelineId, priority } = await resolvePipelineAndPriority(lead, pipelines, getDefaultPipeline);
 
   logger.info(`[AI Assignment] Strategy 2 (seller mapping) → user ${assignment.assignedCrmUserId}, pipeline ${pipelineId}, priority=${priority}`);
   return { assignedTo: assignment.assignedCrmUserId, assignedUser: null, pipelineId, priority };
@@ -278,11 +279,7 @@ const trySellerAssignment = async (lead) => {
 // Strategy 3: pure AI — pick pipeline, then pick least-loaded team member from it
 const tryAIFallback = async (lead) => {
   const pipelines = await Pipeline.find({ isActive: true }).lean();
-  const { pipelineId, priority } = await resolvePipelineAndPriority(
-    lead,
-    pipelines,
-    getDefaultPipeline
-  );
+  const { pipelineId, priority } = await resolvePipelineAndPriority(lead, pipelines, getDefaultPipeline);
 
   if (!pipelineId) {
     logger.warn(`[AI Assignment] Strategy 3: no pipeline found, lead ${lead._id} unassigned`);
@@ -345,13 +342,25 @@ const assignLeadWithAI = async (lead) => {
     }
 
     const leadAccountId = freshLead?.accountId || lead.accountId;
+    const strategyOrder = await getAssignmentStrategyOrder();
 
-    // Run strategies in priority order, take the first that returns a result
-    const result =
-      (await tryConnectedAccount(lead, leadAccountId)) ||
-      (await tryPreviousLeadHistory(lead)) ||
-      (await trySellerAssignment(lead)) ||
-      (await tryAIFallback(lead));
+    const strategyRunners = {
+      [STRATEGY_IDS.CONNECTED_ACCOUNT]: () => tryConnectedAccount(lead, leadAccountId),
+      [STRATEGY_IDS.PREVIOUS_LEAD_HISTORY]: () => tryPreviousLeadHistory(lead),
+      [STRATEGY_IDS.SELLER_ASSIGNMENT]: () => trySellerAssignment(lead),
+      [STRATEGY_IDS.AI_FALLBACK]: () => tryAIFallback(lead),
+    };
+
+    let result = null;
+    for (const strategyId of strategyOrder) {
+      const run = strategyRunners[strategyId];
+      if (!run) continue;
+      result = await run();
+      if (result) {
+        logger.info(`[AI Assignment] Lead ${lead._id}: matched strategy "${strategyId}"`);
+        break;
+      }
+    }
 
     if (!result) {
       logger.warn(`[AI Assignment] Lead ${lead._id}: no assignment strategy matched`);

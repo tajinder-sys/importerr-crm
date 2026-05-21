@@ -3,6 +3,8 @@ const { auth, adminOnly } = require('../middleware/auth');
 const {
   listSettings,
   updateSetting,
+  getLeadAssignmentStrategies,
+  updateLeadAssignmentStrategies,
   listAbandonedQueueSettings,
   listSystemCronJobs,
   updateSystemCronJob,
@@ -11,6 +13,8 @@ const {
 
 const router = express.Router();
 
+router.get('/lead-assignment-strategies', auth, adminOnly, getLeadAssignmentStrategies);
+router.put('/lead-assignment-strategies', auth, adminOnly, updateLeadAssignmentStrategies);
 router.get('/abandoned-queue', auth, adminOnly, listAbandonedQueueSettings);
 router.get('/system-crons', auth, adminOnly, listSystemCronJobs);
 router.post('/system-crons/:jobId/run', auth, adminOnly, runSystemCronJobNow);

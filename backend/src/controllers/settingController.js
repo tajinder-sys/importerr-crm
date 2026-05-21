@@ -12,6 +12,12 @@ const {
   getJobsWithDbValues,
   updateCronJobSettings,
 } = require('../utils/systemCronSettings');
+const {
+  ensureLeadAssignmentStrategySettings,
+  getAssignmentStrategySettingsPayload,
+  SETTING_KEYS,
+  parseStrategyOrder,
+} = require('../utils/leadAssignmentStrategySettings');
 const { getSnapshot } = require('../cron/cronScheduler');
 const { runCronHandlerById } = require('../cron/cronJobHandlers');
 const { sendSuccess, sendNotFound, sendBadRequest, sendServerError } = require('../utils/responseHandler');
@@ -88,6 +94,39 @@ const updateSetting = async (req, res) => {
   } catch (error) {
     console.error('updateSetting error:', error);
     return sendServerError(res, error.message || 'Failed to update setting');
+  }
+};
+
+const getLeadAssignmentStrategies = async (_req, res) => {
+  try {
+    const payload = await getAssignmentStrategySettingsPayload();
+    return sendSuccess(res, 'Lead assignment strategies retrieved', payload);
+  } catch (error) {
+    console.error('getLeadAssignmentStrategies error:', error);
+    return sendServerError(res, error.message || 'Failed to load assignment strategies');
+  }
+};
+
+const updateLeadAssignmentStrategies = async (req, res) => {
+  try {
+    const { order } = req.body || {};
+    if (!Array.isArray(order)) {
+      return sendBadRequest(res, 'order must be an array of strategy ids');
+    }
+    const normalized = parseStrategyOrder(JSON.stringify(order));
+    await ensureLeadAssignmentStrategySettings();
+    const row = await CrmSetting.findOne({ key: SETTING_KEYS.STRATEGY_ORDER });
+    if (!row) {
+      return sendNotFound(res, 'Strategy order setting not found');
+    }
+    row.value = JSON.stringify(normalized);
+    row.type = 'json';
+    await row.save();
+    const payload = await getAssignmentStrategySettingsPayload();
+    return sendSuccess(res, 'Assignment strategy order saved', payload);
+  } catch (error) {
+    console.error('updateLeadAssignmentStrategies error:', error);
+    return sendServerError(res, error.message || 'Failed to save assignment strategies');
   }
 };
 
@@ -175,6 +214,8 @@ const runSystemCronJobNow = async (req, res) => {
 module.exports = {
   listSettings,
   updateSetting,
+  getLeadAssignmentStrategies,
+  updateLeadAssignmentStrategies,
   listAbandonedQueueSettings,
   listSystemCronJobs,
   updateSystemCronJob,

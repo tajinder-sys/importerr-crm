@@ -11,7 +11,10 @@ export const ROUTE_PATHS = {
   ACTIVITIES: '/activities',
   MY_TEAM: '/my-team',
   PROFILE: '/profile',
+  /** @deprecated use USER_MANAGEMENT */
   TEAMS: '/teams',
+  USER_MANAGEMENT: '/user-management',
+  TEAMS_SETTINGS: '/teams-settings',
   SELLER_USERS: '/seller-users',
   EXPORT_REPORTS: '/export-reports',
   SETTINGS_API_CONFIG: '/settings/api-config',
@@ -19,7 +22,9 @@ export const ROUTE_PATHS = {
   SETTINGS_PAYMENT_METHODS: '/settings/payment-methods',
   SETTINGS_DASHBOARD_SECTIONS: '/settings/dashboard-sections',
   SETTINGS_NOTIFICATIONS: '/settings/notifications',
+  SETTINGS_LEAD_ASSIGNMENT_STRATEGIES: '/settings/lead-assignment-strategies',
   SETTINGS_CRONS: '/settings/crons',
+  /** @deprecated redirects to TEAMS_SETTINGS */
   SETTINGS_TEAMS: '/settings/teams',
   SETTINGS_PIPELINES: '/settings/pipelines',
   TEMPLATES: '/templates/:type',

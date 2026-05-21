@@ -1,4 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+import { ROUTE_PATHS } from '../../routes/paths';
 import { Card, CardContent, CardHeader } from '../../components/common/ui/Card';
 import Input from '../../components/common/ui/Input';
 import Button from '../../components/common/ui/Button';
@@ -225,10 +228,19 @@ const TeamsSetting = () => {
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-6 dark:bg-slate-900 sm:px-6 md:px-8">
       <div className="mx-auto max-w-full space-y-6">
+        <div className="mb-2">
+          <Link
+            to={ROUTE_PATHS.USER_MANAGEMENT}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to User Management
+          </Link>
+        </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <UiPageTitle>Teams Settings</UiPageTitle>
-            <UiPageDescription>Manage teams, their members and configurations.</UiPageDescription>
+            <UiPageTitle>Teams</UiPageTitle>
+            <UiPageDescription>Manage team names, descriptions, and status.</UiPageDescription>
           </div>
           {admin ? (
             <Button

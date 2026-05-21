@@ -1,4 +1,4 @@
-import { Route } from 'react-router-dom';
+import { Navigate, Route } from 'react-router-dom';
 import { ROUTE_PATHS } from './paths';
 import { AdminRoute } from './guards';
 import {
@@ -7,6 +7,7 @@ import {
   LazyExportReports,
   LazyIntegrations,
   LazyNotificationSettings,
+  LazyLeadAssignmentStrategySettings,
   LazySystemCrons,
   LazyPaymentMethods,
   LazyPipelineStages,
@@ -58,6 +59,14 @@ export const adminRoutes = (
       )}
     />
     <Route
+      path={ROUTE_PATHS.SETTINGS_LEAD_ASSIGNMENT_STRATEGIES}
+      element={(
+        <AdminRoute>
+          <LazyLeadAssignmentStrategySettings />
+        </AdminRoute>
+      )}
+    />
+    <Route
       path={ROUTE_PATHS.SETTINGS_CRONS}
       element={(
         <AdminRoute>
@@ -75,6 +84,10 @@ export const adminRoutes = (
     />
     <Route
       path={ROUTE_PATHS.SETTINGS_TEAMS}
+      element={<Navigate to={ROUTE_PATHS.TEAMS_SETTINGS} replace />}
+    />
+    <Route
+      path={ROUTE_PATHS.TEAMS_SETTINGS}
       element={(
         <AdminRoute>
           <LazyTeamsSetting />

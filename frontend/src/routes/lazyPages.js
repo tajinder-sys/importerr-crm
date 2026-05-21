@@ -18,6 +18,9 @@ export const LazyIntegrations = lazy(() => import('../pages/settings/Integration
 export const LazyPaymentMethods = lazy(() => import('../pages/settings/PaymentMethods'));
 export const LazyDashboardSections = lazy(() => import('../pages/settings/DashboardSections'));
 export const LazyNotificationSettings = lazy(() => import('../pages/settings/NotificationSettings.jsx'));
+export const LazyLeadAssignmentStrategySettings = lazy(
+  () => import('../pages/settings/LeadAssignmentStrategySettings.jsx')
+);
 export const LazySystemCrons = lazy(() => import('../pages/settings/SystemCrons.jsx'));
 export const LazySellerUsers = lazy(() => import('../pages/settings/SellerUsers.jsx'));
 export const LazyTeamsSetting = lazy(() => import('../pages/settings/TeamsSetting.jsx'));
