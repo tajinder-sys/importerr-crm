@@ -8,6 +8,7 @@ import api from '../../utils/api';
 import { API_ROUTES } from '../../utils/apiRoutes';
 import Snackbar from '../common/ui/Snackbar';
 import PricingBreakdownModal from './PriceBreakDown';
+import QuoteEmailPreviewModal from './QuoteEmailPreviewModal';
 import VariantsList from '../common/ui/VariantsList';
 import { formatCurrency } from '../../utils/helpers';
 
@@ -80,6 +81,9 @@ const LeadDetailsOverviewCard = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [isSendingQuote, setIsSendingQuote] = useState(false);
+  const [quotePreviewOpen, setQuotePreviewOpen] = useState(false);
+  const [quotePreviewLoading, setQuotePreviewLoading] = useState(false);
+  const [quotePreview, setQuotePreview] = useState(null);
   const [initialVariants, setInitialVariants] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', type: 'success' });
   const hasFetchedRef = useRef(false);
@@ -198,35 +202,62 @@ const LeadDetailsOverviewCard = ({
     }
   };
 
-  const handleSendQuote = async () => {
+  const buildQuotePayload = () => ({
+    userId: lead?.userId,
+    offerId: lead?.productSku,
+    leadId: lead?._id,
+    variants: pricingVariantsDraft,
+    pricing: {
+      baseAlgorithmId: finalPrice?.algoId,
+      originalBreakDown: initialBreakdown || [],
+      updatedBreakDown: finalPrice?.breakdown || [],
+      formula: finalPrice?.raw?.formula || {},
+      category: finalPrice?.raw?.category,
+    },
+    amounts: {
+      initialFinalPrice: baseFinalPrice,
+      finalPrice: currentFinalPrice,
+      discountPercent: Number(discountPercent.toFixed(2)),
+      savedAmount: Number(savedAmount.toFixed(2)),
+      initialUnitPrice: baseUnitPrice,
+    },
+  });
+
+  const handleOpenQuotePreview = async () => {
+    if (!lead?.email?.trim()) {
+      setSnackbar({ open: true, message: 'Lead has no email address', type: 'error' });
+      return;
+    }
+    setQuotePreviewOpen(true);
+    setQuotePreview(null);
+    setQuotePreviewLoading(true);
+    try {
+      const res = await api.post(API_ROUTES.quote.previewEmail(), buildQuotePayload());
+      setQuotePreview(res?.data || null);
+    } catch (err) {
+      console.error('Quote preview failed', err);
+      setSnackbar({
+        open: true,
+        message: err?.message || 'Failed to load email preview',
+        type: 'error',
+      });
+      setQuotePreviewOpen(false);
+    } finally {
+      setQuotePreviewLoading(false);
+    }
+  };
+
+  const handleConfirmSendQuote = async () => {
     try {
       setIsSendingQuote(true);
-      const payload = {
-        userId: lead?.userId,
-        offerId: lead?.productSku,
-        leadId: lead?._id,
-        variants: pricingVariantsDraft,
-        pricing: {
-          baseAlgorithmId: finalPrice?.algoId,
-          originalBreakDown: initialBreakdown || [],
-          updatedBreakDown: finalPrice?.breakdown || [],
-          formula: finalPrice?.raw?.formula || {},
-          category: finalPrice?.raw?.category,
-        },
-        amounts: {
-          initialFinalPrice: baseFinalPrice,
-          finalPrice: currentFinalPrice,
-          discountPercent: Number(discountPercent.toFixed(2)),
-          savedAmount: Number(savedAmount.toFixed(2)),
-          initialUnitPrice: baseUnitPrice,
-        },
-      };
-      await api.post(API_ROUTES.quote.send(), payload);
-      setSnackbar({ open: true, message: 'Quote saved successfully', type: 'success' });
+      await api.post(API_ROUTES.quote.send(), buildQuotePayload());
+      setQuotePreviewOpen(false);
+      setQuotePreview(null);
+      setSnackbar({ open: true, message: 'Quote sent successfully', type: 'success' });
       handleRecalculatePrice(true);
     } catch (err) {
       console.error('Send quote failed', err);
-      setSnackbar({ open: true, message: 'Failed to send quote', type: 'error' });
+      setSnackbar({ open: true, message: err?.message || 'Failed to send quote', type: 'error' });
     } finally {
       setIsSendingQuote(false);
     }
@@ -361,12 +392,12 @@ const LeadDetailsOverviewCard = ({
                         <Button
                           size="sm"
                           variant="primary"
-                          onClick={handleSendQuote}
-                          disabled={isSendingQuote}
+                          onClick={handleOpenQuotePreview}
+                          disabled={isSendingQuote || quotePreviewLoading}
                           startIcon={<Send className="w-3 h-3" />}
                           className="text-[11px]"
                         >
-                          {isSendingQuote ? 'Sending…' : 'Send quote'}
+                          {quotePreviewLoading ? 'Loading…' : 'Send quote'}
                         </Button>
                       )}
                     </div>
@@ -400,6 +431,21 @@ const LeadDetailsOverviewCard = ({
         initialFinalPrice={initialFinalPrice}
         initialUnitPrice={baseUnitPrice}
         currentUnitPrice={currentUnitPrice}
+      />
+
+      <QuoteEmailPreviewModal
+        isOpen={quotePreviewOpen}
+        onClose={() => {
+          if (!isSendingQuote) {
+            setQuotePreviewOpen(false);
+            setQuotePreview(null);
+          }
+        }}
+        preview={quotePreview}
+        isLoading={quotePreviewLoading}
+        isSending={isSendingQuote}
+        onSend={handleConfirmSendQuote}
+        leadEmail={lead?.email}
       />
 
       <Snackbar
