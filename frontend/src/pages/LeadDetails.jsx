@@ -21,6 +21,7 @@ import LeadDetailsOverviewCard from '../components/lead-details/LeadDetailsOverv
 import CommunicationTab from '../components/lead-details/CommunicationTab';
 import ActivityTab from '../components/lead-details/ActivityTab';
 import { API_ROUTES } from '../utils/apiRoutes';
+import { buildActualProductPayload } from '../utils/actualProduct';
 import { enrichPipelinesWithStages } from '../utils/enrichPipelinesWithStages';
 import { fetchTeamAssignableUsers } from '../utils/fetchTeamAssignableUsers';
 import { getChipVariant } from '../utils/chipConstants';
@@ -397,6 +398,15 @@ const LeadDetails = () => {
     finally { setUpdatingLead(false); }
   }, [lead, leadForm, canManageLeadAssignment, closeEditLeadModal, showSuccess, fetchLeadDetail]);
 
+  const resetPricingAfterProductChange = useCallback(() => {
+    setFinalPrice(null);
+    setInitialFinalPrice(null);
+    setInitialBreakdown(null);
+    setPricingVariantsDraft([]);
+    setPricingFormulaDraft({});
+    setSelectedProduct(null);
+  }, []);
+
   const handleAttachManualProduct = useCallback(async (productPayload, options = {}) => {
     if (!lead?._id) throw new Error('No lead loaded');
     const normalizedPhone = getPhonePayload(formatIndianPhoneInput(lead.phone || ''));
@@ -405,13 +415,34 @@ const LeadDetails = () => {
       name: String(lead.name || '').trim(), email: String(lead.email || '').trim(),
       phone: normalizedPhone, source: lead.source, leadType: lead.leadType || 'guest', status: lead.status || 'new',
       ...(canManageLeadAssignment ? { assignedTo: lead.assignedTo?._id || lead.assignedTo || null } : {}),
-      ...productPayload,
+      ...(options?.isEdit
+        ? {}
+        : {
+            actualProduct:
+              productPayload.actualProduct ??
+              buildActualProductPayload({
+                sku: productPayload.actualSku ?? productPayload.productSku,
+                variants: productPayload.actualVariants ?? productPayload.variants,
+                variantRows: productPayload.variantRows,
+              }),
+          }),
+      productSku: productPayload.productSku,
+      productId: productPayload.productId,
+      variants: productPayload.variants,
+      totalQuantity: productPayload.totalQuantity,
     });
-    setFinalPrice(null); setInitialFinalPrice(null); setInitialBreakdown(null);
-    setPricingVariantsDraft([]); setPricingFormulaDraft({}); setSelectedProduct(null);
+    resetPricingAfterProductChange();
     await fetchLeadDetail();
     showSuccess(options?.isEdit ? 'Product updated on lead' : 'Product added to lead');
-  }, [lead, canManageLeadAssignment, fetchLeadDetail, showSuccess]);
+  }, [lead, canManageLeadAssignment, fetchLeadDetail, showSuccess, resetPricingAfterProductChange]);
+
+  const handleSetBuyingSku = useCallback(async (productPayload) => {
+    if (!lead?._id) throw new Error('No lead loaded');
+    await api.put(API_ROUTES.leads.buyingSku(lead._id), productPayload);
+    resetPricingAfterProductChange();
+    await fetchLeadDetail();
+    showSuccess('Buying SKU and variants saved');
+  }, [lead, fetchLeadDetail, showSuccess, resetPricingAfterProductChange]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -480,6 +511,7 @@ const LeadDetails = () => {
                     setInitialBreakdown={setInitialBreakdown}
                     setPricingVariantsDraft={setPricingVariantsDraft}
                     onAttachManualProduct={handleAttachManualProduct}
+                    onSetBuyingSku={handleSetBuyingSku}
                   />
                 )}
 

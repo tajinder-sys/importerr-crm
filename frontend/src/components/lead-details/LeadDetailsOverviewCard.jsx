@@ -78,6 +78,7 @@ const LeadDetailsOverviewCard = ({
   setInitialBreakdown,
   setPricingVariantsDraft,
   onAttachManualProduct,
+  onSetBuyingSku,
 }) => {
   const [open, setOpen] = useState(false);
   const [isSendingQuote, setIsSendingQuote] = useState(false);
@@ -275,6 +276,7 @@ const LeadDetailsOverviewCard = ({
             lead={lead}
             selectedProduct={selectedProduct}
             onAttachManualProduct={onAttachManualProduct}
+            onSetBuyingSku={onSetBuyingSku}
           />
 
           {/* ── Pricing snapshot ── */}

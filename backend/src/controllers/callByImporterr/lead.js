@@ -11,6 +11,12 @@ const {
   COMMUNICATION_SOURCES
 } = require('../../utils/constants');
 const { sendSuccess, sendBadRequest, sendNotFound, sendServerError } = require('../../utils/responseHandler');
+const {
+  normalizeLeadVariantsForStorage,
+  totalQtyFromVariants,
+  actualProductFromLines,
+  applyActualProductToLead,
+} = require('../../utils/leadVariants');
 const EmailService = require('../../services/EmailService');
 
 const resolveAutoAssignedTeamMember = async () => {
@@ -125,6 +131,9 @@ const createLeadFromImporterr = async (req, res) => {
       variants && typeof variants === 'object'
         ? JSON.parse(JSON.stringify(variants))
         : null;
+    const storedVariants = normalizeLeadVariantsForStorage(normalizedVariants);
+    const inquiryQty =
+      Number(totalQuantity) > 0 ? Number(totalQuantity) : totalQtyFromVariants(storedVariants);
     const resolvedMessage =
       String(message || '').trim() ||
       `Importerr inquiry for SKU ${String(productSku || '').trim()}`.trim();
@@ -145,10 +154,21 @@ const createLeadFromImporterr = async (req, res) => {
         existingLead.issueCategory = normalizedIssueCategory;
         existingLead.source = resolvedSource;
         if (normImporterOrderId) existingLead.importerOrderId = normImporterOrderId;
-        existingLead.totalQuantity = Number(totalQuantity) || 0;
-        if (normalizedVariants) {
-          existingLead.variants = normalizedVariants;
+        if (!existingLead.actualProduct?.sku) {
+          applyActualProductToLead(
+            existingLead,
+            actualProductFromLines(normalizedProductSku, storedVariants)
+          );
+        } else if (storedVariants) {
+          applyActualProductToLead(
+            existingLead,
+            actualProductFromLines(existingLead.actualProduct.sku, storedVariants)
+          );
         }
+        if (storedVariants) {
+          existingLead.variants = storedVariants;
+        }
+        existingLead.totalQuantity = inquiryQty;
         existingLead.lastInteraction = new Date();
         await existingLead.save();
 
@@ -199,9 +219,10 @@ const createLeadFromImporterr = async (req, res) => {
       userId: normalizedUserId,
       productId: productId ? String(productId).trim() : null,
       productSku: normalizedProductSku,
-      variants: normalizedVariants,
-      totalQuantity: Number(totalQuantity) > 0 ? Number(totalQuantity) : 0,
+      variants: storedVariants,
+      totalQuantity: inquiryQty,
       importerOrderId: normImporterOrderId,
+      actualProduct: actualProductFromLines(normalizedProductSku, storedVariants),
     });
 
     await createInboundClientCommunication({

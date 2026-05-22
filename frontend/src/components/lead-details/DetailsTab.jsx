@@ -8,14 +8,16 @@ import { UiSectionTitle } from '../common/ui/Typography';
 import { IMPORTERR_URL } from '../../utils/api';
 import AddManualProductModal from './AddManualProductModal';
 import LeadQuickFacts from './LeadQuickFacts';
+import VariantLinesPanel from './VariantLinesPanel';
+import { totalQtyFromLeadVariants } from '../../utils/leadVariants';
+import {
+  getActualProductFromLead,
+  getActualSku,
+  totalQtyFromActualProduct,
+  actualProductToDisplayRows,
+} from '../../utils/actualProduct';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const getVariantImageUrl = (v) =>
-  v?.imageUrl || v?.image || v?.imgUrl || v?.thumbnail || '';
-
-const getVariantKey = (v, idx) =>
-  String(v?.skuId || v?.sku || v?.id || v?.label || `lead-variant-${idx}`);
 
 const flattenVariants = (variants) => {
   if (!variants) return [];
@@ -25,8 +27,6 @@ const flattenVariants = (variants) => {
   if (Array.isArray(variants.items)) return variants.items;
   return [];
 };
-
-const getQty = (row) => Number(row?.quantity ?? row?.qty ?? row?.totalQuantity ?? 0);
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -60,16 +60,30 @@ const DetailsTab = ({
   isFetchingProduct,
   embedded = false,
   onAttachManualProduct,
+  onSetBuyingSku,
 }) => {
   const [previewImageUrl, setPreviewImageUrl] = useState('');
-  const [variantsOpen, setVariantsOpen] = useState(false);
   const [manualProductOpen, setManualProductOpen] = useState(false);
   const [manualProductMode, setManualProductMode] = useState('add');
+  const [buyingSkuOpen, setBuyingSkuOpen] = useState(false);
 
-  const hasLeadSku = Boolean(String(lead?.productSku || '').trim());
+  const actualProduct = useMemo(() => getActualProductFromLead(lead), [lead]);
+  const hasLeadSku = Boolean(String(lead?.productSku || getActualSku(lead) || '').trim());
+  const actualSkuDisplay = getActualSku(lead);
+  const buyingSkuDisplay = String(lead?.productSku || '').trim();
+  const showBuyingSkuRow = Boolean(actualSkuDisplay && buyingSkuDisplay && actualSkuDisplay !== buyingSkuDisplay);
   const leadVariants = lead?.variants && typeof lead.variants === 'object' ? lead.variants : null;
 
   const leadVariantRows = useMemo(() => flattenVariants(leadVariants), [leadVariants]);
+  const actualVariantRows = useMemo(
+    () => actualProductToDisplayRows(actualProduct),
+    [actualProduct]
+  );
+  const actualTotalQty = totalQtyFromActualProduct(actualProduct);
+  const buyingTotalQty =
+    Number(lead?.totalQuantity) > 0
+      ? Number(lead.totalQuantity)
+      : totalQtyFromLeadVariants(leadVariants);
 
   const canEditLinkedProduct =
     typeof onAttachManualProduct === 'function' && hasLeadSku;
@@ -87,6 +101,16 @@ const DetailsTab = ({
     return { sku, variantRows: leadVariantRows };
   }, [manualProductOpen, manualProductMode, lead?.productSku, leadVariantRows]);
 
+  const buyingSkuContext = useMemo(() => {
+    if (!buyingSkuOpen) return null;
+    return {
+      actualProduct,
+      actualVariantRows,
+      currentBuyingSku: buyingSkuDisplay,
+      variantRows: leadVariantRows,
+    };
+  }, [buyingSkuOpen, actualProduct, actualVariantRows, actualTotalQty, buyingSkuDisplay, leadVariantRows]);
+
   const openManualProductAdd = () => {
     setManualProductMode('add');
     setManualProductOpen(true);
@@ -101,6 +125,13 @@ const DetailsTab = ({
     setManualProductOpen(false);
     setManualProductMode('add');
   };
+
+  const openBuyingSku = () => {
+    if (typeof onSetBuyingSku !== 'function') return;
+    setBuyingSkuOpen(true);
+  };
+
+  const closeBuyingSkuModal = () => setBuyingSkuOpen(false);
 
   const content = (
     <div className={embedded ? 'space-y-4' : 'space-y-4 bg-slate-50/60 dark:bg-slate-900/40'}>
@@ -139,8 +170,34 @@ const DetailsTab = ({
                         Edit product
                       </Button>
                     ) : null}
+                    {typeof onSetBuyingSku === 'function' && hasLeadSku ? (
+                      <Button type="button" size="sm" variant="primary" onClick={openBuyingSku}>
+                        Set buying SKU
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
+
+                {(actualSkuDisplay || buyingSkuDisplay) && (
+                  <div className="rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-2 text-[11px] dark:border-slate-600 dark:bg-slate-800/60">
+                    <p className="text-slate-600 dark:text-slate-400">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">Actual SKU:</span>{' '}
+                      <span className="font-mono">{actualSkuDisplay || '—'}</span>
+                    </p>
+                    {showBuyingSkuRow ? (
+                      <p className="mt-1 text-slate-600 dark:text-slate-400">
+                        <span className="font-semibold text-indigo-700 dark:text-indigo-300">Buying SKU:</span>{' '}
+                        <span className="font-mono">{buyingSkuDisplay}</span>
+                        {buyingTotalQty > 0 ? (
+                          <span className="ml-1 text-slate-500">· Qty {buyingTotalQty}</span>
+                        ) : null}
+                      </p>
+                    ) : null}
+                    {actualTotalQty > 0 && !showBuyingSkuRow ? (
+                      <p className="mt-1 text-slate-500">Qty {actualTotalQty}</p>
+                    ) : null}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-[80px_1fr] gap-3">
                   
@@ -167,7 +224,7 @@ const DetailsTab = ({
                       {selectedProduct?.title}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Qty: {lead?.totalQuantity}
+                      {showBuyingSkuRow ? `Buying qty: ${buyingTotalQty}` : `Qty: ${buyingTotalQty || actualTotalQty}`}
                     </p>
                   </div>
                 </div>
@@ -180,6 +237,11 @@ const DetailsTab = ({
                       Add manual product
                     </Button>
                   ) : null}
+                  {typeof onSetBuyingSku === 'function' && hasLeadSku ? (
+                    <Button type="button" size="sm" variant="outline" onClick={openBuyingSku}>
+                      Set buying SKU
+                    </Button>
+                  ) : null}
                   {canEditLinkedProduct && !selectedProduct ? (
                     <Button type="button" size="sm" variant="outline" startIcon={<Pencil className="h-3 w-3" />} onClick={openManualProductEdit}>
                       Edit product & variants
@@ -190,87 +252,26 @@ const DetailsTab = ({
             )}
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-            {leadVariantRows.length > 0 && (
-              <div className="rounded-xl border border-gray-200 bg-white overflow-hidden dark:border-slate-700 dark:bg-slate-800">
-
-                {/* Header */}
-                <button
-                  onClick={() => setVariantsOpen(v => !v)}
-                  className="w-full flex justify-between items-center px-3.5 py-3 bg-gray-50 dark:bg-slate-700"
-                >
-                  <span className="text-xs font-semibold text-gray-600 dark:text-slate-300">
-                    Variants Requirement ({leadVariantRows.length})
-                  </span>
-
-                  <svg
-                    className={`w-4 h-4 transition ${variantsOpen ? 'rotate-180' : ''}`}
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-
-                {/* Body */}
-                {variantsOpen && (
-                  <div className="divide-y max-h-64 overflow-y-auto dark:divide-slate-700">
-                    {leadVariantRows.map((variant, idx) => (
-                      <div
-                        key={getVariantKey(variant, idx)}
-                        className="flex items-center justify-between px-3.5 py-2.5 hover:bg-gray-50 dark:hover:bg-slate-700"
-                      >
-                          <div className="flex items-center gap-3 min-w-0">
-                              {/* Image */}
-                              <div className="h-10 w-10 rounded-md flex items-center justify-center overflow-hidden">
-                                {getVariantImageUrl(variant) ? (
-                                    <button
-                                        onClick={() => setPreviewImageUrl(getVariantImageUrl(variant))}
-                                        className="h-9 w-9 border rounded-md overflow-hidden flex items-center justify-center"
-                                      >
-                                      <img
-                                        src={getVariantImageUrl(variant)}
-                                        alt={variant?.skuId}
-                                        className="h-8 w-8 object-contain"
-                                      />
-                                </button>
-                                ) : (
-                                  <span className="text-[10px] text-gray-400">No</span>
-                                )}
-                              </div>
-
-                              {/* SKU + attributes */}
-                              <div className="min-w-0">
-                                <p className="text-sm text-gray-800 truncate">
-                                  {variant?.label || variant?.skuId || 'Variant'} {variant?.skuId}
-                                </p>
-
-                                {Array.isArray(variant?.attributes) && variant.attributes.length > 0 && (
-                                  <div className="flex flex-wrap gap-1 mt-1">
-                                    {variant.attributes.slice(0, 2).map((attr, i) => (
-                                      <span
-                                        key={i}
-                                        className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-600"
-                                      >
-                                        {attr?.value || attr?.attributeValue}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                        <span className="text-sm font-medium text-gray-900">
-                          {getQty(variant)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+        <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3 dark:border-slate-700 dark:bg-slate-800">
+          {actualVariantRows.length > 0 && (
+            <VariantLinesPanel
+              title="Actual variants (customer / inquiry)"
+              variants={actualVariantRows}
+              accent="amber"
+              defaultOpen={!showBuyingSkuRow}
+            />
+          )}
+          {leadVariantRows.length > 0 && (
+            <VariantLinesPanel
+              title={showBuyingSkuRow ? 'Buying variants' : 'Variants requirement'}
+              variants={leadVariants}
+              accent={showBuyingSkuRow ? 'indigo' : 'slate'}
+              defaultOpen
+            />
+          )}
+          {actualVariantRows.length === 0 && leadVariantRows.length === 0 && (
+            <p className="text-xs text-gray-500 dark:text-slate-400">No variant lines on this lead.</p>
+          )}
         </div>
       </div>
 
@@ -315,6 +316,18 @@ const DetailsTab = ({
           editContext={memoEditContext}
           leadName={lead?.name || lead?.email || ''}
           onLinked={onAttachManualProduct}
+        />
+      ) : null}
+
+      {typeof onSetBuyingSku === 'function' ? (
+        <AddManualProductModal
+          isOpen={buyingSkuOpen}
+          onClose={closeBuyingSkuModal}
+          mode="buying"
+          editKey={`${lead?._id}-buying`}
+          editContext={buyingSkuContext}
+          leadName={lead?.name || lead?.email || ''}
+          onLinked={onSetBuyingSku}
         />
       ) : null}
     </>

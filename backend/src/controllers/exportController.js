@@ -53,8 +53,20 @@ const REPORTS = {
       { key: 'stage',       label: 'Stage',        get: (r) => r.stageId?.name || '' },
       { key: 'subject',     label: 'Subject',      get: (r) => r.subject },
       { key: 'issueCategory', label: 'Issue Category', get: (r) => r.issueCategory },
-      { key: 'productSku',  label: 'Product SKU',  get: (r) => r.productSku },
-      { key: 'totalQty',    label: 'Quantity',     get: (r) => r.totalQuantity },
+      { key: 'actualSku',   label: 'Actual SKU',   get: (r) => r.actualProduct?.sku || r.actualSku || '' },
+      {
+        key: 'actualTotalQty',
+        label: 'Actual Qty',
+        get: (r) => {
+          const lines = r.actualProduct?.variants;
+          if (Array.isArray(lines) && lines.length) {
+            return lines.reduce((s, v) => s + (Number(v?.quantity) || 0), 0);
+          }
+          return r.actualTotalQuantity ?? '';
+        },
+      },
+      { key: 'productSku',  label: 'Buying SKU',   get: (r) => r.productSku },
+      { key: 'totalQty',    label: 'Buying Qty',   get: (r) => r.totalQuantity },
       { key: 'importerOrderId', label: 'Importerr order ID', get: (r) => r.importerOrderId },
       { key: 'message',     label: 'Message',      get: (r) => r.message },
       { key: 'createdAt',   label: 'Created At',   get: (r) => r.createdAt?.toISOString() },

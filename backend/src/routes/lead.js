@@ -11,7 +11,8 @@ const {
   deleteLead,
   getLeadStatsOverview,
   markLeadCompletedHandler,
-  sendEmailToLead
+  sendEmailToLead,
+  updateBuyingSku,
 } = require('../controllers/lead');
 const {
   getLeadStageTimer,
@@ -43,6 +44,7 @@ router.get('/:id', auth, getLeadById);
 router.post('/', auth, createOrUpdateLead);
 router.post('/:id/communications', auth, addLeadCommunication);
 router.put('/:id', auth, createOrUpdateLead);
+router.put('/:id/buying-sku', auth, updateBuyingSku);
 router.delete('/:id', auth, authorize(['admin']), deleteLead);
 router.get('/:leadId/notes', auth, getNotes);
 router.post('/:leadId/notes', auth, addNote);

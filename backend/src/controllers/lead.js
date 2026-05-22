@@ -16,6 +16,16 @@ const leadStageProgressService = require('../services/leadStageProgressService')
 const leadCompletionService = require('../services/leadCompletionService');
 const { applyLeadCompletionFilter } = require('../utils/leadQueryFilters');
 const { attachOrderStatusToLead, attachOrderStatusToLeads } = require('../services/orderStatusService');
+const {
+  normalizeLeadVariantsForStorage,
+  flattenLeadVariants,
+  totalQtyFromVariants,
+  snapshotActualFromLead,
+  normalizeActualProduct,
+  actualProductFromLines,
+  getActualProductFromLead,
+  applyActualProductToLead,
+} = require('../utils/leadVariants');
 const { sendEmail, replyInThread } = require('../services/gmailService');
 const ConnectedAccount = require('../models/ConnectedAccount');
 const isAdminUser = (user) => user?.role === 'admin';
@@ -698,6 +708,7 @@ const createOrUpdateLead = async (req, res) => {
       stageId,
       productId,
       productSku,
+      actualProduct,
       variants,
       totalQuantity,
       totalAmount,
@@ -825,16 +836,27 @@ const createOrUpdateLead = async (req, res) => {
         lead.productId = productId ? String(productId).trim() : null;
       }
       if (productSku !== undefined) {
-        lead.productSku = productSku ? String(productSku).trim() : null;
+        const nextSku = productSku ? String(productSku).trim() : null;
+        const prevSku = lead.productSku ? String(lead.productSku).trim() : null;
+        if (nextSku && !getActualProductFromLead(lead)?.sku) {
+          applyActualProductToLead(
+            lead,
+            actualProductFromLines(prevSku || nextSku, lead.variants)
+          );
+        }
+        lead.productSku = nextSku;
+      }
+      if (actualProduct !== undefined) {
+        applyActualProductToLead(lead, actualProduct);
       }
       if (variants !== undefined) {
-        lead.variants =
-          variants && typeof variants === 'object'
-            ? JSON.parse(JSON.stringify(variants))
-            : null;
+        lead.variants = normalizeLeadVariantsForStorage(variants);
       }
       if (totalQuantity !== undefined) {
         lead.totalQuantity = Number(totalQuantity) >= 0 ? Number(totalQuantity) : 0;
+      } else if (variants !== undefined) {
+        const fromVariants = totalQtyFromVariants(variants);
+        if (fromVariants > 0) lead.totalQuantity = fromVariants;
       }
     }
     if (totalAmount !== undefined) {
@@ -1281,6 +1303,98 @@ const sendEmailToLead = async (req, res) => {
   }
 }
 
+const updateBuyingSku = async (req, res) => {
+  try {
+    const lead = await Lead.findById(req.params.id);
+    if (!lead) return sendNotFound(res, 'Lead not found');
+
+    const forbidden = await assertCanViewLead(req, lead);
+    if (forbidden) return forbidden;
+
+    if (isTeamManagerUser(req.user)) {
+      const mt = req.user.teamId || req.user.team_id;
+      const pid = lead.pipelineId && String(lead.pipelineId._id || lead.pipelineId);
+      if (pid && !(await pipelineBelongsToTeam(pid, mt))) {
+        return sendForbidden(res, 'You can only edit leads in your team\'s pipelines');
+      }
+    }
+    if (req.user.role === USER_ROLES.TEAM_MEMBER) {
+      const assigned = lead.assignedTo && String(lead.assignedTo._id || lead.assignedTo);
+      if (assigned && assigned !== String(req.user.id)) {
+        return sendForbidden(res, 'You can only update leads assigned to you');
+      }
+    }
+
+    const {
+      productSku,
+      productId,
+      variants,
+      totalQuantity,
+      actualProduct: bodyActualProduct,
+    } = req.body || {};
+    const buyingSku = productSku ? String(productSku).trim() : '';
+    if (!buyingSku) return sendBadRequest(res, 'productSku (buying SKU) is required');
+
+    const storedVariants = normalizeLeadVariantsForStorage(variants);
+    const qtyFromLines = totalQtyFromVariants(variants);
+    const resolvedQty =
+      totalQuantity !== undefined && Number(totalQuantity) >= 0
+        ? Number(totalQuantity)
+        : qtyFromLines;
+
+    const snapshot = snapshotActualFromLead(lead);
+    let resolvedActualProduct = snapshot;
+    if (bodyActualProduct !== undefined) {
+      resolvedActualProduct = normalizeActualProduct(bodyActualProduct);
+    }
+    if (!resolvedActualProduct?.variants?.length && flattenLeadVariants(lead.variants).length) {
+      resolvedActualProduct = actualProductFromLines(
+        resolvedActualProduct?.sku || snapshot?.sku || buyingSku,
+        lead.variants
+      );
+    }
+    if (!resolvedActualProduct?.sku) {
+      resolvedActualProduct = actualProductFromLines(snapshot?.sku || buyingSku, snapshot?.variants);
+    }
+
+    const prevBuying = lead.productSku ? String(lead.productSku).trim() : null;
+
+    applyActualProductToLead(lead, resolvedActualProduct);
+    lead.productSku = buyingSku;
+    lead.productId = productId ? String(productId).trim() : null;
+    lead.variants = storedVariants;
+    lead.totalQuantity = resolvedQty;
+    lead.lastInteraction = new Date();
+    await lead.save();
+
+    await ActivityService.logActivity({
+      leadId: lead._id,
+      type: ACTIVITY_TYPES.LEAD_UPDATED,
+      description: `Buying SKU updated to ${buyingSku}`,
+      performedBy: req.user?.id,
+      metadata: {
+        actualProduct: resolvedActualProduct,
+        actualVariantCount: resolvedActualProduct?.variants?.length || 0,
+        productSku: buyingSku,
+        previousBuyingSku: prevBuying,
+        totalQuantity: resolvedQty,
+        variantCount: flattenLeadVariants(storedVariants).length,
+      },
+    });
+
+    const populated = await Lead.findById(lead._id)
+      .populate('assignedTo', 'name email')
+      .populate('pipelineId', 'name')
+      .populate('stageId', 'name color')
+      .lean();
+
+    return sendSuccess(res, 'Buying SKU updated successfully', populated);
+  } catch (error) {
+    console.error('updateBuyingSku error:', error);
+    return sendBadRequest(res, error.message || 'Failed to update buying SKU');
+  }
+};
+
 module.exports = {
   getLeads,
   getUnassignedLeads,
@@ -1291,5 +1405,6 @@ module.exports = {
   markLeadCompletedHandler,
   deleteLead,
   getLeadStatsOverview,
-  sendEmailToLead
+  sendEmailToLead,
+  updateBuyingSku,
 }

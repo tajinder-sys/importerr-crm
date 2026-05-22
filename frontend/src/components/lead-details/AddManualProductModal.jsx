@@ -8,6 +8,11 @@ import api from '../../utils/api';
 import { API_ROUTES } from '../../utils/apiRoutes';
 import { formatCurrency } from '../../utils/helpers';
 import { mapImporterrVariationToLeadVariant } from './productUtils';
+import {
+  buildActualProductPayload,
+  totalQtyFromActualProduct,
+  actualProductToDisplayRows,
+} from '../../utils/actualProduct';
 
 const pushUnique = (list, url) => {
   const u = String(url || '').trim();
@@ -147,12 +152,17 @@ const AddManualProductModal = ({
     return () => clearTimeout(t);
   }, [isOpen, mode]);
 
-  /** Opening in edit mode: load product by lead SKU and restore variant lines. */
+  const isBuying = mode === 'buying';
+
+  /** Edit / buying: load product by SKU and restore variant lines. */
   useEffect(() => {
-    if (!isOpen || mode !== 'edit' || !editContext?.sku) return;
+    if (!isOpen || (mode !== 'edit' && mode !== 'buying') || !editContext) return;
+    const sku = String(
+      mode === 'buying' ? editContext.currentBuyingSku || '' : editContext.sku || ''
+    ).trim();
+    if (!sku) return;
 
     let cancelled = false;
-    const sku = String(editContext.sku).trim();
 
     const run = async () => {
       setSearching(true);
@@ -239,15 +249,29 @@ const AddManualProductModal = ({
     setSaving(true);
     setError('');
     try {
-      await onLinked(
-        {
-          productId: product._id ? String(product._id) : null,
-          productSku: offerOrSku,
-          variants: lines,
-          totalQuantity,
-        },
-        { isEdit: mode === 'edit' }
-      );
+      const payload = {
+        productId: product._id ? String(product._id) : null,
+        productSku: offerOrSku,
+        variants: lines,
+        totalQuantity,
+      };
+      if (isBuying) {
+        payload.actualProduct =
+          editContext?.actualProduct ||
+          buildActualProductPayload({
+            sku: editContext?.actualProduct?.sku || editContext?.actualSku,
+            variantRows: editContext?.actualVariantRows,
+          });
+        delete payload.actualSku;
+        delete payload.actualVariants;
+        delete payload.actualTotalQuantity;
+        await onLinked(payload, { isBuyingSku: true });
+      } else {
+        if (!isEdit) {
+          payload.actualProduct = buildActualProductPayload({ sku: offerOrSku, variants: lines });
+        }
+        await onLinked(payload, { isEdit: mode === 'edit' });
+      }
       setSkuInput('');
       setProduct(null);
       setQtyBySkuId({});
@@ -269,8 +293,13 @@ const AddManualProductModal = ({
   };
 
   const isEdit = mode === 'edit';
-  const modalTitle = isEdit ? 'Edit product & variants' : 'Add product by SKU';
-  const primaryLabel = isEdit ? 'Save changes' : 'Add to lead';
+  const modalTitle = isBuying
+    ? 'Set buying SKU'
+    : isEdit
+      ? 'Edit product & variants'
+      : 'Add product by SKU';
+  const primaryLabel = isBuying ? 'Save buying SKU' : isEdit ? 'Save changes' : 'Add to lead';
+  const skuFieldLocked = isEdit;
 
   return (
     <>
@@ -283,18 +312,56 @@ const AddManualProductModal = ({
         <div className="space-y-3 text-xs leading-snug text-gray-700">
           {leadName ? (
             <p className="text-[11px] text-gray-500">
-              Linking to <span className="font-medium text-gray-800">{leadName}</span>
+              {isBuying ? 'Lead' : 'Linking to'}{' '}
+              <span className="font-medium text-gray-800">{leadName}</span>
             </p>
+          ) : null}
+
+          {isBuying && (editContext?.actualProduct?.sku || editContext?.actualSku) ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900 space-y-2">
+              <p>
+                <span className="font-semibold">Actual SKU</span> (customer / inquiry):{' '}
+                <span className="font-mono">
+                  {editContext.actualProduct?.sku || editContext.actualSku}
+                </span>
+                {totalQtyFromActualProduct(editContext.actualProduct) > 0 ? (
+                  <span className="ml-2 text-amber-700">
+                    · Qty {totalQtyFromActualProduct(editContext.actualProduct)}
+                  </span>
+                ) : null}
+              </p>
+              {(editContext?.actualProduct?.variants?.length > 0 ||
+                editContext?.actualVariantRows?.length > 0) ? (
+                <ul className="mt-1 max-h-28 overflow-y-auto rounded border border-amber-100 bg-white/80 divide-y divide-amber-100">
+                  {(editContext.actualProduct?.variants?.length
+                    ? editContext.actualProduct.variants
+                    : actualProductToDisplayRows({ sku: editContext.actualSku, variants: editContext.actualVariantRows })
+                  ).map((row, idx) => (
+                    <li key={row.sku ?? row.skuId ?? idx} className="flex justify-between gap-2 px-2 py-1.5 text-[10px]">
+                      <span className="truncate">{row.label || `SKU ${row.sku ?? row.skuId}`}</span>
+                      <span className="shrink-0 font-mono text-amber-900">
+                        ×{row.quantity ?? row.selectedQuantity ?? row.qty ?? 1}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-amber-700">No actual variant lines stored yet.</p>
+              )}
+              <p className="text-amber-800">
+                Search a cheaper seller SKU below. Buying SKU and variant quantities are saved separately.
+              </p>
+            </div>
           ) : null}
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <div className="min-w-0 flex-1 [&_label_p]:text-[11px]">
               <Input
-                label={isEdit ? 'Importerr SKU / offer' : 'Importerr SKU'}
+                label={isBuying || isEdit ? 'Buying SKU / offer' : 'Importerr SKU'}
                 name="manualSku"
                 value={skuInput}
                 onChange={(e) => setSkuInput(e.target.value)}
-                disabled={isEdit}
+                disabled={skuFieldLocked}
                 placeholder="Enter SKU and search"
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 className="px-2 py-1.5 text-xs placeholder:text-gray-400 sm:text-xs"
@@ -304,7 +371,7 @@ const AddManualProductModal = ({
               type="button"
               variant="secondary"
               size="sm"
-              disabled={isEdit}
+              disabled={skuFieldLocked}
               loading={searching}
               startIcon={<Search className="h-4 w-4" />}
               onClick={handleSearch}

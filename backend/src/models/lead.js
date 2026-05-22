@@ -92,6 +92,16 @@ const leadSchema = new mongoose.Schema({
     trim: true,
     default: null
   },
+  /** Customer / inquiry product (unchanged when team sets a cheaper buying SKU). */
+  actualProduct: {
+    sku: { type: String, trim: true, default: null },
+    variants: [
+      {
+        sku: { type: String, trim: true, required: true },
+        quantity: { type: Number, default: 0, min: 0 },
+      },
+    ],
+  },
   variants: {
     type: mongoose.Schema.Types.Mixed,
     default: null
@@ -153,5 +163,6 @@ leadSchema.index({ isCompleted: 1, assignedTo: 1 });
 leadSchema.index({ userId: 1 });
 leadSchema.index({ productId: 1 });
 leadSchema.index({ productSku: 1 });
+leadSchema.index({ 'actualProduct.sku': 1 });
 
 module.exports = mongoose.models.Lead || mongoose.model('Lead', leadSchema);

@@ -38,6 +38,7 @@ export const API_ROUTES = {
     byId: (leadId) => `/leads/${encodeURIComponent(leadId)}`,
     related: (leadId) => `/leads/${encodeURIComponent(leadId)}/related`,
     update: (leadId) => `/leads/${encodeURIComponent(leadId)}`,
+    buyingSku: (leadId) => `/leads/${encodeURIComponent(leadId)}/buying-sku`,
     updateStage: (leadId) => `/leads/${encodeURIComponent(leadId)}/stage`,
     complete: (leadId) => `/leads/${encodeURIComponent(leadId)}/complete`,
     stageTimer: (leadId) => `/leads/${encodeURIComponent(leadId)}/stage-timer`,
