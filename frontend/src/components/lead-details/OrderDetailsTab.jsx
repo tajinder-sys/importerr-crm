@@ -372,27 +372,28 @@ function OrderSkeleton() {
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 /**
- * OrderDetailsTab
- * Props:
- *   orderId : string  — from lead.orderId
- *   onError : (msg: string) => void
+ * OrderDetailsTab — loads order from Importerr by upsaleoOrderId (preferred) or importerOrderId.
  */
-export default function OrderDetailsTab({ orderId, onError }) {
+export default function OrderDetailsTab({
+  importerOrderId,
+  onError,
+}) {
+  const fetchId =  importerOrderId;
   const [loading, setLoading] = useState(true);
   const [order, setOrder]     = useState(null);
 
   const fetchOrder = useCallback(async () => {
-    if (!orderId) return;
+    if (!fetchId) return;
     setLoading(true);
     try {
-      const { data } = await api.get(API_ROUTES.importerr.orderById(orderId));
+      const { data } = await api.get(API_ROUTES.importerr.orderById(fetchId));
       setOrder(normaliseOrder(data?.order ?? data));
     } catch (err) {
       onError?.(err?.message || 'Failed to load order details');
     } finally {
       setLoading(false);
     }
-  }, [orderId, onError]);
+  }, [fetchId, onError]);
 
   useEffect(() => { fetchOrder(); }, [fetchOrder]);
 
@@ -403,7 +404,9 @@ export default function OrderDetailsTab({ orderId, onError }) {
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <AlertCircle className="h-10 w-10 text-slate-300 dark:text-slate-600 mb-3" />
         <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Order not found</p>
-        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">ID: {orderId}</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+          {`Importerr: ${importerOrderId || fetchId}`}
+        </p>
       </div>
     );
   }

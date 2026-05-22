@@ -34,6 +34,7 @@ import LeadStageTimeline from '../components/lead-details/LeadStageTimeline';
 import OrderDetailsTab from '../components/lead-details/OrderDetailsTab';
 import RelatedLeadsPanel from '../components/lead-details/RelatedLeadsPanel';
 import LeadQuickFacts from '../components/lead-details/LeadQuickFacts';
+import { leadHasOrder, leadOrderDisplayId, leadOrderFetchId } from '../utils/leadOrderFields';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -105,10 +106,10 @@ function LeadHero({ lead, onEdit, onBack }) {
               {lead.source && <Chip label={lead.source} variant={getChipVariant('SOURCE', lead.source)} />}
               {lead.status && <Chip label={lead.status} variant={getChipVariant('STATUS', lead.status)} />}
               <PriorityBadge priority={lead.priority} />
-              {lead.orderId && (
+              {leadHasOrder(lead) && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
                   <Package className="h-2.5 w-2.5" />
-                  Order #{lead.orderId}
+                  Order #{leadOrderDisplayId(lead)}
                 </span>
               )}
             </div>
@@ -230,7 +231,7 @@ const LeadDetails = () => {
     [leadSource, replySource, communicationSourceOptions],
   );
 
-  // Build tab list — inject Order tab when lead has orderId
+  // Build tab list — inject Order tab when lead has an order linked
   const visibleTabs = useMemo(() => {
     const base = BASE_TABS.filter((t) => (t.adminOnly ? canViewHistory : true)).map((t) => {
       if (t.key === 'related' && relatedLeads.length > 0) {
@@ -238,13 +239,13 @@ const LeadDetails = () => {
       }
       return t;
     });
-    if (lead?.orderId) {
+    if (leadHasOrder(lead)) {
       const commIdx = base.findIndex((t) => t.key === 'communication');
       const orderTab = { key: 'order', label: 'Order', icon: Package };
       base.splice(commIdx === -1 ? base.length : commIdx, 0, orderTab);
     }
     return base;
-  }, [canViewHistory, lead?.orderId, relatedLeads.length]);
+  }, [canViewHistory, lead, relatedLeads.length]);
 
   // ─── Fetch ────────────────────────────────────────────────────────────────
 
@@ -478,8 +479,12 @@ const LeadDetails = () => {
                   />
                 )}
 
-                {activeTab === 'order' && lead.orderId && (
-                  <OrderDetailsTab orderId={lead.orderId} onError={showError} />
+                {activeTab === 'order' && leadHasOrder(lead) && (
+                  <OrderDetailsTab
+                    importerOrderId={lead.importerOrderId}
+                    orderFetchId={leadOrderFetchId(lead)}
+                    onError={showError}
+                  />
                 )}
 
                 {activeTab === 'communication' && (

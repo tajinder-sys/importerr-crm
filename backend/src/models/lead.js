@@ -113,10 +113,11 @@ const leadSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Lead'
   },
-  orderId: {
+  importerOrderId: {
     type: String,
     trim: true,
-    default: null
+    default: null,
+    index: true,
   },
   abandonedQueueRef: {
     type: mongoose.Schema.Types.ObjectId,

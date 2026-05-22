@@ -231,7 +231,7 @@ async function main() {
       issueCategory: rnd(['shipping', 'payment', 'product', 'account', '']),
       productSku:    rnd(skus),
       totalQuantity: rndN(200, 5000),
-      orderId:       Math.random() > 0.6 ? `STREAM-${rndN(30000, 99999)}` : null,
+      importerOrderId: Math.random() > 0.6 ? `IMP${rndN(30000, 99999)}` : null,
       createdAt,
       updatedAt: createdAt,
     });

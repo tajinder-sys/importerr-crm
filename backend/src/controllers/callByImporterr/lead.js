@@ -101,7 +101,7 @@ const createLeadFromImporterr = async (req, res) => {
       productSku = null,
       variants = null,
       totalQuantity = 0,
-      orderId = null,
+      importerOrderId = null,
       message = '',
       subject = null,
       issueCategory = null
@@ -117,7 +117,7 @@ const createLeadFromImporterr = async (req, res) => {
     }
 
     const normalizedUserId = userId ? String(userId).trim() : null;
-    const normalizedOrderId= orderId ? String(orderId).trim() : null;
+    const normImporterOrderId = importerOrderId ? String(importerOrderId).trim() : null;
     const normalizedSubject = subject ? String(subject).trim() : null;
     const normalizedIssueCategory = issueCategory ? String(issueCategory).trim() : null;
     const normalizedProductSku = productSku ? String(productSku).trim() : null;
@@ -144,7 +144,7 @@ const createLeadFromImporterr = async (req, res) => {
         existingLead.subject = normalizedSubject;
         existingLead.issueCategory = normalizedIssueCategory;
         existingLead.source = resolvedSource;
-        existingLead.orderId = normalizedOrderId;
+        if (normImporterOrderId) existingLead.importerOrderId = normImporterOrderId;
         existingLead.totalQuantity = Number(totalQuantity) || 0;
         if (normalizedVariants) {
           existingLead.variants = normalizedVariants;
@@ -201,7 +201,7 @@ const createLeadFromImporterr = async (req, res) => {
       productSku: normalizedProductSku,
       variants: normalizedVariants,
       totalQuantity: Number(totalQuantity) > 0 ? Number(totalQuantity) : 0,
-      orderId: normalizedOrderId
+      importerOrderId: normImporterOrderId,
     });
 
     await createInboundClientCommunication({
