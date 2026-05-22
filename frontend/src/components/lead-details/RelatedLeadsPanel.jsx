@@ -7,6 +7,8 @@ import { getChipVariant } from '../../utils/chipConstants';
 import { formatDateIndian, formatLabel } from '../../utils/helpers';
 import { resolveLeadRefName } from '../../utils/leadDisplay';
 import { StageLabel } from './LeadQuickFacts';
+import OrderStatusChip from './OrderStatusChip';
+import { leadHasImporterOrder } from '../../utils/leadOrderFields';
 
 const MATCH_FIELD_CONFIG = {
   email: { label: 'Email', valueKey: 'email' },
@@ -43,6 +45,7 @@ function RelatedLeadsSkeleton() {
 
 export default function RelatedLeadsPanel({ loading, related = [], matchFields = [] }) {
   const hasMatchers = matchFields.length > 0;
+  const showOrderStatusCol = related.some((item) => leadHasImporterOrder(item));
 
   return (
     <Card className="rounded-b-2xl rounded-t-none border-gray-200 shadow-sm min-h-full dark:border-slate-700">
@@ -98,8 +101,13 @@ export default function RelatedLeadsPanel({ loading, related = [], matchFields =
                     Stage
                   </th>
                   <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    Status
+                    Lead status
                   </th>
+                  {showOrderStatusCol && (
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Order status
+                    </th>
+                  )}
                   <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Source
                   </th>
@@ -163,6 +171,19 @@ export default function RelatedLeadsPanel({ loading, related = [], matchFields =
                           <span className="ml-1 text-[10px] text-slate-500">(completed)</span>
                         )}
                       </td>
+                      {showOrderStatusCol && (
+                        <td className="px-3 py-3">
+                          {leadHasImporterOrder(item) ? (
+                            item.orderStatus ? (
+                              <OrderStatusChip status={item.orderStatus} />
+                            ) : (
+                              <span className="text-xs text-slate-400">—</span>
+                            )
+                          ) : (
+                            <span className="text-xs text-slate-300">—</span>
+                          )}
+                        </td>
+                      )}
                       <td className="px-3 py-3 text-sm text-slate-700 dark:text-slate-300">
                         {item.source ? (
                           <Chip

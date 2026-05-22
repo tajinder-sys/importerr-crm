@@ -34,7 +34,8 @@ import LeadStageTimeline from '../components/lead-details/LeadStageTimeline';
 import OrderDetailsTab from '../components/lead-details/OrderDetailsTab';
 import RelatedLeadsPanel from '../components/lead-details/RelatedLeadsPanel';
 import LeadQuickFacts from '../components/lead-details/LeadQuickFacts';
-import { leadHasOrder, leadOrderDisplayId, leadOrderFetchId } from '../utils/leadOrderFields';
+import { leadHasImporterOrder, leadHasOrder, leadOrderDisplayId } from '../utils/leadOrderFields';
+import OrderStatusChip from '../components/lead-details/OrderStatusChip';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -111,6 +112,9 @@ function LeadHero({ lead, onEdit, onBack }) {
                   <Package className="h-2.5 w-2.5" />
                   Order #{leadOrderDisplayId(lead)}
                 </span>
+              )}
+              {leadHasOrder(lead) && lead.orderStatus && (
+                <OrderStatusChip status={lead.orderStatus} />
               )}
             </div>
           </div>
@@ -482,7 +486,6 @@ const LeadDetails = () => {
                 {activeTab === 'order' && leadHasOrder(lead) && (
                   <OrderDetailsTab
                     importerOrderId={lead.importerOrderId}
-                    orderFetchId={leadOrderFetchId(lead)}
                     onError={showError}
                   />
                 )}

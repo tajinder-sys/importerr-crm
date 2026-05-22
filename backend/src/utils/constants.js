@@ -118,7 +118,8 @@ const PRODUCT_API_ROUTES = {
   CREATE_CART: '/carts',
   APPLY_DISCOUNT: '/carts/{cartId}/discount',
   SEND_QUOTE: '/quotes/send',
-  ORDER_BY_ID: '/orders/{id}'
+  ORDER_BY_ID: '/orders/{id}',
+  ORDERS_STATUS_SUMMARY: '/orders/status-summary',
 };
 
 module.exports = {

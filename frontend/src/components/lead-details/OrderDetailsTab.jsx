@@ -372,7 +372,7 @@ function OrderSkeleton() {
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 /**
- * OrderDetailsTab — loads order from Importerr by upsaleoOrderId (preferred) or importerOrderId.
+ * OrderDetailsTab — loads order from Importerr by importerOrderId.
  */
 export default function OrderDetailsTab({
   importerOrderId,

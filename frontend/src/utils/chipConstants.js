@@ -30,6 +30,18 @@ export const CHIP_VARIANTS = {
     high: 'orange',
     urgent: 'danger',
   },
+  ORDER_STATUS: {
+    pending: 'warning',
+    processing: 'primary',
+    shipped: 'purple',
+    delivered: 'success',
+    completed: 'success',
+    cancelled: 'danger',
+    canceled: 'danger',
+    refunded: 'orange',
+    failed: 'danger',
+    paid: 'success',
+  },
 };
 
 export const getChipVariant = (group, value, fallback = 'neutral') => {

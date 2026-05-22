@@ -15,6 +15,7 @@ const Task = require('../models/Task');
 const leadStageProgressService = require('../services/leadStageProgressService');
 const leadCompletionService = require('../services/leadCompletionService');
 const { applyLeadCompletionFilter } = require('../utils/leadQueryFilters');
+const { attachOrderStatusToLead, attachOrderStatusToLeads } = require('../services/orderStatusService');
 const { sendEmail, replyInThread } = require('../services/gmailService');
 const ConnectedAccount = require('../models/ConnectedAccount');
 const isAdminUser = (user) => user?.role === 'admin';
@@ -587,7 +588,12 @@ const getLeadById = async (req, res) => {
     .populate('created_by', 'name email')
     .sort({ createdAt: -1 });
     
-    const leadPlain = lead.toObject ? lead.toObject() : lead;
+    let leadPlain = lead.toObject ? lead.toObject() : lead;
+    try {
+      leadPlain = await attachOrderStatusToLead(leadPlain);
+    } catch (orderStatusErr) {
+      console.error('attachOrderStatusToLead:', orderStatusErr.message);
+    }
     const completion = await leadCompletionService.getLeadCompletionMeta(leadPlain);
     const currentStageId = leadPlain.stageId?._id ?? leadPlain.stageId;
     const stageHistory = await leadStageProgressService.getLeadStageHistoryForLead(lead._id, {
@@ -595,7 +601,7 @@ const getLeadById = async (req, res) => {
     });
 
     sendSuccess(res, 'Lead retrieved successfully', {
-      lead,
+      lead: leadPlain,
       completion,
       stageHistory,
       activities,
@@ -638,7 +644,7 @@ const getRelatedLeads = async (req, res) => {
       $or: matchConditions,
     })
       .select(
-        'name email phone userId productSku source status priority createdAt assignedTo pipelineId stageId isCompleted message'
+        'name email phone userId productSku importerOrderId source status priority createdAt assignedTo pipelineId stageId isCompleted message'
       )
       .populate('assignedTo', 'name email')
       .populate('pipelineId', 'name')
@@ -647,10 +653,15 @@ const getRelatedLeads = async (req, res) => {
       .limit(25)
       .lean();
 
-    const enriched = related.map((item) => ({
+    let enriched = related.map((item) => ({
       ...item,
       matchReasons: getMatchReasonsForRelatedLead(lead, item),
     }));
+    try {
+      enriched = await attachOrderStatusToLeads(enriched);
+    } catch (orderStatusErr) {
+      console.error('attachOrderStatusToLeads:', orderStatusErr.message);
+    }
 
     return sendSuccess(res, 'Related leads retrieved successfully', {
       related: enriched,

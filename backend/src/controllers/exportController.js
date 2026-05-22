@@ -55,7 +55,7 @@ const REPORTS = {
       { key: 'issueCategory', label: 'Issue Category', get: (r) => r.issueCategory },
       { key: 'productSku',  label: 'Product SKU',  get: (r) => r.productSku },
       { key: 'totalQty',    label: 'Quantity',     get: (r) => r.totalQuantity },
-      { key: 'importerOrderId', label: 'Importerr order ID', get: (r) => r.importerOrderId || r.orderId },
+      { key: 'importerOrderId', label: 'Importerr order ID', get: (r) => r.importerOrderId },
       { key: 'message',     label: 'Message',      get: (r) => r.message },
       { key: 'createdAt',   label: 'Created At',   get: (r) => r.createdAt?.toISOString() },
     ],
