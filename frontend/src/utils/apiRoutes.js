@@ -21,6 +21,8 @@ export const API_ROUTES = {
     byId: (id) => `/abandoned-leads/${encodeURIComponent(id)}`,
   },
   settings: {
+    branding: '/settings/branding',
+    brandingLogo: '/settings/branding/logo',
     list: '/settings',
     abandonedQueue: '/settings/abandoned-queue',
     leadAssignmentStrategies: '/settings/lead-assignment-strategies',

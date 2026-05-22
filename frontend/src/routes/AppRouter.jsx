@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LayoutProvider } from '../contexts/LayoutContext.jsx';
+import { BrandingProvider } from '../contexts/BrandingContext.jsx';
 import { surfaces } from '../config/designSystem';
 import { cn } from '../utils/helpers';
 import RouteFallback from '../components/common/RouteFallback';
@@ -28,9 +29,11 @@ const AppRouter = () => (
         <Route
           element={(
             <ProtectedRoute>
-              <LayoutProvider>
-                <AppLayout />
-              </LayoutProvider>
+              <BrandingProvider>
+                <LayoutProvider>
+                  <AppLayout />
+                </LayoutProvider>
+              </BrandingProvider>
             </ProtectedRoute>
           )}
         >

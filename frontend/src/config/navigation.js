@@ -19,6 +19,7 @@ import {
   Bell,
   Timer,
   UsersRound,
+  Palette,
 } from 'lucide-react';
 import { ROUTE_PATHS } from '../routes/paths';
 import { USER_ROLES } from '../utils/constants';
@@ -131,6 +132,7 @@ export function getSettingsSubNavigation() {
     { href: ROUTE_PATHS.SETTINGS_PAYMENT_METHODS, icon: CreditCard, label: 'Payment Methods' },
     { href: ROUTE_PATHS.SETTINGS_PIPELINES, icon: GitBranch, label: 'Pipelines & Stages' },
     { href: ROUTE_PATHS.SETTINGS_DASHBOARD_SECTIONS, icon: LayoutDashboard, label: 'Dashboard sections' },
+    { href: ROUTE_PATHS.SETTINGS_BRANDING, icon: Palette, label: 'Sidebar branding' },
     { href: ROUTE_PATHS.SETTINGS_LEAD_ASSIGNMENT_STRATEGIES, icon: Sparkles, label: 'Assignment strategies' },
     { href: ROUTE_PATHS.SETTINGS_NOTIFICATIONS, icon: Bell, label: 'Notifications' },
     { href: ROUTE_PATHS.SETTINGS_CRONS, icon: Timer, label: 'Scheduled crons' },
@@ -152,6 +154,7 @@ export function getAdminShortcuts(user) {
     { href: ROUTE_PATHS.SETTINGS_PAYMENT_METHODS, icon: CreditCard, title: 'Payment Methods' },
     { href: ROUTE_PATHS.SETTINGS_PIPELINES, icon: GitBranch, title: 'Pipelines & Stages' },
     { href: ROUTE_PATHS.SETTINGS_DASHBOARD_SECTIONS, icon: LayoutDashboard, title: 'Dashboard sections' },
+    { href: ROUTE_PATHS.SETTINGS_BRANDING, icon: Palette, title: 'Sidebar branding' },
     { href: ROUTE_PATHS.SETTINGS_LEAD_ASSIGNMENT_STRATEGIES, icon: Sparkles, title: 'Assignment strategies' },
     { href: ROUTE_PATHS.SETTINGS_NOTIFICATIONS, icon: Bell, title: 'Notifications' },
     { href: ROUTE_PATHS.SETTINGS_CRONS, icon: Timer, title: 'Scheduled crons' },

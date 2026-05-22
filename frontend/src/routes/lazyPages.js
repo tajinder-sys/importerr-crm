@@ -17,6 +17,7 @@ export const LazyApiConfig = lazy(() => import('../pages/settings/ApiConfig.jsx'
 export const LazyIntegrations = lazy(() => import('../pages/settings/Integrations.jsx'));
 export const LazyPaymentMethods = lazy(() => import('../pages/settings/PaymentMethods'));
 export const LazyDashboardSections = lazy(() => import('../pages/settings/DashboardSections'));
+export const LazyBrandingSettings = lazy(() => import('../pages/settings/BrandingSettings.jsx'));
 export const LazyNotificationSettings = lazy(() => import('../pages/settings/NotificationSettings.jsx'));
 export const LazyLeadAssignmentStrategySettings = lazy(
   () => import('../pages/settings/LeadAssignmentStrategySettings.jsx')

@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useLayout } from '../../contexts/LayoutContext.jsx';
-import { useTheme } from '../../contexts/ThemeContext.jsx';
+import SidebarBrand from './SidebarBrand';
 import { cn } from '../../utils/helpers';
 import { typography } from '../../config/designSystem';
 import {
@@ -34,10 +34,8 @@ import {
 const Sidebar = () => {
   const { user } = useAuth();
   const { sidebarCollapsed, toggleSidebar } = useLayout();
-  const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const appLogo = theme === 'dark' ? '/images/logo_dark.png' : '/images/image.png';
 
   const isUserAdmin = user?.role === USER_ROLES.ADMIN;
   const mainNavigation = getMainNavigation(user);
@@ -89,13 +87,7 @@ const Sidebar = () => {
           'flex items-center pb-3 pt-5',
           sidebarCollapsed ? 'flex-col gap-2 px-2' : 'justify-between gap-2 px-4'
         )}>
-          {!sidebarCollapsed ? (
-            <img src={appLogo} alt="Importerr CRM" className="h-17 w-auto max-w-[140px] rounded-md object-contain" />
-          ) : (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-xs font-bold text-primary-700 dark:bg-primary-900 dark:text-primary-300" title="Importerr CRM">
-              I
-            </div>
-          )}
+          <SidebarBrand collapsed={sidebarCollapsed} />
           <button
             type="button"
             onClick={toggleSidebar}

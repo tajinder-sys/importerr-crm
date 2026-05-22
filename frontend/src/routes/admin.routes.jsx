@@ -4,6 +4,7 @@ import { AdminRoute } from './guards';
 import {
   LazyApiConfig,
   LazyDashboardSections,
+  LazyBrandingSettings,
   LazyExportReports,
   LazyIntegrations,
   LazyNotificationSettings,
@@ -47,6 +48,14 @@ export const adminRoutes = (
       element={(
         <AdminRoute>
           <LazyDashboardSections />
+        </AdminRoute>
+      )}
+    />
+    <Route
+      path={ROUTE_PATHS.SETTINGS_BRANDING}
+      element={(
+        <AdminRoute>
+          <LazyBrandingSettings />
         </AdminRoute>
       )}
     />

@@ -21,6 +21,7 @@ export const ROUTE_PATHS = {
   SETTINGS_INTEGRATIONS: '/settings/integrations/:source',
   SETTINGS_PAYMENT_METHODS: '/settings/payment-methods',
   SETTINGS_DASHBOARD_SECTIONS: '/settings/dashboard-sections',
+  SETTINGS_BRANDING: '/settings/branding',
   SETTINGS_NOTIFICATIONS: '/settings/notifications',
   SETTINGS_LEAD_ASSIGNMENT_STRATEGIES: '/settings/lead-assignment-strategies',
   SETTINGS_CRONS: '/settings/crons',
