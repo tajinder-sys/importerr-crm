@@ -77,6 +77,16 @@ export const TEMPLATE_PRESETS = [
       align: 'left'
     },
 
+    { id: uid(), type: 'spacer', height: 12 },
+
+    {
+      id: uid(),
+      type: 'text',
+      content: '{{quoteDetails}}',
+      color: '#374151',
+      align: 'left'
+    },
+
     { id: uid(), type: 'spacer', height: 16 },
 
     {

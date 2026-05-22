@@ -6,7 +6,42 @@ const ActivityService = require('../services/ActivityService');
 const NotificationService = require('../services/NotificationService');
 const { ACTIVITY_TYPES } = require('../utils/constants');
 const EmailService = require('../services/EmailService');
+const { renderQuoteEmail } = require('../utils/quoteEmailBuilder');
 const mongoose = require('mongoose');
+
+const validateQuoteBody = (body) => {
+  const { userId, offerId, variants = [], leadId } = body || {};
+  if (!userId) return 'userId is required';
+  if (!offerId) return 'offerId is required';
+  if (!leadId) return 'leadId is required';
+  if (!Array.isArray(variants) || !variants.length) return 'variants are required';
+  return null;
+};
+
+const previewQuoteEmail = async (req, res) => {
+  try {
+    const err = validateQuoteBody(req.body);
+    if (err) return sendBadRequest(res, err);
+
+    const { offerId, variants = [], amounts = {}, leadId } = req.body;
+    const lead = await Lead.findById(leadId).lean();
+    if (!lead) return sendNotFound(res, 'Lead not found');
+    if (!lead.email) return sendBadRequest(res, 'Lead has no email address');
+
+    const rendered = await renderQuoteEmail({
+      lead,
+      offerId,
+      variants,
+      amounts,
+      referenceId: null,
+    });
+
+    return sendSuccess(res, 'Quote email preview generated', rendered);
+  } catch (error) {
+    console.error('Preview quote email error:', error);
+    return sendServerError(res, error.message || 'Failed to preview quote email');
+  }
+};
 
 const sendQuote = async (req, res) => {
   try {
@@ -18,15 +53,8 @@ const sendQuote = async (req, res) => {
       amounts = {},
       leadId
     } = req.body || {};
-    if (!userId)
-        sendBadRequest(res, 'userId is required');
-
-    if (!offerId)
-        sendBadRequest(res, 'offerId is required');
-
-    if (!Array.isArray(variants) || !variants.length) {
-        sendBadRequest(res, 'variants are required');
-    }
+    const validationError = validateQuoteBody(req.body);
+    if (validationError) return sendBadRequest(res, validationError);
 
     const existingQuote = await ImporterrQuote.findOne({
       userId,
@@ -110,27 +138,32 @@ const sendQuote = async (req, res) => {
         dedupeKey: `quote_sent:${quoteDoc._id}`,
       }).catch(() => {});
     }
-    if(lead.email){
+    if (lead?.email) {
       try {
-          await EmailService.sendTemplateEmail({
-              to: lead.email,
-              slug: 'discount-quote',
-              data: {
-              name: lead.name || 'Customer',
-              discount: quoteDoc.amounts?.discountPercent,
-              link: `${process.env.FRONTEND_URL}/quote/${quoteDoc.referenceId}`
-              },
-              metadata: {
-              quoteId: quoteDoc._id,
-              referenceId: quoteDoc.referenceId,
-              leadId: req.body.leadId
-              }
-          });
-          lead.lastInteraction = new Date();
-          await lead.save();
+        const { subject, body, templateId, templateSlug } = await renderQuoteEmail({
+          lead,
+          offerId: quoteDoc.offerId,
+          variants: quoteDoc.variants,
+          amounts: quoteDoc.amounts,
+          referenceId: quoteDoc.referenceId,
+        });
+        await EmailService.sendHtmlEmail({
+          to: lead.email,
+          subject,
+          html: body,
+          templateId,
+          metadata: {
+            templateSlug,
+            quoteId: quoteDoc._id,
+            referenceId: quoteDoc.referenceId,
+            leadId: req.body.leadId,
+          },
+        });
+        lead.lastInteraction = new Date();
+        await lead.save();
       } catch (err) {
-      console.error('Email send failed:', err.message);
-      // don't break main flow
+        console.error('Email send failed:', err.message);
+        // don't break main flow
       }
     }
 
@@ -166,4 +199,4 @@ const getQuote = async (req, res) => {
   }
 };
 
-module.exports = {sendQuote, getQuote};
+module.exports = { sendQuote, getQuote, previewQuoteEmail };

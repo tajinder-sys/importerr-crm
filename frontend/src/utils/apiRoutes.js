@@ -66,6 +66,7 @@ export const API_ROUTES = {
   },
   quote: {
     send: () => `/quote/send`,
+    previewEmail: () => `/quote/preview-email`,
     get: (leadId) => `/quote/${encodeURIComponent(leadId)}`
   },
   teams: {

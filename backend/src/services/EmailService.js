@@ -17,18 +17,17 @@ class EmailService {
     let subject = template.subject || '';
     let body = template.body || '';
 
-    if (template.placeholders?.length) {
-      template.placeholders.forEach((key) => {
-        const value = data[key] ?? '';
-        const regex = new RegExp(`{{${key}}}`, 'g');
+    const keys = new Set([
+      ...(Array.isArray(template.placeholders) ? template.placeholders : []),
+      ...Object.keys(data || {}),
+    ]);
 
-        body = body.replace(regex, value);
-
-        if (subject.includes(`{{${key}}}`)) {
-          subject = subject.replace(regex, value);
-        }
-      });
-    }
+    keys.forEach((key) => {
+      const value = data[key] ?? '';
+      const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'gi');
+      body = body.replace(regex, value);
+      subject = subject.replace(regex, value);
+    });
 
     return { subject, body };
   }

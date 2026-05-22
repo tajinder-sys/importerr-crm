@@ -65,6 +65,8 @@ const PRESETS = [
       { type: 'heading', content: "Hi {{name}}, we've got a special deal for you! 💰", level: 1, color: '#111827' },
       { type: 'spacer', height: 8 },
       { type: 'text', content: "Thanks for your interest! We've prepared a personalized quote just for you.\n\n🎉 You're getting an exclusive discount of {{discount}} on your order.", color: '#374151', align: 'left' },
+      { type: 'spacer', height: 12 },
+      { type: 'text', content: '{{quoteDetails}}', color: '#374151', align: 'left' },
       { type: 'spacer', height: 16 },
       { type: 'heading', content: 'Limited Time Offer 🚀', level: 2, color: '#b91c1c' },
       { type: 'text', content: "Don't miss out on this deal. Click below to view your full quote and proceed.", color: '#4b5563', align: 'center' },
